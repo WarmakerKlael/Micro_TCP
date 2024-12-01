@@ -65,7 +65,7 @@ void _safe_print_log(enum log_tag _log_tag, const char *_file, int _line, const 
 static void _unsafe_print_log_forward(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, va_list arg_list)
 {
 	const char *colored_string_log_tag = get_colored_string_log_tag(_log_tag);
-	fprintf(print_stream, "[" PROJECT_NAME " %s][FILE %s][LINE %d][FUNCTION %s()]: " MAGENTA_COLOR, colored_string_log_tag, _file, _line, _func);
+	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: " MAGENTA_COLOR, colored_string_log_tag, _file, _line, _func);
 	vfprintf(print_stream, _message, arg_list);
 	fprintf(print_stream, "\n" RESET_COLOR);
 }
@@ -75,10 +75,10 @@ static const char *get_colored_string_log_tag(enum log_tag _log_tag)
 {
 	switch (_log_tag)
 	{
-	case LOG_INFO:		return BLUE_COLOR 	"INFO"		RESET_COLOR;
-	case LOG_WARNING:	return YELLOW_COLOR 	"WARNING"	RESET_COLOR;
-	case LOG_ERROR:		return RED_COLOR 	"ERROR" 	RESET_COLOR;
-	default:		return RESET_COLOR 	"??LOG??"	RESET_COLOR;
+	case LOG_INFO:		return BLUE_COLOR 	PROJECT_NAME " " "INFO"		RESET_COLOR;
+	case LOG_WARNING:	return YELLOW_COLOR 	PROJECT_NAME " " "WARNING"	RESET_COLOR;
+	case LOG_ERROR:		return RED_COLOR 	PROJECT_NAME " " "ERROR" 	RESET_COLOR;
+	default:		return RESET_COLOR 	PROJECT_NAME " " "??LOG??"	RESET_COLOR;
 	}
 }
 // clang-format on
