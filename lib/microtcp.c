@@ -3,6 +3,7 @@
 #include "allocator/allocator.h"
 #include "logging/logger.h"
 #include "microtcp_macro_functions.h"
+#include "microtcp_core_utils.h"
 #include "microtcp_defines.h"
 #include "microtcp_helpers.h"
 
@@ -74,8 +75,8 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *_address, 
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(struct sockaddr));
 
         /* Connect in TCP sets the sequence number of client in connect(). */
-        _socket->seq_number = 
-        int isn = _socket->seq_number
+        _socket->seq_number = generate_initial_sequence_number();
+        PRINT_INFO("ISN == %u", _socket->seq_number);
 
         /* Initialize you sequence number, as a client. (Connect is use from client side.) */
         /* Your ISN. */
@@ -104,4 +105,3 @@ microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags)
 {
         /* Your code here */
 }
-

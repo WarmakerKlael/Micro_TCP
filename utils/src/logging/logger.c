@@ -5,7 +5,6 @@
 
 #include "allocator/allocator.h"
 #include "logging/logger.h"
-#include "cli_color.h"
 #include "microtcp_defines.h"
 
 /* Global Variables */
@@ -13,16 +12,17 @@ pthread_mutex_t *mutex_logger = NULL;
 FILE *print_stream;
 /* ---------------- */
 
-static void logger_init() __attribute__((constructor));
-static void logger_destroy() __attribute__((destructor));
-static const char *get_colored_string_log_tag(enum log_tag _log_tag);
+/* Declarations of static functions implemented in this file: */
+__attribute__((constructor(LOGGER_CONSTRUCTOR_PRIORITY))) static void logger_init();
+__attribute__((destructor(LOGGER_DESTRUCTOR_PRIORITY))) static void logger_destroy();
 static void _unsafe_print_log_forward(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, va_list arg_list);
+static const char *get_colored_string_log_tag(enum log_tag _log_tag);
 
-static void logger_init()
+static void logger_init(void)
 {
+#define PTHREAD_MUTEX_INIT_SUCCESS 0 /* Specified in man pages. */
 	print_stream = stdout;
 	MALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
-#define PTHREAD_MUTEX_INIT_SUCCESS 0 /* Specified in man pages. */
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
 		_UNSAFE_PRINT_LOG(LOG_ERROR, "Logger failed to initialize.");
@@ -31,7 +31,7 @@ static void logger_init()
 	_UNSAFE_PRINT_LOG(LOG_INFO, "Logger initialized.");
 }
 
-static void logger_destroy()
+static void logger_destroy(void)
 {
 #define PTHREAD_MUTEX_DESTROY_SUCCESS 0 /* Specified in man pages. */
 	if (mutex_logger != NULL || pthread_mutex_destroy(mutex_logger) == PTHREAD_MUTEX_DESTROY_SUCCESS)
@@ -65,7 +65,7 @@ void _safe_print_log(enum log_tag _log_tag, const char *_file, int _line, const 
 static void _unsafe_print_log_forward(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, va_list arg_list)
 {
 	const char *colored_string_log_tag = get_colored_string_log_tag(_log_tag);
-	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: " MAGENTA_COLOR, colored_string_log_tag, _file, _line, _func);
+	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: " LOG_MESSAGE_COLOR, colored_string_log_tag, _file, _line, _func);
 	vfprintf(print_stream, _message, arg_list);
 	fprintf(print_stream, "\n" RESET_COLOR);
 }
@@ -75,10 +75,10 @@ static const char *get_colored_string_log_tag(enum log_tag _log_tag)
 {
 	switch (_log_tag)
 	{
-	case LOG_INFO:		return BLUE_COLOR 	PROJECT_NAME " " "INFO"		RESET_COLOR;
-	case LOG_WARNING:	return YELLOW_COLOR 	PROJECT_NAME " " "WARNING"	RESET_COLOR;
-	case LOG_ERROR:		return RED_COLOR 	PROJECT_NAME " " "ERROR" 	RESET_COLOR;
-	default:		return RESET_COLOR 	PROJECT_NAME " " "??LOG??"	RESET_COLOR;
+	case LOG_INFO:		return LOG_INFO_COLOR	        PROJECT_NAME " " "INFO"		RESET_COLOR;
+	case LOG_WARNING:	return LOG_WARNING_COLOR        PROJECT_NAME " " "WARNING"	RESET_COLOR;
+	case LOG_ERROR:		return LOG_ERROR_COLOR 	        PROJECT_NAME " " "ERROR" 	RESET_COLOR;
+	default:		return RESET_COLOR 	        PROJECT_NAME " " "??LOG??"	RESET_COLOR;
 	}
 }
 // clang-format on

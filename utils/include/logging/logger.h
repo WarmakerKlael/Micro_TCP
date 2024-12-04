@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "microtcp_macro_functions.h"
+#include "cli_color.h"
+
+#define LOG_INFO_COLOR BLUE_COLOR
+#define LOG_WARNING_COLOR YELLOW_COLOR
+#define LOG_ERROR_COLOR RED_COLOR
+#define LOG_MESSAGE_COLOR GREEN_COLOR
 
 typedef enum log_tag log_tag_t;
 
@@ -13,6 +19,8 @@ enum log_tag
 	LOG_WARNING,
 	LOG_ERROR,
 };
+
+extern FILE *print_stream;
 
 void _safe_print_log(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, ...);
 void _unsafe_print_log(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, ...);
@@ -44,7 +52,5 @@ void _unsafe_print_log(enum log_tag _log_tag, const char *_file, int _line, cons
 #define PRINT_INFO(_message, ...) _SAFE_PRINT_LOG(LOG_INFO, _message, ##__VA_ARGS__);
 #define PRINT_WARNING(_message, ...) _SAFE_PRINT_LOG(LOG_WARNING, _message, ##__VA_ARGS__)
 #define PRINT_ERROR(_message, ...) _SAFE_PRINT_LOG(LOG_ERROR, _message, ##__VA_ARGS__)
-
-extern FILE *print_stream;
 
 #endif /* LOGGER_H */

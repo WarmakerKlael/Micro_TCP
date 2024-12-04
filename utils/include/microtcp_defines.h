@@ -5,6 +5,12 @@
 #define TRUE 1
 #define FALSE 0
 
+/* Priority numbers of constructors/destructors. */
+#define LOGGER_CONSTRUCTOR_PRIORITY 1001
+#define LOGGER_DESTRUCTOR_PRIORITY LOGGER_CONSTRUCTOR_PRIORITY
+#define RNG_CONSTRUCTOR_PRIORITY 1002
+#define RNG_DESTRUCTOR_PRIOTITY RNG_CONSTRUCTOR_PRIORITY
+
 /* POSIX's socket() function returns a file descriptor in successful calls. */
 #define POSIX_SOCKET_FAILURE_VALUE -1
 
