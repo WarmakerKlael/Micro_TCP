@@ -1,0 +1,6 @@
+#ifndef MICROTCP_MACRO_FUNCTIONS_H
+#define MICROTCP_MACRO_FUNCTIONS_H
+
+#define STRINGIFY(_var_name) #_var_name
+
+#endif /* MICROTCP_MACRO_FUNCTIONS_H */

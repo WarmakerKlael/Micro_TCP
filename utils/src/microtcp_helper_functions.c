@@ -1,5 +1,5 @@
-#include "microtcp_helpers.h"
-#include "microtcp_macro_functions.h"
+#include "microtcp_helper_macros.h"
+#include "microtcp_helper_functions.h"
 // clang-format off
 const char *get_microtcp_state_to_string(mircotcp_state_t _state)
 {

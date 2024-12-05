@@ -8,8 +8,8 @@ int main(int argc, char **argv)
 {
         microtcp_sock_t new_micro_socket = microtcp_socket(2, 2, 17);
         struct sockaddr ss;
+        // microtcp_bind(&new_micro_socket, &ss, sizeof(ss));
         microtcp_connect(&new_micro_socket, &ss, sizeof(ss));
-
 
         struct sockaddr_in addr_in;
         memset(&addr_in, 0, sizeof(addr_in));               // Zero out the structure

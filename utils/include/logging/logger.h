@@ -3,13 +3,16 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include "microtcp_macro_functions.h"
+#include <string.h>
 #include "cli_color.h"
+#include "microtcp_defines.h"
 
 #define LOG_INFO_COLOR BLUE_COLOR
 #define LOG_WARNING_COLOR YELLOW_COLOR
 #define LOG_ERROR_COLOR RED_COLOR
 #define LOG_MESSAGE_COLOR GREEN_COLOR
+
+#define __FILENAME__ (strstr(__FILE__, PROJECT_NAME) ? strstr(__FILE__, PROJECT_NAME) : __FILE__)
 
 typedef enum log_tag log_tag_t;
 

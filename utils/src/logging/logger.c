@@ -22,7 +22,7 @@ static void logger_init(void)
 {
 #define PTHREAD_MUTEX_INIT_SUCCESS 0 /* Specified in man pages. */
 	print_stream = stdout;
-	MALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
+	mutex_logger = MALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
 		_UNSAFE_PRINT_LOG(LOG_ERROR, "Logger failed to initialize.");

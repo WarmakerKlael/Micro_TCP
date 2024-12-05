@@ -1,13 +1,15 @@
+#include <errno.h>
+
 #include "microtcp.h"
 #include "crc32.h"
 #include "allocator/allocator.h"
 #include "logging/logger.h"
-#include "microtcp_macro_functions.h"
+#include "microtcp_helper_functions.h"
+#include "microtcp_core_macros.h"
 #include "microtcp_core_utils.h"
 #include "microtcp_defines.h"
-#include "microtcp_helpers.h"
-
-#include <errno.h>
+#include "microtcp_helper_macros.h"
+#include "microtcp_helper_functions.h"
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * We won't allocate memory to 'recvbuf' in microtcp_socket(), as newer TCP          *
@@ -19,8 +21,8 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
         microtcp_sock_t new_socket = {
             .sd = POSIX_SOCKET_FAILURE_VALUE,   /* We assume socket descriptor contains FAILURE value; Should change from POSIX's socket() */
             .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
-            .init_win_size = MICROTCP_WIN_SIZE, /* The window size, that will be advertised, to other side. */
-            .curr_win_size = 0,                 /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
+            .init_win_size = MICROTCP_WIN_SIZE, /* Our initial window size. */
+            .curr_win_size = MICROTCP_WIN_SIZE, /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
             .recvbuf = NULL,                    /* Buffer gets allocated in 3-way handshake. */
             .buf_fill_level = 0,
             .cwnd = MICROTCP_INIT_CWND,
@@ -68,19 +70,21 @@ int microtcp_bind(microtcp_sock_t *_socket, const struct sockaddr *_address, soc
         PRINT_INFO_RETURN(bind_result, "Bind operation succeeded.");
 }
 
+/* TODO: free(syn_segment) */
+/* TODO: free(serialized_syn_segment) */
 int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(struct sockaddr));
 
-        /* Connect in TCP sets the sequence number of client in connect(). */
+        /* In TCP the sequence number of client is set in connect(). */
         _socket->seq_number = generate_initial_sequence_number();
-        PRINT_INFO("ISN == %u", _socket->seq_number);
+        PRINT_INFO("Connection begins with ISN == %u", _socket->seq_number);
 
-        /* Initialize you sequence number, as a client. (Connect is use from client side.) */
-        /* Your ISN. */
+        send_syn_segment(_socket, _address, _address_len);
 }
+
 /* Remember to allocate the receiver buffer (socket's recvbuf).*/
 int microtcp_accept(microtcp_sock_t *socket, struct sockaddr *address,
                     socklen_t address_len)
