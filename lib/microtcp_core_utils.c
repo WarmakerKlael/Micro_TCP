@@ -9,6 +9,7 @@
 #include "microtcp_defines.h"
 #include "microtcp_helper_macros.h"
 #include "allocator/allocator.h"
+#include "crc32.h"
 
 /* Declarations of static functions implemented in this file: */
 __attribute__((constructor(RNG_CONSTRUCTOR_PRIORITY))) static void seed_random_number_generator(void);
@@ -72,20 +73,56 @@ void *serialize_microtcp_segment(microtcp_segment_t *_segment)
 
         uint16_t header_length = sizeof(_segment->header); /* Valid segments contain at lease sizeof(microtcp_header_t) bytes. */
         uint16_t payload_length = _segment->header.data_len;
-
-        void *bytestream_buffer = MALLOC_LOG(bytestream_buffer, header_length + payload_length);
+        uint16_t bytestream_buffer_length = header_length + payload_length;
+        void *bytestream_buffer = MALLOC_LOG(bytestream_buffer, bytestream_buffer_length);
         if (bytestream_buffer == NULL)
                 return NULL;
 
         memcpy(bytestream_buffer, &(_segment->header), header_length);
         memcpy(bytestream_buffer + header_length, _segment->raw_payload_bytes, payload_length);
 
+        /* Calculate crc32 checksum: */
+        uint32_t checksum_result = crc32(bytestream_buffer, bytestream_buffer_length);
+
+        /* Implant the CRC checksum. */
+        ((microtcp_header_t *)bytestream_buffer)->checksum = checksum_result;
+
         return bytestream_buffer;
 }
 
-microtcp_segment_t *extract_microtcp_segment(void *bytestream_buffer)
+static inline int is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
+        uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 
+        /* Zeroing checksum to calculate crc. */
+        ((microtcp_header_t *)_bytestream_buffer)->checksum = 0;
+        uint32_t calculated_checksum = crc32(_bytestream_buffer, _bytestream_buffer_length);
+
+        return calculated_checksum == extracted_checksum;
+}
+
+microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _bytestream_buffer_length)
+{
+        if (_bytestream_buffer_length < sizeof(microtcp_header_t))
+                PRINT_ERROR_RETURN(NULL, "MicroTCP segment size can not be less that sizeof(%s)", STRINGIFY(microtcp_header_t));
+
+        size_t payload_size = _bytestream_buffer_length - sizeof(microtcp_header_t);
+
+        microtcp_segment_t *new_segment = MALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
+        if (new_segment == NULL)
+                return NULL;
+
+        new_segment->raw_payload_bytes = MALLOC_LOG(new_segment->raw_payload_bytes, payload_size);
+        if (new_segment->raw_payload_bytes == NULL)
+        {
+                FREE_LOG(new_segment); /* Free partial allocated memory */
+                return NULL;
+        }
+
+        memcpy(&(new_segment->header), _bytestream_buffer, sizeof(microtcp_header_t));
+        memcpy(new_segment->raw_payload_bytes, _bytestream_buffer + sizeof(microtcp_header_t), payload_size);
+
+        return new_segment;
 }
 
 ssize_t send_syn_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len)
@@ -109,8 +146,13 @@ ssize_t receive_synack_segment(microtcp_sock_t *_socket, struct sockaddr *_addre
 {
         size_t expected_segment_size = sizeof(microtcp_segment_t);
         void *const synack_buffer = MALLOC_LOG(synack_buffer, expected_segment_size);
-        recvfrom(_socket->sd, synack_buffer, expected_segment_size, NO_SENDTO_FLAGS, _address, &_address_len);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, synack_buffer, expected_segment_size, NO_SENDTO_FLAGS, _address, &_address_len);
+        if (recvfrom_ret_val != expected_segment_size)
+                PRINT_WARNING("Received bytestream size mismatch.");
 
+        if (!is_valid_microtcp_bytestream(synack_buffer, recvfrom_ret_val))
+                // WRONGGGGG you use extra buffers. use socket's recvbuf and buff_file_level
+                // (only for reading from recvfrom. / Think if you need to do this for extracting bitstream and shit)
 
 
 }
