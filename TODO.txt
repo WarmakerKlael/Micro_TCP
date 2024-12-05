@@ -25,3 +25,6 @@ Conver MALLOC_LOG to CALLOC_LOG and make it use calloc.
 
 5)
 Write documentation for each function /** */ style.
+
+6)
+Refine code comments.
