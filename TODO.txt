@@ -6,3 +6,8 @@ Convert %d to %ld where you pass ssize_t integers.
 2)
 Polish all LOG messages. Some of them are ugly. Make Sure all provide useful information not just a message.
 You should be able to know why you got the message and what caused it... Not just "State is wrong". Provide got and expected values, if available.
+
+3)
+For the last problem (2), you can maybe create macro that takes two parameters (got, received), and automatically converts them to 
+"(%s = %d)|(%s = %d)", STRINGIFY(got), got, STRINGIFY(expected), expected.
+Figure it out ... There are multiple ways to do it... find most elegant. Maybe a ned PRINT_LOG macro would be best. Suitable for such LOG messages.
