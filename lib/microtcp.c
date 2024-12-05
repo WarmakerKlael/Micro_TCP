@@ -77,12 +77,13 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *_address, 
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(struct sockaddr));
-
-        /* In TCP the sequence number of client is set in connect(). */
+        
         _socket->seq_number = generate_initial_sequence_number();
         PRINT_INFO("Connection begins with ISN == %u", _socket->seq_number);
-
+        _socket->recvbuf = allocate_receive_buffer(_socket);
+        
         send_syn_segment(_socket, _address, _address_len);
+        
 }
 
 /* Remember to allocate the receiver buffer (socket's recvbuf).*/

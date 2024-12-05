@@ -22,3 +22,6 @@ PRINT_WARNING_RETURN(0, "Not enough space in the receive buffer, to receive syn-
 
 4)
 Conver MALLOC_LOG to CALLOC_LOG and make it use calloc.
+
+5)
+Write documentation for each function /** */ style.

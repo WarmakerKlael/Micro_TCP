@@ -29,6 +29,10 @@ uint32_t generate_initial_sequence_number(void);
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
 void * serialize_microtcp_segment(microtcp_segment_t *segment);
 ssize_t send_syn_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+/**
+ * @returns pointer to the beginning of newly allocated buffer, is allocation succeeds, NULL if not.
+ */
+void *allocate_receive_buffer(microtcp_sock_t *_socket);
 
 
 #endif /* MICROTCP_CORE_UTILS_H */

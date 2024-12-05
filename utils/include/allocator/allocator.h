@@ -12,7 +12,7 @@
         (_malloc_result_ptr);                                                                     \
 })
 
-#define FREE_LOG(_memory_ptr)                                                                              \
+#define FREE_NULLIFY_LOG(_memory_ptr)                                                                              \
         do                                                                                                 \
         {                                                                                                  \
                 if (_memory_ptr == NULL)                                                                   \
@@ -20,7 +20,8 @@
                 else                                                                                       \
                 {                                                                                          \
                         free(_memory_ptr);                                                                 \
-                        PRINT_INFO("Successful free() on '%s'.", #_memory_ptr);                            \
+                        _memory_ptr = NULL;                                                                \
+                        PRINT_INFO("Successful free() on '%s'; Pointer zeroed.", #_memory_ptr);            \
                 }                                                                                          \
         } while (0)
 
