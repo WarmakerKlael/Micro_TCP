@@ -1,0 +1,8 @@
+1)
+Convert %d -> %u where you pass unsigned integers (like uint8_t, uint16_t, uint32_t)
+Convert %d, u% -> %lu where you pass size_t integers.
+Convert %d to %ld where you pass ssize_t integers.
+
+2)
+Polish all LOG messages. Some of them are ugly. Make Sure all provide useful information not just a message.
+You should be able to know why you got the message and what caused it... Not just "State is wrong". Provide got and expected values, if available.
