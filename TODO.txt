@@ -19,3 +19,6 @@ PRINT_WARNING_RETURN(0, "Not enough space in the receive buffer, to receive syn-
                         STRINGIFY(_socket->buf_fill_level), _socket->buf_fill_level,
                         STRINGIFY(expected_segment_size), expected_segment_size,
                         MICROTCP_RECVBUF_LEN);
+
+4)
+Conver MALLOC_LOG to CALLOC_LOG and make it use calloc.
