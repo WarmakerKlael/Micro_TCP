@@ -60,19 +60,14 @@ size_t cb_append(circle_buffer_t *_cb, void *_data, size_t _data_len)
 
         /* If we are here... We know there is the required space on the buffer. */
         /* Any range we equal start and end is invalid.. Indecies point to same byte, so not valid data segment there. */
-        struct range r1 = {0};
-        struct range r2 = {0};
+        size_t start = _cb->tail_index;
+        size_t end = _cb->buffer_size - (_cb->head_index == 0 ? GUARD_BYTE_SIZE : 0); /* If first byte is reserved, then last byte is GUARD. */
+        size_t segment_size1 = end - start;
 
-        r1.start = _cb->tail_index;
-        r1.end = _cb->buffer_size - (_cb->head_index == 0 ? GUARD_BYTE_SIZE : 0); /* If first byte is reserved, then last byte is GUARD. */
-        r2.start = 0;
-        r2.end = (_cb->head_index == 0 ? 0 : _cb->head_index - 1); /* If head_index == 1, sizeof(second segment) = 0, but TAIL should be index 0.*/
-
-        size_t segment_size1 = r1.end - r1.start;
         if (_data_len <= segment_size1)
         {
                 memcpy(_cb->buffer + _cb->tail_index, _data, _data_len);
-                _cb->tail_index += (_data_len - 1);
+                _cb->tail_index += _data_len;
         }
         else
         {
@@ -80,7 +75,7 @@ size_t cb_append(circle_buffer_t *_cb, void *_data, size_t _data_len)
 
                 /* We wrap-around. In wrap-around buffer[0] is certainly free, so we start writing at buffer[0]. */
                 memcpy(_cb->buffer, _data + segment_size1, _data_len - segment_size1);
-                _cb->tail_index = _data_len;
+                _cb->tail_index = _data_len - segment_size1;
         }
         return _data_len;
 }
