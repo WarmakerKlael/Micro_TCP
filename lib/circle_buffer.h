@@ -34,8 +34,6 @@ size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1
 /* Used for debugging: */
 #ifdef DEBUG_MODE
 void _cb_print_buffer(circle_buffer_t *_cb);
-size_t _cb_free_space(circle_buffer_t *_cb);
-size_t _cb_used_space(circle_buffer_t *_cb);
 size_t _cb_tail(circle_buffer_t *_cb);
 size_t _cb_head(circle_buffer_t *_cb);
 size_t _cb_true_buffer_size(circle_buffer_t *_cb);
