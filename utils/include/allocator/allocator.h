@@ -1,6 +1,7 @@
 #ifndef ALLOCATOR_H
 #define ALLOCATOR_H
 
+#include <stdlib.h>
 #include "logging/logger.h"
 
 #define MALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                         \
@@ -12,7 +13,7 @@
         (_malloc_result_ptr);                                                                     \
 })
 
-#define FREE_NULLIFY_LOG(_memory_ptr)                                                                              \
+#define FREE_NULLIFY_LOG(_memory_ptr)                                                                      \
         do                                                                                                 \
         {                                                                                                  \
                 if (_memory_ptr == NULL)                                                                   \
