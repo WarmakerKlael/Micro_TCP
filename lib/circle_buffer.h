@@ -32,7 +32,7 @@ size_t _cb_tail(circle_buffer_t *_cb);
 size_t _cb_head(circle_buffer_t *_cb);
 size_t _cb_true_buffer_size(circle_buffer_t *_cb);
 size_t _cb_usable_buffer_size(circle_buffer_t *_cb);
-
+#ifdef VERBOSE
 #define CB_CREATE(_cb_var, _size) ({                      \
         printf("Create buffer with of size %d\n", _size); \
         circle_buffer_t *_cb_var = cb_create(_size);      \
@@ -58,6 +58,25 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb);
                 _cb_print_buffer(_cb);                            \
                 printf("\n\n");                                   \
         } while (0)
+#else
+
+#define CB_CREATE(_cb_var, _size) ({                 \
+        circle_buffer_t *_cb_var = cb_create(_size); \
+        (_cb_var);                                   \
+})
+
+#define CB_PUSH_BACK(_cb, _buffer, _no_elements)          \
+        do                                                \
+        {                                                 \
+                cb_push_back(_cb, _buffer, _no_elements); \
+        } while (0)
+
+#define CB_POP_FRONT(_cb, _no_elements) ({ \
+        cb_pop_front(_cb, _no_elements);   \
+})
+
+#endif /* VERBOSE */
+
 #endif /* DEMUG_MODE */
 
 #endif /* CIRCLE_BUFFER_H */

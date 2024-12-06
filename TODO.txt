@@ -20,9 +20,6 @@ PRINT_WARNING_RETURN(0, "Not enough space in the receive buffer, to receive syn-
                         STRINGIFY(expected_segment_size), expected_segment_size,
                         MICROTCP_RECVBUF_LEN);
 
-4)
-Conver MALLOC_LOG to CALLOC_LOG and make it use calloc.
-
 5)
 Write documentation for each function /** */ style.
 
@@ -31,3 +28,5 @@ Refine code comments.
 
 7)
 Include function that can set the print stream.
+
+8) CHECK WHICH SECTIONS OF EACH FILE BENEFIT FROM DEBUG_MODE. put #IFNDEF DEBUG_MODE sections.

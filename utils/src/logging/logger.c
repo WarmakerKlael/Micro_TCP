@@ -22,9 +22,17 @@ static const char *get_colored_string_log_tag(enum log_tag _log_tag);
 
 static void logger_init(void)
 {
+#ifdef DEBUG_MODE
+	logger_set_allocator_enabled(TRUE);
+#endif /* DEBUG_MODE */
+	logger_set_enabled(TRUE);
+	logger_set_info_enabled(TRUE);
+	logger_set_warning_enabled(TRUE);
+	logger_set_error_enabled(TRUE);
+
 #define PTHREAD_MUTEX_INIT_SUCCESS 0 /* Specified in man pages. */
 	print_stream = stdout;
-	mutex_logger = MALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
+	mutex_logger = CALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
 		_UNSAFE_PRINT_LOG(LOG_ERROR, "Logger failed to initialize.");

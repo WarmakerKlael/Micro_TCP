@@ -92,7 +92,7 @@ void *cb_pop_front(circle_buffer_t *_cb, size_t _requested_segment_size)
         if (used_space < _requested_segment_size)
                 PRINT_ERROR_RETURN(NULL, "Buffer contains %d bytes, but %d where asked", used_space, _requested_segment_size);
 
-        void *_requested_segment = MALLOC_LOG(_requested_segment, _requested_segment_size);
+        void *_requested_segment = CALLOC_LOG(_requested_segment, _requested_segment_size);
 
         if (_cb->head_index + _requested_segment_size <= _cb->buffer_size)
         {
@@ -147,16 +147,12 @@ void _cb_print_buffer(circle_buffer_t *_cb)
 
 size_t _cb_free_space(circle_buffer_t *_cb)
 {
-        size_t remaining_space = _cb->head_index - _cb->tail_index - GUARD_BYTE_SIZE;
-        if (_cb->head_index <= _cb->tail_index)
-                remaining_space += _cb->buffer_size;
-
-        return remaining_space;
+        return cb_free_space(_cb);
 }
 
 size_t _cb_used_space(circle_buffer_t *_cb)
 {
-        return  _cb->buffer_size - GUARD_BYTE_SIZE - cb_free_space(_cb);
+        return  cb_used_space(_cb);
 }
 
 size_t _cb_tail(circle_buffer_t *_cb)

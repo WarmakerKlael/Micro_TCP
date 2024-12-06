@@ -17,6 +17,16 @@ extern _Bool allocator_logger_enabled;
         (_malloc_result_ptr);                                                                             \
 })
 
+#define CALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                                 \
+        void *_calloc_result_ptr = calloc(1, _size_in_bytes);                                             \
+        const char *message = "Allocation of %d bytes to '%s'; %s";                                       \
+        log_tag_t log_tag = _calloc_result_ptr ? LOG_INFO : LOG_ERROR;                                    \
+        const char *message_suffix = _calloc_result_ptr ? "SUCCEEDED" : "FAILED";                         \
+        if (logger_is_allocator_enabled())                                                                \
+                _UNSAFE_PRINT_LOG(log_tag, message, _size_in_bytes, #_passed_memory_ptr, message_suffix); \
+        (_calloc_result_ptr);                                                                             \
+})
+
 #define FREE_NULLIFY_LOG(_memory_ptr)                                                                      \
         do                                                                                                 \
         {                                                                                                  \

@@ -41,7 +41,7 @@ microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ANY);
         RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(NULL, _payload);
 
-        microtcp_segment_t *new_segment = MALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
+        microtcp_segment_t *new_segment = CALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
         if (new_segment == NULL)
                 return NULL;
 
@@ -74,7 +74,7 @@ void *serialize_microtcp_segment(microtcp_segment_t *_segment)
         uint16_t header_length = sizeof(_segment->header); /* Valid segments contain at lease sizeof(microtcp_header_t) bytes. */
         uint16_t payload_length = _segment->header.data_len;
         uint16_t bytestream_buffer_length = header_length + payload_length;
-        void *bytestream_buffer = MALLOC_LOG(bytestream_buffer, bytestream_buffer_length);
+        void *bytestream_buffer = CALLOC_LOG(bytestream_buffer, bytestream_buffer_length);
         if (bytestream_buffer == NULL)
                 return NULL;
 
@@ -108,11 +108,11 @@ microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _b
 
         size_t payload_size = _bytestream_buffer_length - sizeof(microtcp_header_t);
 
-        microtcp_segment_t *new_segment = MALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
+        microtcp_segment_t *new_segment = CALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
         if (new_segment == NULL)
                 return NULL;
 
-        new_segment->raw_payload_bytes = MALLOC_LOG(new_segment->raw_payload_bytes, payload_size);
+        new_segment->raw_payload_bytes = CALLOC_LOG(new_segment->raw_payload_bytes, payload_size);
         if (new_segment->raw_payload_bytes == NULL)
         {
                 FREE_NULLIFY_LOG(new_segment); /* Free partial allocated memory */
@@ -204,5 +204,5 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket)
                 PRINT_ERROR_RETURN(NULL, "recvbuf is not empty; allocation aborted. %s = %d",
                                    STRINGIFY(_socket->buf_fill_level), _socket->buf_fill_level);
 
-        return _socket->recvbuf = MALLOC_LOG(_socket->recvbuf, MICROTCP_RECVBUF_LEN);
+        return _socket->recvbuf = CALLOC_LOG(_socket->recvbuf, MICROTCP_RECVBUF_LEN);
 }

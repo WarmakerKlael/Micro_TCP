@@ -12,8 +12,8 @@
 #define LOG_ERROR_COLOR RED_COLOR
 #define LOG_MESSAGE_COLOR GREEN_COLOR
 
-#define __FILENAME__ (strstr(__FILE__, PROJECT_NAME) ? strstr(__FILE__, PROJECT_NAME) : __FILE__)
 
+#define __FILENAME__ (strstr(__FILE__, PROJECT_NAME) ? strstr(__FILE__, PROJECT_NAME) : __FILE__)
 typedef enum log_tag log_tag_t;
 
 enum log_tag

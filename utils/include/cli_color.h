@@ -8,5 +8,6 @@
 #define BLUE_COLOR "\033[94m"
 #define MAGENTA_COLOR "\033[95m"
 #define CYAN_COLOR "\033[96m"
+#define WHITE_COLOR "\033[97m"
 
 #endif /* CLI_COLOR_H */
