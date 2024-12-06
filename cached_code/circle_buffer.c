@@ -49,7 +49,7 @@ size_t cb_push_back(circle_buffer_t *_cb, void *_data, size_t _data_len)
         if (_data_len == 0)
                 PRINT_WARNING_RETURN(0, "Argument %s value was 0, nothing happened.", STRINGIFY(_data_len));
 
-        size_t remaining_space = cb_free_space(_cb);
+        size_t remaining_space = cb_empty_space(_cb);
         if (remaining_space < _data_len)
                 PRINT_ERROR_RETURN(0, "Given data length greater than available space of circular buffer. ");
 
@@ -125,7 +125,7 @@ size_t cb_pop_front(circle_buffer_t *_cb, size_t _bytes_to_pop)
         return _bytes_to_pop;
 }
 
-size_t cb_free_space(circle_buffer_t *_cb)
+size_t cb_empty_space(circle_buffer_t *_cb)
 {
         size_t remaining_space = _cb->head_index - _cb->tail_index - GUARD_BYTE_SIZE;
         if (_cb->head_index <= _cb->tail_index)
@@ -136,22 +136,44 @@ size_t cb_free_space(circle_buffer_t *_cb)
 
 size_t cb_used_space(circle_buffer_t *_cb)
 {
-        return _cb->buffer_size - GUARD_BYTE_SIZE - cb_free_space(_cb);
+        return _cb->buffer_size - GUARD_BYTE_SIZE - cb_empty_space(_cb);
 }
 
-size_t cb_first_segment_free_space(circle_buffer_t *_cb)
+size_t cb_first_empty_segment_size(circle_buffer_t *_cb)
 {
         if (_cb->head_index <= _cb->tail_index)
                 return _cb->buffer_size - _cb->tail_index - (_cb->head_index == 0);
         return _cb->head_index - _cb->tail_index - GUARD_BYTE_SIZE;
 }
 
-size_t cb_second_segment_free_space(circle_buffer_t *_cb)
+size_t cb_second_empty_segment_size(circle_buffer_t *_cb)
 {
-        return cb_free_space(_cb) - cb_first_segment_free_space(_cb);
+        return cb_empty_space(_cb) - cb_first_empty_segment_size(_cb);
 }
 
-size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1, size_t *_seg1_size, void **_seg2, size_t *_seg2_size)
+/**
+ * @returns new tail index , or -1 if failure occurs.
+ */
+ssize_t cb_move_tail(circle_buffer_t *_cb, size_t _n_bytes)
+{
+        if (cb_empty_space(_cb) < _n_bytes)
+                return -1;
+        _cb->tail_index = (_cb->tail_index + _n_bytes) % _cb->buffer_size;
+}
+
+void *cb_first_empty_segment_address(circle_buffer_t *_cb)
+{
+        return _cb->buffer + _cb->tail_index;
+}
+
+void *cb_second_empty_segment_address(circle_buffer_t *_cb)
+{
+        if (cb_second_empty_segment_size(_cb) == 0)
+                return NULL;
+        return _cb->buffer;
+}
+
+size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1, void **_seg2, size_t *_seg1_size, size_t *_seg2_size)
 {
         *_seg1 = *_seg2 = NULL;
         *_seg1_size = *_seg2_size = 0;
@@ -161,11 +183,13 @@ size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1
 
         if (_cb->head_index <= _cb->tail_index)
         {
+                printf("HE\n");
                 /* When HEAD < TAIL: DATA_WHOLE. */
                 *_seg1 = _cb->buffer + _cb->head_index;
                 *_seg1_size = _bytes_to_read;
                 return _bytes_to_read;
         }
+        printf("HE\n");
         /* When HEAD < TAIL: might be SEGMENTED. */
         *_seg1 = _cb->buffer + _cb->head_index;
         if (_cb->head_index + _bytes_to_read <= _cb->buffer_size)
@@ -173,14 +197,13 @@ size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1
         else
                 *_seg1_size = _cb->buffer_size - _cb->head_index;
 
-        if (_seg1_size != _bytes_to_read)
+        if (*_seg1_size != _bytes_to_read)
         {
                 *_seg2 = _cb->buffer + 0;
                 *_seg2_size = _bytes_to_read - *_seg1_size;
         }
         return _bytes_to_read;
 }
-
 
 #ifdef DEBUG_MODE
 void _cb_print_buffer(circle_buffer_t *_cb)
@@ -195,7 +218,7 @@ void _cb_print_buffer(circle_buffer_t *_cb)
         for (size_t i = 0; i < _cb->buffer_size; ++i)
         {
                 uint8_t byte = ((uint8_t *)_cb->buffer)[i];
-                printf("[%d] ", byte);
+                printf("[%c] ", byte);
         }
         printf("\n");
 }
@@ -220,3 +243,48 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb)
         return _cb->buffer_size - GUARD_BYTE_SIZE;
 }
 #endif /* DEBUG_MODE */
+
+#include <sys/socket.h>
+
+/* Receive FROM with circular buffer. */
+/* Asked to add at max '_max_read_size' bytes in '_cb_recvbuf'.  */
+/* This function 'cb_recvfrom'; will append at most empty_space  */
+/* bytes on the '_cb_recvbuf buffer, even if more were asked, as */
+/* there is no available space on buffer.                        */
+ssize_t cb_recvfrom(int _fd, circle_buffer_t *restrict _cb_recvbuf, size_t _max_read_size, int _flags, struct sockaddr *restrict _addr, socklen_t *restrict _addr_len)
+{
+        size_t available_read_size = MIN(cb_empty_space(_cb_recvbuf), _max_read_size);
+
+        /* We first fill the first empty segment on the circular buffer.
+         * If wrap-around is needed, because first empty segment_size is
+         * insufficient, but circular buffer has more space. We then
+         * continue with filling the second segment of the circular buffer.
+         */
+        void *first_empty_segment_address = cb_first_empty_segment_address(_cb_recvbuf);
+        size_t first_empty_segment_size = cb_first_empty_segment_size(_cb_recvbuf);
+        size_t first_segment_read_limit = MIN(first_empty_segment_size, available_read_size);
+
+        ssize_t recvfrom_ret_val = recvfrom(_fd, first_empty_segment_address, first_segment_read_limit, _flags, _addr, _addr_len);
+        if (recvfrom_ret_val <= 0)
+                return recvfrom_ret_val;
+
+        cb_move_tail(_cb_recvbuf, recvfrom_ret_val);
+        if (recvfrom_ret_val < first_segment_read_limit)
+                return recvfrom_ret_val;
+
+        size_t total_bytes_read = recvfrom_ret_val;
+
+        /* If first segment wasn'te enough: */
+        size_t bytes_to_read_in_second_segment = available_read_size - first_segment_read_limit;
+        if (bytes_to_read_in_second_segment > 0)
+        {
+                recvfrom_ret_val = recvfrom(_fd, cb_second_empty_segment_address(_cb_recvbuf), bytes_to_read_in_second_segment, _flags, _addr, _addr_len);
+                if (recvfrom_ret_val > 0)
+                {
+                        total_bytes_read += recvfrom_ret_val;
+                        cb_move_tail(_cb_recvbuf, recvfrom_ret_val);
+                }
+        }
+
+        return total_bytes_read;
+}

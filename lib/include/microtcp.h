@@ -6,8 +6,6 @@
 #include <netinet/in.h>
 #include <stdint.h>
 
-#include "circle_buffer.h"
-
 /*
  * Several useful constants
  */
@@ -49,9 +47,9 @@ typedef struct
   size_t init_win_size;   /**< The window size advertised at the 3-way handshake */
   size_t curr_win_size;   /**< The current window size */
 
-  circle_buffer_t *cb_recvbuf;
-  
-   size_t buf_fill_level; /**< Amount of data in the buffer */
+  void *recvbuf;
+
+  size_t buf_fill_level; /**< Amount of data in the buffer */
 
   size_t cwnd;
   size_t ssthresh;

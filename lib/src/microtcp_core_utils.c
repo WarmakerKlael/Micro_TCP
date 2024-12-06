@@ -184,26 +184,26 @@ ssize_t receive_synack_segment(microtcp_sock_t *_socket, struct sockaddr *_addre
         /* You where heere, CAUSe compile eeror to return hre: */
         /* You where heere, CAUSe compile eeror to return hre: */
         /* You where heere, CAUSe compile eeror to return hre: */
-        return 0 ;
+        return 0;
 }
 
 /**
- * @returns pointer to the newly allocated cb_recvbuf. If allocation fails returns NULL;
+ * @returns pointer to the newly allocated recvbuf. If allocation fails returns NULL;
  */
 void *allocate_receive_buffer(microtcp_sock_t *_socket)
 {
-        /* There are two states where cb_recvbuf memory allocation is possible.
-         * Client allocates its cb_recvbuf in connect(), socket in CLOSED state.
-         * Server allocates its cb_recvbuf in accept(),  socket in BOUND  state.
+        /* There are two states where recvbuf memory allocation is possible.
+         * Client allocates its recvbuf in connect(), socket in CLOSED state.
+         * Server allocates its recvbuf in accept(),  socket in BOUND  state.
          * So we use ANY for state parameter on the following socket check.
          */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ANY);
-        if (_socket->cb_recvbuf != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
-                PRINT_WARNING("cb_recvbuf is not NULL before allocation; possible memory leak. Previous address: %x", _socket->cb_recvbuf);
+        if (_socket->recvbuf != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
+                PRINT_WARNING("recvbuf is not NULL before allocation; possible memory leak. Previous address: %x", _socket->recvbuf);
 
         if (_socket->buf_fill_level != 0)
                 PRINT_ERROR_RETURN(NULL, "recvbuf is not empty; allocation aborted. %s = %d",
                                    STRINGIFY(_socket->buf_fill_level), _socket->buf_fill_level);
 
-        return _socket->cb_recvbuf = cb_create(MICROTCP_RECVBUF_LEN);
+        return _socket->recvbuf = CALLOC_LOG(_socket->recvbuf, MICROTCP_RECVBUF_LEN);
 }

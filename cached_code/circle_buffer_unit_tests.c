@@ -1,5 +1,4 @@
-#define DEBUG_MODE // TODO: REMOVE THIS LINE, added for quick and dirty...
-
+#define DEBUG_MODE // REMOVE
 #ifdef DEBUG_MODE
 #include <stdint.h>
 #include <string.h>
@@ -8,6 +7,7 @@
 #include "circle_buffer.h"
 #include "cli_color.h"
 #include "logging/logger_options.h"
+#include "microtcp_helper_macros.h"
 
 #define STATIC_BUFFER_SIZE 20
 /* GLOBAL static buffers: */
@@ -99,16 +99,16 @@ _Bool unit_test_0(void)
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 7;
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         _Bool test_result = TEST_PASSED;
         ASSERT(test_result, _cb_head(cb) == 0);
         ASSERT(test_result, _cb_tail(cb) == 0);
         ASSERT(test_result, _cb_true_buffer_size(cb) == cb_size + 1);
         ASSERT(test_result, _cb_usable_buffer_size(cb) == cb_size);
-        ASSERT(test_result, _cb_free_space(cb) == cb_size);
-        ASSERT(test_result, _cb_used_space(cb) == 0);
-        ASSERT(test_result, _cb_usable_buffer_size(cb) == _cb_free_space(cb));
+        ASSERT(test_result, cb_empty_space(cb) == cb_size);
+        ASSERT(test_result, cb_used_space(cb) == 0);
+        ASSERT(test_result, _cb_usable_buffer_size(cb) == cb_empty_space(cb));
 
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
@@ -120,7 +120,7 @@ _Bool unit_test_1()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 7;
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         CB_PUSH_BACK(cb, static_buffer3, 1);
         _Bool test_result = TEST_PASSED;
@@ -128,9 +128,9 @@ _Bool unit_test_1()
         ASSERT(test_result, _cb_tail(cb) == 1);
         ASSERT(test_result, _cb_true_buffer_size(cb) == 8);
         ASSERT(test_result, _cb_usable_buffer_size(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 6);
-        ASSERT(test_result, _cb_used_space(cb) == 1);
-        ASSERT(test_result, _cb_usable_buffer_size(cb) == _cb_free_space(cb) + 1);
+        ASSERT(test_result, cb_empty_space(cb) == 6);
+        ASSERT(test_result, cb_used_space(cb) == 1);
+        ASSERT(test_result, _cb_usable_buffer_size(cb) == cb_empty_space(cb) + 1);
 
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
@@ -142,7 +142,7 @@ _Bool unit_test_2()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 7;
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         CB_PUSH_BACK(cb, static_buffer3, 7);
         _Bool test_result = TEST_PASSED;
@@ -150,105 +150,105 @@ _Bool unit_test_2()
         ASSERT(test_result, _cb_tail(cb) == 7);
         ASSERT(test_result, _cb_true_buffer_size(cb) == 8);
         ASSERT(test_result, _cb_usable_buffer_size(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
-        ASSERT(test_result, _cb_usable_buffer_size(cb) == _cb_free_space(cb) + _cb_used_space(cb));
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
+        ASSERT(test_result, _cb_usable_buffer_size(cb) == cb_empty_space(cb) + cb_used_space(cb));
 
         CB_POP_FRONT(cb, 2);
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 2);
-        ASSERT(test_result, _cb_used_space(cb) == 5);
+        ASSERT(test_result, cb_empty_space(cb) == 2);
+        ASSERT(test_result, cb_used_space(cb) == 5);
 
         CB_PUSH_BACK(cb, static_buffer8, 3); /* Should fail, and change nothing. */
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 2);
-        ASSERT(test_result, _cb_used_space(cb) == 5);
+        ASSERT(test_result, cb_empty_space(cb) == 2);
+        ASSERT(test_result, cb_used_space(cb) == 5);
 
         CB_PUSH_BACK(cb, static_buffer8, 1);
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 0);
-        ASSERT(test_result, _cb_free_space(cb) == 1);
-        ASSERT(test_result, _cb_used_space(cb) == 6);
+        ASSERT(test_result, cb_empty_space(cb) == 1);
+        ASSERT(test_result, cb_used_space(cb) == 6);
 
         CB_PUSH_BACK(cb, static_buffer8, 1);
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_PUSH_BACK(cb, static_buffer8, 1); /* Should fail and change nothing. */
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_POP_FRONT(cb, 8); /* Should fail and change nothing. */
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_PUSH_BACK(cb, static_buffer8, 1); /* Should fail and change nothing. */
         ASSERT(test_result, _cb_head(cb) == 2);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_POP_FRONT(cb, 1);
         ASSERT(test_result, _cb_head(cb) == 3);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 1);
-        ASSERT(test_result, _cb_used_space(cb) == 6);
+        ASSERT(test_result, cb_empty_space(cb) == 1);
+        ASSERT(test_result, cb_used_space(cb) == 6);
 
         CB_PUSH_BACK(cb, static_buffer8, 2); /* Should fail and change nothing. */
         ASSERT(test_result, _cb_head(cb) == 3);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 1);
-        ASSERT(test_result, _cb_used_space(cb) == 6);
+        ASSERT(test_result, cb_empty_space(cb) == 1);
+        ASSERT(test_result, cb_used_space(cb) == 6);
 
         CB_PUSH_BACK(cb, static_buffer8, 0); /* Should change nothing. */
         ASSERT(test_result, _cb_head(cb) == 3);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 1);
-        ASSERT(test_result, _cb_used_space(cb) == 6);
+        ASSERT(test_result, cb_empty_space(cb) == 1);
+        ASSERT(test_result, cb_used_space(cb) == 6);
 
         CB_POP_FRONT(cb, 0); /* Should change nothing. */
         ASSERT(test_result, _cb_head(cb) == 3);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 1);
-        ASSERT(test_result, _cb_used_space(cb) == 6);
+        ASSERT(test_result, cb_empty_space(cb) == 1);
+        ASSERT(test_result, cb_used_space(cb) == 6);
 
         CB_POP_FRONT(cb, 4);
         ASSERT(test_result, _cb_head(cb) == 7);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 5);
-        ASSERT(test_result, _cb_used_space(cb) == 2);
+        ASSERT(test_result, cb_empty_space(cb) == 5);
+        ASSERT(test_result, cb_used_space(cb) == 2);
 
         CB_POP_FRONT(cb, 1);
         ASSERT(test_result, _cb_head(cb) == 0);
         ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 6);
-        ASSERT(test_result, _cb_used_space(cb) == 1);
+        ASSERT(test_result, cb_empty_space(cb) == 6);
+        ASSERT(test_result, cb_used_space(cb) == 1);
 
         CB_POP_FRONT(cb, 1);
-        ASSERT(test_result, _cb_head(cb) == 1);
-        ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 7);
-        ASSERT(test_result, _cb_used_space(cb) == 0);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 0);
+        ASSERT(test_result, cb_empty_space(cb) == 7);
+        ASSERT(test_result, cb_used_space(cb) == 0);
 
         CB_PUSH_BACK(cb, static_buffer8, 0); /* Should change nothing. */
-        ASSERT(test_result, _cb_head(cb) == 1);
-        ASSERT(test_result, _cb_tail(cb) == 1);
-        ASSERT(test_result, _cb_free_space(cb) == 7);
-        ASSERT(test_result, _cb_used_space(cb) == 0);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 0);
+        ASSERT(test_result, cb_empty_space(cb) == 7);
+        ASSERT(test_result, cb_used_space(cb) == 0);
 
         CB_PUSH_BACK(cb, static_buffer8, 7);
-        ASSERT(test_result, _cb_head(cb) == 1);
-        ASSERT(test_result, _cb_tail(cb) == 0);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
@@ -260,7 +260,7 @@ _Bool unit_test_3()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 10; // Test with a larger buffer size for data integrity.
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         uint8_t input_data[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         uint8_t output_data[10] = {0};
@@ -268,15 +268,15 @@ _Bool unit_test_3()
         CB_PUSH_BACK(cb, input_data, cb_size); // Fill the buffer completely.
         _Bool test_result = TEST_PASSED;
 
-        ASSERT(test_result, _cb_free_space(cb) == 0); // Buffer should be full.
-        ASSERT(test_result, _cb_used_space(cb) == cb_size);
+        ASSERT(test_result, cb_empty_space(cb) == 0); // Buffer should be full.
+        ASSERT(test_result, cb_used_space(cb) == cb_size);
 
         uint8_t *popped_data = (uint8_t *)CB_POP_FRONT(cb, cb_size);
         if (popped_data != NULL)
                 memcpy(output_data, popped_data, cb_size); // Copy
 
-        ASSERT(test_result, _cb_free_space(cb) == cb_size); // Buffer should be empty now.
-        ASSERT(test_result, _cb_used_space(cb) == 0);
+        ASSERT(test_result, cb_empty_space(cb) == cb_size); // Buffer should be empty now.
+        ASSERT(test_result, cb_used_space(cb) == 0);
 
         // Verify the data integrity.
         for (size_t i = 0; i < cb_size; i++)
@@ -294,27 +294,27 @@ _Bool unit_test_4()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 7;
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         _Bool test_result = TEST_PASSED;
 
         CB_PUSH_BACK(cb, static_buffer3, 7);
         ASSERT(test_result, _cb_head(cb) == 0);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_POP_FRONT(cb, 7);
-        ASSERT(test_result, _cb_head(cb) == 7);
-        ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 7);
-        ASSERT(test_result, _cb_used_space(cb) == 0);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 0);
+        ASSERT(test_result, cb_empty_space(cb) == 7);
+        ASSERT(test_result, cb_used_space(cb) == 0);
 
         CB_PUSH_BACK(cb, static_buffer8, 1);
-        ASSERT(test_result, _cb_head(cb) == 7);
-        ASSERT(test_result, _cb_tail(cb) == 0);
-        ASSERT(test_result, _cb_free_space(cb) == 6);
-        ASSERT(test_result, _cb_used_space(cb) == 1);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 1);
+        ASSERT(test_result, cb_empty_space(cb) == 6);
+        ASSERT(test_result, cb_used_space(cb) == 1);
 
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
@@ -325,27 +325,27 @@ _Bool unit_test_5()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 7;
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         _Bool test_result = TEST_PASSED;
 
         CB_PUSH_BACK(cb, static_buffer3, 7);
         ASSERT(test_result, _cb_head(cb) == 0);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_POP_FRONT(cb, 4);
         ASSERT(test_result, _cb_head(cb) == 4);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 4);
-        ASSERT(test_result, _cb_used_space(cb) == 3);
+        ASSERT(test_result, cb_empty_space(cb) == 4);
+        ASSERT(test_result, cb_used_space(cb) == 3);
 
         CB_PUSH_BACK(cb, static_buffer8, 4);
         ASSERT(test_result, _cb_head(cb) == 4);
         ASSERT(test_result, _cb_tail(cb) == 3);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
@@ -356,27 +356,27 @@ _Bool unit_test_6()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t cb_size = 7;
-        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
 
         _Bool test_result = TEST_PASSED;
 
         CB_PUSH_BACK(cb, static_buffer3, 7);
         ASSERT(test_result, _cb_head(cb) == 0);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         CB_POP_FRONT(cb, 1);
         ASSERT(test_result, _cb_head(cb) == 1);
         ASSERT(test_result, _cb_tail(cb) == 7);
-        ASSERT(test_result, _cb_free_space(cb) == 1);
-        ASSERT(test_result, _cb_used_space(cb) == 6);
+        ASSERT(test_result, cb_empty_space(cb) == 1);
+        ASSERT(test_result, cb_used_space(cb) == 6);
 
         CB_PUSH_BACK(cb, static_buffer8, 1);
         ASSERT(test_result, _cb_head(cb) == 1);
         ASSERT(test_result, _cb_tail(cb) == 0);
-        ASSERT(test_result, _cb_free_space(cb) == 0);
-        ASSERT(test_result, _cb_used_space(cb) == 7);
+        ASSERT(test_result, cb_empty_space(cb) == 0);
+        ASSERT(test_result, cb_used_space(cb) == 7);
 
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
@@ -387,7 +387,7 @@ _Bool unit_test_7()
 {
         PRINT_UNIT_TEST_HEADER();
         const size_t loop_size = 1000000;
-        circle_buffer_t *cb = CB_CREATE(cb1, 1);
+        circle_buffer_t *cb = CB_CREATE(cb, 1);
 
         _Bool test_result = TEST_PASSED;
         uint8_t byte = 69;
@@ -399,30 +399,56 @@ _Bool unit_test_7()
                 test_result = test_result &&
                               _cb_head(cb) == 0 &&
                               _cb_tail(cb) == 1 &&
-                              _cb_free_space(cb) == 0 &&
-                              _cb_used_space(cb) == 1;
-
-                CB_POP_FRONT(cb, 1);
-                test_result = test_result &&
-                              _cb_head(cb) == 1 &&
-                              _cb_tail(cb) == 1 &&
-                              _cb_free_space(cb) == 1 &&
-                              _cb_used_space(cb) == 0;
-
-                CB_PUSH_BACK(cb, &byte, 1);
-                test_result = test_result &&
-                              _cb_head(cb) == 1 &&
-                              _cb_tail(cb) == 0 &&
-                              _cb_free_space(cb) == 0 &&
-                              _cb_used_space(cb) == 1;
+                              cb_empty_space(cb) == 0 &&
+                              cb_used_space(cb) == 1;
 
                 CB_POP_FRONT(cb, 1);
                 test_result = test_result &&
                               _cb_head(cb) == 0 &&
                               _cb_tail(cb) == 0 &&
-                              _cb_free_space(cb) == 1 &&
-                              _cb_used_space(cb) == 0;
+                              cb_empty_space(cb) == 1 &&
+                              cb_used_space(cb) == 0;
         }
+        cb_destroy(&cb);
+        PRINT_UNIT_TEST_FOOTER();
+        return test_result;
+}
+
+_Bool unit_test_8()
+{
+        PRINT_UNIT_TEST_HEADER();
+        const size_t cb_size = 20;
+        circle_buffer_t *cb = CB_CREATE(cb, cb_size);
+
+        char word1[] = "Hello";
+        char word2[] = "Georgios";
+        char word3[] = "Evangelinos";
+
+        _Bool test_result = TEST_PASSED;
+        ASSERT(test_result, cb_first_empty_segment_size(cb) == cb_empty_space(cb));
+        ASSERT(test_result, cb_second_empty_segment_size(cb) == 0);
+
+        /* Push word1. */
+        memcpy(cb_first_empty_segment_address(cb), word1, sizeof(word1) - 1);
+        cb_move_tail(cb, sizeof(word1) - 1);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == (sizeof(word1) - 1) % cb->buffer_size);
+        ASSERT(test_result, cb_empty_space(cb) == cb_size - sizeof(word1) + 1);
+        ASSERT(test_result, cb_used_space(cb) == sizeof(word1) - 1);
+
+        /* Push word2. */
+        memcpy(cb_first_empty_segment_address(cb), word2, sizeof(word2) - 1);
+        cb_move_tail(cb, sizeof(word2) - 1);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == (sizeof(word1) + sizeof(word2) - 2) % cb->buffer_size);
+        ASSERT(test_result, cb_empty_space(cb) == cb_size - sizeof(word1) - sizeof(word2) + 2);
+        ASSERT(test_result, cb_used_space(cb) == sizeof(word1) + sizeof(word2) - 2);
+
+        void *seg1;
+        void *seg2;
+        size_t seg1_size;
+        size_t seg2_size;
+
         cb_destroy(&cb);
         PRINT_UNIT_TEST_FOOTER();
         return test_result;
@@ -440,7 +466,7 @@ int main()
                 static_buffer5[i] = 5;
                 static_buffer8[i] = 8;
         }
-#define UNIT_TEST_COUNT 8
+#define UNIT_TEST_COUNT 9
         _Bool (*unit_test_array[UNIT_TEST_COUNT])(void);
         _Bool unit_test_result_array[UNIT_TEST_COUNT];
         unit_test_array[0] = &unit_test_0;
@@ -451,6 +477,7 @@ int main()
         unit_test_array[5] = &unit_test_5;
         unit_test_array[6] = &unit_test_6;
         unit_test_array[7] = &unit_test_7;
+        unit_test_array[8] = &unit_test_8;
 
         for (int i = 0; i < UNIT_TEST_COUNT; i++)
                 unit_test_result_array[i] = unit_test_array[i]();

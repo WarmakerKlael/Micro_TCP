@@ -2,6 +2,7 @@
 #define CIRCLE_BUFFER_H
 
 #include <stddef.h>
+#include <sys/types.h>
 
 typedef struct circle_buffer
 {
@@ -10,7 +11,6 @@ typedef struct circle_buffer
         size_t head_index;  /* From HEAD you read. */
         size_t tail_index;  /* From TAIL you write.*/
 } circle_buffer_t;
-
 
 circle_buffer_t *cb_create(size_t _buffer_size);
 /* We request a double pointer, in order to NULLIFY user's circle buffer pointer. */
@@ -24,12 +24,14 @@ void *cb_pop_front_copy(circle_buffer_t *_cb, size_t _requested_segment_size);
  * @returns number of "poped" bytes. a.k.a how far the head moved.
  */
 size_t cb_pop_front(circle_buffer_t *_cb, size_t _bytes_to_pop);
-size_t cb_free_space(circle_buffer_t *_cb);
+size_t cb_empty_space(circle_buffer_t *_cb);
 size_t cb_used_space(circle_buffer_t *_cb);
-size_t cb_first_segment_free_space(circle_buffer_t *_cb);
-size_t cb_second_segment_free_space(circle_buffer_t *_cb);
-size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1, size_t *_seg1_size, void **_seg2, size_t *_seg2_size);
-
+size_t cb_first_empty_segment_size(circle_buffer_t *_cb);
+size_t cb_second_empty_segment_size(circle_buffer_t *_cb);
+void *cb_first_empty_segment_address(circle_buffer_t *_cb);
+void *cb_second_empty_segment_address(circle_buffer_t *_cb);
+ssize_t cb_move_tail(circle_buffer_t *_cb, size_t _n_bytes);
+size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1, void **_seg2, size_t *_seg1_size, size_t *_seg2_size);
 
 /* Used for debugging: */
 #ifdef DEBUG_MODE
@@ -60,7 +62,7 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb);
         do                                                        \
         {                                                         \
                 printf("Pop_front()  %d elements", _no_elements); \
-                cb_pop_front_copy(_cb, _no_elements);                  \
+                cb_pop_front_copy(_cb, _no_elements);             \
                 _cb_print_buffer(_cb);                            \
                 printf("\n\n");                                   \
         } while (0)
@@ -77,8 +79,8 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb);
                 cb_push_back(_cb, _buffer, _no_elements); \
         } while (0)
 
-#define CB_POP_FRONT(_cb, _no_elements) ({ \
-        cb_pop_front_copy(_cb, _no_elements);   \
+#define CB_POP_FRONT(_cb, _no_elements) ({    \
+        cb_pop_front_copy(_cb, _no_elements); \
 })
 
 #endif /* VERBOSE */

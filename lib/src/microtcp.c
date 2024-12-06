@@ -23,7 +23,7 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
             .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
             .init_win_size = MICROTCP_WIN_SIZE, /* Our initial window size. */
             .curr_win_size = MICROTCP_WIN_SIZE, /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
-            .cb_recvbuf = NULL,                    /* Buffer gets allocated in 3-way handshake. */
+            .recvbuf = NULL,                    /* Buffer gets allocated in 3-way handshake. */
             .buf_fill_level = 0,
             .cwnd = MICROTCP_INIT_CWND,
             .ssthresh = MICROTCP_INIT_SSTHRESH,

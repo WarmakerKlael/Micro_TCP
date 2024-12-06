@@ -30,3 +30,6 @@ Refine code comments.
 Include function that can set the print stream.
 
 8) CHECK WHICH SECTIONS OF EACH FILE BENEFIT FROM DEBUG_MODE. put #IFNDEF DEBUG_MODE sections.
+
+
+9) IF connection is closed by peer, recv should return 0, (Per recvfrom in UDP)... Check this more
