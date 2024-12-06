@@ -94,6 +94,7 @@ uint8_t static_buffer8[STATIC_BUFFER_SIZE];
         (_test_result = test_result && assertion_result);                                                  \
 })
 
+/* Tests state of cb after creation. */
 _Bool unit_test_0(void)
 {
         PRINT_UNIT_TEST_HEADER();
@@ -114,6 +115,7 @@ _Bool unit_test_0(void)
         return test_result;
 }
 
+/* Tests state of cb after single push_back(). */
 _Bool unit_test_1()
 {
         PRINT_UNIT_TEST_HEADER();
@@ -135,6 +137,7 @@ _Bool unit_test_1()
         return test_result;
 }
 
+/* Tests cb after multiple push_back() and pop_front(), some of which should do nothing. */
 _Bool unit_test_2()
 {
         PRINT_UNIT_TEST_HEADER();
@@ -252,6 +255,7 @@ _Bool unit_test_2()
         return test_result;
 }
 
+/* Tests the output of pop_front(). */
 _Bool unit_test_3()
 {
         PRINT_UNIT_TEST_HEADER();
@@ -285,6 +289,145 @@ _Bool unit_test_3()
         return test_result;
 }
 
+/* Testing a scanario I had problem with before (visualized on paper). */
+_Bool unit_test_4()
+{
+        PRINT_UNIT_TEST_HEADER();
+        const size_t cb_size = 7;
+        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+
+        _Bool test_result = TEST_PASSED;
+
+        CB_PUSH_BACK(cb, static_buffer3, 7);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, _cb_free_space(cb) == 0);
+        ASSERT(test_result, _cb_used_space(cb) == 7);
+
+        CB_POP_FRONT(cb, 7);
+        ASSERT(test_result, _cb_head(cb) == 7);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, _cb_free_space(cb) == 7);
+        ASSERT(test_result, _cb_used_space(cb) == 0);
+
+        CB_PUSH_BACK(cb, static_buffer8, 1);
+        ASSERT(test_result, _cb_head(cb) == 7);
+        ASSERT(test_result, _cb_tail(cb) == 0);
+        ASSERT(test_result, _cb_free_space(cb) == 6);
+        ASSERT(test_result, _cb_used_space(cb) == 1);
+
+        cb_destroy(&cb);
+        PRINT_UNIT_TEST_FOOTER();
+        return test_result;
+}
+
+_Bool unit_test_5()
+{
+        PRINT_UNIT_TEST_HEADER();
+        const size_t cb_size = 7;
+        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+
+        _Bool test_result = TEST_PASSED;
+
+        CB_PUSH_BACK(cb, static_buffer3, 7);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, _cb_free_space(cb) == 0);
+        ASSERT(test_result, _cb_used_space(cb) == 7);
+
+        CB_POP_FRONT(cb, 4);
+        ASSERT(test_result, _cb_head(cb) == 4);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, _cb_free_space(cb) == 4);
+        ASSERT(test_result, _cb_used_space(cb) == 3);
+
+        CB_PUSH_BACK(cb, static_buffer8, 4);
+        ASSERT(test_result, _cb_head(cb) == 4);
+        ASSERT(test_result, _cb_tail(cb) == 3);
+        ASSERT(test_result, _cb_free_space(cb) == 0);
+        ASSERT(test_result, _cb_used_space(cb) == 7);
+
+        cb_destroy(&cb);
+        PRINT_UNIT_TEST_FOOTER();
+        return test_result;
+}
+
+_Bool unit_test_6()
+{
+        PRINT_UNIT_TEST_HEADER();
+        const size_t cb_size = 7;
+        circle_buffer_t *cb = CB_CREATE(cb1, cb_size);
+
+        _Bool test_result = TEST_PASSED;
+
+        CB_PUSH_BACK(cb, static_buffer3, 7);
+        ASSERT(test_result, _cb_head(cb) == 0);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, _cb_free_space(cb) == 0);
+        ASSERT(test_result, _cb_used_space(cb) == 7);
+
+        CB_POP_FRONT(cb, 1);
+        ASSERT(test_result, _cb_head(cb) == 1);
+        ASSERT(test_result, _cb_tail(cb) == 7);
+        ASSERT(test_result, _cb_free_space(cb) == 1);
+        ASSERT(test_result, _cb_used_space(cb) == 6);
+
+        CB_PUSH_BACK(cb, static_buffer8, 1);
+        ASSERT(test_result, _cb_head(cb) == 1);
+        ASSERT(test_result, _cb_tail(cb) == 0);
+        ASSERT(test_result, _cb_free_space(cb) == 0);
+        ASSERT(test_result, _cb_used_space(cb) == 7);
+
+        cb_destroy(&cb);
+        PRINT_UNIT_TEST_FOOTER();
+        return test_result;
+}
+
+_Bool unit_test_7()
+{
+        PRINT_UNIT_TEST_HEADER();
+        const size_t loop_size = 1000000;
+        circle_buffer_t *cb = CB_CREATE(cb1, 1);
+
+        _Bool test_result = TEST_PASSED;
+        uint8_t byte = 69;
+
+        for (int i = 0; i < loop_size + 1; i++)
+        {
+
+                CB_PUSH_BACK(cb, &byte, 1);
+                test_result = test_result &&
+                              _cb_head(cb) == 0 &&
+                              _cb_tail(cb) == 1 &&
+                              _cb_free_space(cb) == 0 &&
+                              _cb_used_space(cb) == 1;
+
+                CB_POP_FRONT(cb, 1);
+                test_result = test_result &&
+                              _cb_head(cb) == 1 &&
+                              _cb_tail(cb) == 1 &&
+                              _cb_free_space(cb) == 1 &&
+                              _cb_used_space(cb) == 0;
+
+                CB_PUSH_BACK(cb, &byte, 1);
+                test_result = test_result &&
+                              _cb_head(cb) == 1 &&
+                              _cb_tail(cb) == 0 &&
+                              _cb_free_space(cb) == 0 &&
+                              _cb_used_space(cb) == 1;
+
+                CB_POP_FRONT(cb, 1);
+                test_result = test_result &&
+                              _cb_head(cb) == 0 &&
+                              _cb_tail(cb) == 0 &&
+                              _cb_free_space(cb) == 1 &&
+                              _cb_used_space(cb) == 0;
+        }
+        cb_destroy(&cb);
+        PRINT_UNIT_TEST_FOOTER();
+        return test_result;
+}
+
 int main()
 {
         logger_set_allocator_enabled(false);
@@ -297,13 +440,17 @@ int main()
                 static_buffer5[i] = 5;
                 static_buffer8[i] = 8;
         }
-#define UNIT_TEST_COUNT 4
+#define UNIT_TEST_COUNT 8
         _Bool (*unit_test_array[UNIT_TEST_COUNT])(void);
         _Bool unit_test_result_array[UNIT_TEST_COUNT];
         unit_test_array[0] = &unit_test_0;
         unit_test_array[1] = &unit_test_1;
         unit_test_array[2] = &unit_test_2;
         unit_test_array[3] = &unit_test_3;
+        unit_test_array[4] = &unit_test_4;
+        unit_test_array[5] = &unit_test_5;
+        unit_test_array[6] = &unit_test_6;
+        unit_test_array[7] = &unit_test_7;
 
         for (int i = 0; i < UNIT_TEST_COUNT; i++)
                 unit_test_result_array[i] = unit_test_array[i]();
