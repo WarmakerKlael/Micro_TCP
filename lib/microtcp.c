@@ -23,7 +23,7 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
             .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
             .init_win_size = MICROTCP_WIN_SIZE, /* Our initial window size. */
             .curr_win_size = MICROTCP_WIN_SIZE, /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
-            .recvbuf = NULL,                    /* Buffer gets allocated in 3-way handshake. */
+            .cb_recvbuf = NULL,                    /* Buffer gets allocated in 3-way handshake. */
             .buf_fill_level = 0,
             .cwnd = MICROTCP_INIT_CWND,
             .ssthresh = MICROTCP_INIT_SSTHRESH,
@@ -80,7 +80,7 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *_address, 
         
         _socket->seq_number = generate_initial_sequence_number();
         PRINT_INFO("Connection begins with ISN == %u", _socket->seq_number);
-        _socket->recvbuf = allocate_receive_buffer(_socket);
+        allocate_receive_buffer(_socket);
         
         send_syn_segment(_socket, _address, _address_len);
         

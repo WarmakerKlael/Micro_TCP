@@ -11,17 +11,25 @@ typedef struct circle_buffer
         size_t tail_index;  /* From TAIL you write.*/
 } circle_buffer_t;
 
-circle_buffer_t *cb_create(size_t _buffer_size);
 
+circle_buffer_t *cb_create(size_t _buffer_size);
 /* We request a double pointer, in order to NULLIFY user's circle buffer pointer. */
 void cb_destroy(circle_buffer_t **_cb_address);
-
 /**
  * @returns bytes it appended to circular buffer.
  */
 size_t cb_push_back(circle_buffer_t *_cb, void *_data, size_t _data_len);
+void *cb_pop_front_copy(circle_buffer_t *_cb, size_t _requested_segment_size);
+/**
+ * @returns number of "poped" bytes. a.k.a how far the head moved.
+ */
+size_t cb_pop_front(circle_buffer_t *_cb, size_t _bytes_to_pop);
+size_t cb_free_space(circle_buffer_t *_cb);
+size_t cb_used_space(circle_buffer_t *_cb);
+size_t cb_first_segment_free_space(circle_buffer_t *_cb);
+size_t cb_second_segment_free_space(circle_buffer_t *_cb);
+size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1, size_t *_seg1_size, void **_seg2, size_t *_seg2_size);
 
-void *cb_pop_front(circle_buffer_t *_cb, size_t _requested_segment_size);
 
 /* Used for debugging: */
 #ifdef DEBUG_MODE
@@ -54,7 +62,7 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb);
         do                                                        \
         {                                                         \
                 printf("Pop_front()  %d elements", _no_elements); \
-                cb_pop_front(_cb, _no_elements);                  \
+                cb_pop_front_copy(_cb, _no_elements);                  \
                 _cb_print_buffer(_cb);                            \
                 printf("\n\n");                                   \
         } while (0)
@@ -72,7 +80,7 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb);
         } while (0)
 
 #define CB_POP_FRONT(_cb, _no_elements) ({ \
-        cb_pop_front(_cb, _no_elements);   \
+        cb_pop_front_copy(_cb, _no_elements);   \
 })
 
 #endif /* VERBOSE */

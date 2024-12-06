@@ -6,6 +6,8 @@
 #include <netinet/in.h>
 #include <stdint.h>
 
+#include "circle_buffer.h"
+
 /*
  * Several useful constants
  */
@@ -47,11 +49,9 @@ typedef struct
   size_t init_win_size;   /**< The window size advertised at the 3-way handshake */
   size_t curr_win_size;   /**< The current window size */
 
-  uint8_t *recvbuf;      /**< The *receive* buffer of the TCP
-                              connection. It is allocated during the connection establishment and
-                              is freed at the shutdown of the connection. This buffer is used
-                              to retrieve the data from the network. */
-  size_t buf_fill_level; /**< Amount of data in the buffer */
+  circle_buffer_t *cb_recvbuf;
+  
+   size_t buf_fill_level; /**< Amount of data in the buffer */
 
   size_t cwnd;
   size_t ssthresh;

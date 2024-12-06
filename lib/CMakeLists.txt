@@ -3,6 +3,7 @@ add_library(circle_buffer STATIC circle_buffer.c)
 
 target_link_libraries(microtcp Logger)
 target_link_libraries(microtcp microtcp_helpers)
+target_link_libraries(microtcp circle_buffer)
 
 target_link_libraries(circle_buffer Logger)
 

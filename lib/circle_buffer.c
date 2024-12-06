@@ -10,10 +10,6 @@
 
 #define GUARD_BYTE_SIZE 1
 
-/* Declarations of static functions. */
-static inline size_t cb_free_space(circle_buffer_t *_cb);
-static inline size_t cb_used_space(circle_buffer_t *_cb);
-
 circle_buffer_t *cb_create(size_t _buffer_size)
 {
         _buffer_size += GUARD_BYTE_SIZE; /* Adjust _buffer_size to include a GUARD BYTE. */
@@ -64,7 +60,7 @@ size_t cb_push_back(circle_buffer_t *_cb, void *_data, size_t _data_len)
         if (_cb->tail_index < _cb->head_index)
                 end = _cb->head_index - 1;
         else
-                end = _cb->buffer_size - (_cb->head_index == 0 ? GUARD_BYTE_SIZE : 0); /* If first byte is reserved, then last byte is GUARD. */
+                end = _cb->buffer_size - (_cb->head_index == 0); /* If first byte is reserved, then last byte is GUARD. */
         size_t segment_size1 = end - start;
 
         if (_data_len <= segment_size1)
@@ -83,7 +79,7 @@ size_t cb_push_back(circle_buffer_t *_cb, void *_data, size_t _data_len)
         return _data_len;
 }
 
-void *cb_pop_front(circle_buffer_t *_cb, size_t _requested_segment_size)
+void *cb_pop_front_copy(circle_buffer_t *_cb, size_t _requested_segment_size)
 {
         if (_requested_segment_size == 0)
                 PRINT_WARNING_RETURN(NULL, "Argument %s value was 0, nothing happened.", STRINGIFY(_requested_segment_size));
@@ -110,10 +106,26 @@ void *cb_pop_front(circle_buffer_t *_cb, size_t _requested_segment_size)
                 _cb->head_index = _requested_segment_size - first_segment_size;
         }
 
+        if (_cb->head_index == _cb->tail_index) /* Buffer is empty, we reset indicies. */
+                _cb->head_index = _cb->tail_index = 0;
+
         return _requested_segment;
 }
 
-static inline size_t cb_free_space(circle_buffer_t *_cb)
+/**
+ * @returns number of "poped" bytes. a.k.a how far the head moved.
+ */
+size_t cb_pop_front(circle_buffer_t *_cb, size_t _bytes_to_pop)
+{
+        if (cb_used_space(_cb) < _bytes_to_pop)
+                return 0;
+
+        _cb->head_index = (_cb->head_index + _bytes_to_pop) % _cb->buffer_size;
+
+        return _bytes_to_pop;
+}
+
+size_t cb_free_space(circle_buffer_t *_cb)
 {
         size_t remaining_space = _cb->head_index - _cb->tail_index - GUARD_BYTE_SIZE;
         if (_cb->head_index <= _cb->tail_index)
@@ -122,11 +134,55 @@ static inline size_t cb_free_space(circle_buffer_t *_cb)
         return remaining_space;
 }
 
-static inline size_t cb_used_space(circle_buffer_t *_cb)
+size_t cb_used_space(circle_buffer_t *_cb)
 {
-        return  _cb->buffer_size - GUARD_BYTE_SIZE - cb_free_space(_cb);
+        return _cb->buffer_size - GUARD_BYTE_SIZE - cb_free_space(_cb);
 }
 
+size_t cb_first_segment_free_space(circle_buffer_t *_cb)
+{
+        if (_cb->head_index <= _cb->tail_index)
+                return _cb->buffer_size - _cb->tail_index - (_cb->head_index == 0);
+        return _cb->head_index - _cb->tail_index - GUARD_BYTE_SIZE;
+}
+
+size_t cb_second_segment_free_space(circle_buffer_t *_cb)
+{
+        return cb_free_space(_cb) - cb_first_segment_free_space(_cb);
+}
+
+size_t cb_read_n_bytes(circle_buffer_t *_cb, size_t _bytes_to_read, void **_seg1, size_t *_seg1_size, void **_seg2, size_t *_seg2_size)
+{
+        *_seg1 = *_seg2 = NULL;
+        *_seg1_size = *_seg2_size = 0;
+        if (cb_used_space(_cb) < _bytes_to_read || _bytes_to_read == 0)
+                return 0;
+        /* If here, there are at least '_bytes_to_read' in _cb. */
+
+        if (_cb->head_index <= _cb->tail_index)
+        {
+                /* When HEAD < TAIL: DATA_WHOLE. */
+                *_seg1 = _cb->buffer + _cb->head_index;
+                *_seg1_size = _bytes_to_read;
+                return _bytes_to_read;
+        }
+        /* When HEAD < TAIL: might be SEGMENTED. */
+        *_seg1 = _cb->buffer + _cb->head_index;
+        if (_cb->head_index + _bytes_to_read <= _cb->buffer_size)
+                *_seg1_size = _bytes_to_read;
+        else
+                *_seg1_size = _cb->buffer_size - _cb->head_index;
+
+        if (_seg1_size != _bytes_to_read)
+        {
+                *_seg2 = _cb->buffer + 0;
+                *_seg2_size = _bytes_to_read - *_seg1_size;
+        }
+        return _bytes_to_read;
+}
+
+
+#ifdef DEBUG_MODE
 void _cb_print_buffer(circle_buffer_t *_cb)
 {
         printf("Head = %d\t", _cb->head_index);
@@ -142,17 +198,6 @@ void _cb_print_buffer(circle_buffer_t *_cb)
                 printf("[%d] ", byte);
         }
         printf("\n");
-}
-
-
-size_t _cb_free_space(circle_buffer_t *_cb)
-{
-        return cb_free_space(_cb);
-}
-
-size_t _cb_used_space(circle_buffer_t *_cb)
-{
-        return  cb_used_space(_cb);
 }
 
 size_t _cb_tail(circle_buffer_t *_cb)
@@ -174,4 +219,4 @@ size_t _cb_usable_buffer_size(circle_buffer_t *_cb)
 {
         return _cb->buffer_size - GUARD_BYTE_SIZE;
 }
-
+#endif /* DEBUG_MODE */
