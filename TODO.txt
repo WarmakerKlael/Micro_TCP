@@ -28,3 +28,6 @@ Write documentation for each function /** */ style.
 
 6)
 Refine code comments.
+
+7)
+Include function that can set the print stream.

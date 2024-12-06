@@ -3,13 +3,15 @@
 #include <stdarg.h>
 #include <pthread.h>
 
-#include "allocator/allocator.h"
 #include "logging/logger.h"
+#include "logging/logger_options.h"
+#include "allocator/allocator.h"
 #include "microtcp_defines.h"
+
+extern FILE *print_stream;
 
 /* Global Variables */
 pthread_mutex_t *mutex_logger = NULL;
-FILE *print_stream;
 /* ---------------- */
 
 /* Declarations of static functions implemented in this file: */
@@ -64,6 +66,15 @@ void _safe_print_log(enum log_tag _log_tag, const char *_file, int _line, const 
 
 static void _unsafe_print_log_forward(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, va_list arg_list)
 {
+	if (!logger_is_enabled())
+		return;
+	if (!logger_is_info_enabled() && _log_tag == LOG_INFO)
+		return;
+	if (!logger_is_warning_enabled() && _log_tag == LOG_WARNING)
+		return;
+	if (!logger_is_error_enabled() && _log_tag == LOG_ERROR)
+		return;
+
 	const char *colored_string_log_tag = get_colored_string_log_tag(_log_tag);
 	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: " LOG_MESSAGE_COLOR, colored_string_log_tag, _file, _line, _func);
 	vfprintf(print_stream, _message, arg_list);

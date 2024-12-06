@@ -23,8 +23,6 @@ enum log_tag
 	LOG_ERROR,
 };
 
-extern FILE *print_stream;
-
 void _safe_print_log(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, ...);
 void _unsafe_print_log(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_message, ...);
 

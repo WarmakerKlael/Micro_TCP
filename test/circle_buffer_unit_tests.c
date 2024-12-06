@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
-#include <sys/cdefs.h>
 #include "circle_buffer.h"
 #include "cli_color.h"
 
@@ -14,7 +13,7 @@ uint8_t static_buffer3[STATIC_BUFFER_SIZE];
 uint8_t static_buffer5[STATIC_BUFFER_SIZE];
 uint8_t static_buffer8[STATIC_BUFFER_SIZE];
 
-#define LINE_WIDTH 50
+#define LINE_WIDTH 80
 #define LINE_TOKEN '-'
 #define HEADER_COLOR MAGENTA_COLOR
 #define HEADER_PREFIX "START: "
@@ -23,43 +22,66 @@ uint8_t static_buffer8[STATIC_BUFFER_SIZE];
 #define FOOTER_PREFIX "END: "
 #define FOOTER_SUFFIX HEADER_SUFFIX
 
-#define PRINT_UNIT_TEST_HEADER()                                                                            \
-        do                                                                                                  \
-        {                                                                                                   \
-                int line_width = LINE_WIDTH;                                                                \
-                int header_message_size = sizeof(HEADER_PREFIX) + sizeof(__func__) + sizeof(HEADER_SUFFIX); \
-                int dash_count = line_width - header_message_size;                                          \
-                                                                                                            \
-                /* Left line takes 1 more dash, if dash_count odd number. */                                \
-                int left_dash_line_width = dash_count / 2 + dash_count % 2;                                 \
-                int right_dash_line_width = dash_count / 2;                                                 \
-                printf(HEADER_COLOR);                                                                       \
-                for (int i = 0; i < left_dash_line_width; i++)                                              \
-                        printf("%c", LINE_TOKEN);                                                           \
-                printf("%s%s%s", HEADER_PREFIX, __func__, HEADER_SUFFIX);                                   \
-                for (int i = 0; i < right_dash_line_width; i++)                                             \
-                        printf("%c", LINE_TOKEN);                                                           \
-                printf(RESET_COLOR);                                                                        \
+#define PRINT_UNIT_TEST_HEADER()                                                                                             \
+        do                                                                                                                   \
+        {                                                                                                                    \
+                int line_width = LINE_WIDTH;                                                                                 \
+                /* From sizeof() we remove 1, as sizeof() accounts for '\0' too when determining a literal's string size. */ \
+                int header_message_size = sizeof(HEADER_PREFIX) - 1 + sizeof(__func__) - 1 + sizeof(HEADER_SUFFIX) - 1;      \
+                int dash_count = line_width - header_message_size;                                                           \
+                                                                                                                             \
+                /* Left line takes 1 more dash, if dash_count odd number. */                                                 \
+                int left_dash_line_width = dash_count / 2 + dash_count % 2;                                                  \
+                int right_dash_line_width = dash_count / 2;                                                                  \
+                printf(HEADER_COLOR);                                                                                        \
+                for (int i = 0; i < left_dash_line_width; i++)                                                               \
+                        printf("%c", LINE_TOKEN);                                                                            \
+                printf("%s%s%s", HEADER_PREFIX, __func__, HEADER_SUFFIX);                                                    \
+                for (int i = 0; i < right_dash_line_width; i++)                                                              \
+                        printf("%c", LINE_TOKEN);                                                                            \
+                printf(RESET_COLOR);                                                                                         \
+                printf("\n\n");\
         } while (0)
 
-#define PRINT_UNIT_TEST_FOOTER()                                                                            \
-        do                                                                                                  \
-        {                                                                                                   \
-                int line_width = LINE_WIDTH;                                                                \
-                int footer_message_size = sizeof(FOOTER_PREFIX) + sizeof(__func__) + sizeof(FOOTER_SUFFIX); \
-                int dash_count = line_width - footer_message_size;                                          \
-                                                                                                            \
-                /* Left line takes 1 more dash, if dash_count odd number. */                                \
-                int left_dash_line_width = dash_count / 2 + dash_count % 2;                                 \
-                int right_dash_line_width = dash_count / 2;                                                 \
-                printf(FOOTER_COLOR);                                                                       \
-                for (int i = 0; i < left_dash_line_width; i++)                                              \
-                        printf("%c", LINE_TOKEN);                                                           \
-                printf("%s%s%s", FOOTER_PREFIX, __func__, FOOTER_SUFFIX);                                   \
-                for (int i = 0; i < right_dash_line_width; i++)                                             \
-                        printf("%c", LINE_TOKEN);                                                           \
-                printf(RESET_COLOR);                                                                        \
+#define PRINT_UNIT_TEST_FOOTER()                                                                                             \
+        do                                                                                                                   \
+        {                                                                                                                    \
+                int line_width = LINE_WIDTH;                                                                                 \
+                /* From sizeof() we remove 1, as sizeof() accounts for '\0' too when determining a literal's string size. */ \
+                int footer_message_size = sizeof(FOOTER_PREFIX) - 1 + sizeof(__func__) - 1 + sizeof(FOOTER_SUFFIX) - 1;      \
+                int dash_count = line_width - footer_message_size;                                                           \
+                                                                                                                             \
+                /* Left line takes 1 more dash, if dash_count odd number. */                                                 \
+                int left_dash_line_width = dash_count / 2 + dash_count % 2;                                                  \
+                int right_dash_line_width = dash_count / 2;                                                                  \
+                printf(FOOTER_COLOR);                                                                                        \
+                for (int i = 0; i < left_dash_line_width; i++)                                                               \
+                        printf("%c", LINE_TOKEN);                                                                            \
+                printf("%s%s%s", FOOTER_PREFIX, __func__, FOOTER_SUFFIX);                                                    \
+                for (int i = 0; i < right_dash_line_width; i++)                                                              \
+                        printf("%c", LINE_TOKEN);                                                                            \
+                printf("\n\n");\
+                printf("\n\n");\
+                printf(RESET_COLOR);                                                                                         \
         } while (0)
+
+_Bool unit_test_1(void)
+{
+        PRINT_UNIT_TEST_HEADER();
+        
+                circle_buffer_t *cb2 = CB_CREATE(cb1, 7);
+
+                CB_PUSH_BACK(cb2, static_buffer5, 7);
+                CB_POP_FRONT(cb2, 1);
+                CB_PUSH_BACK(cb2, static_buffer5, 1);
+                CB_POP_FRONT(cb2, 3);
+                CB_PUSH_BACK(cb2, static_buffer5, 3);
+
+                // CB_PUSH_BACK(cb2, static_buffer8, 1);
+
+                cb_destroy(&cb2);
+        PRINT_UNIT_TEST_FOOTER();
+}
 
 int main()
 {
@@ -70,30 +92,7 @@ int main()
                 static_buffer8[i] = 8;
         }
 
-        printf("------------------------------------------THE BEGINS HERE------------------------------------------\n");
-
-        printf("sizeof var == %d\n", sizeof(__CONCAT(__func__, "  ")));
-        int header_message = sizeof(HEADER_PREFIX) + sizeof(__func__) + sizeof(HEADER_SUFFIX);
-        int footer_message = sizeof(FOOTER_PREFIX) + sizeof(__func__) + sizeof(FOOTER_SUFFIX);
-
-        printf("Size of header message %d\n", header_message);
-        printf("Size of footer message %d\n", footer_message);
-            circle_buffer_t *cb1 = CB_CREATE(cb1, 7);
-
-        CB_PUSH_BACK(cb1, static_buffer5, 7);
-        CB_POP_FRONT(cb1, 1);
-        CB_PUSH_BACK(cb1, static_buffer5, 1);
-        CB_POP_FRONT(cb1, 3);
-        CB_PUSH_BACK(cb1, static_buffer5, 3);
-
-        // CB_PUSH_BACK(cb1, static_buffer8, 1);
-
-        printf("-------------------------------------------THE ENDS HERE-------------------------------------------\n");
-        cb_destroy(&cb1);
-}
-
-_Bool unit_test_1(void)
-{
+        unit_test_1();
 }
 
 #else
