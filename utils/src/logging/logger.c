@@ -84,9 +84,9 @@ static void _unsafe_print_log_forward(enum log_tag _log_tag, const char *_file, 
 		return;
 
 	const char *colored_string_log_tag = get_colored_string_log_tag(_log_tag);
-	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: " LOG_MESSAGE_COLOR, colored_string_log_tag, _file, _line, _func);
+	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: %s", colored_string_log_tag, _file, _line, _func, LOG_MESSAGE_COLOR);
 	vfprintf(print_stream, _message, arg_list);
-	fprintf(print_stream, "\n" RESET_COLOR);
+	fprintf(print_stream, "%s\n", RESET_COLOR);
 }
 
 // clang-format off

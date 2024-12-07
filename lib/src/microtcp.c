@@ -71,18 +71,47 @@ int microtcp_bind(microtcp_sock_t *_socket, const struct sockaddr *_address, soc
         PRINT_INFO_RETURN(bind_result, "Bind operation succeeded.");
 }
 
-/* TODO: free(syn_segment) */
-/* TODO: free(serialized_syn_segment) */
-int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len)
+/**
+ * @brief From client's side, connection is considered established.
+Server might not receive that last ACK, then server will resent its
+SYN-ACK segments as from its side a timeout will occur. A timeout
+might be avoided, if client starts sending packets rightaway into
+the connection. The ACK numbers on those packets will show the server,
+that client sent the last ACK on the 3-way handshake, but it was probably lost.
+(That is why in normal TCP, last ACK of 3-way handshake can contain data).
+ */
+int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _address, socklen_t _address_len)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(struct sockaddr));
 
-        allocate_receive_buffer(_socket);
         generate_initial_sequence_number(_socket);
+        if (allocate_receive_buffer(_socket) == NULL)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
+        while (TRUE)
+        {
+                ssize_t send_syn_ret_val = send_syn_segment(_socket, _address, _address_len);
+                if (send_syn_ret_val == MICROTCP_SEND_SYN_FATAL_ERROR)
+                        return MICROTCP_CONNECT_FAILURE;
+                update_socket_sent_counters(_socket, send_syn_ret_val);
 
-        send_syn_segment(_socket, _address, _address_len);
+                ssize_t receive_synack_ret_val = receive_synack_segment(_socket, (struct sockaddr *)_address, _address_len);
+                if (receive_synack_ret_val > 0)
+                {
+                        update_socket_received_counters(_socket, receive_synack_ret_val);
+                        break;
+                }
+
+                update_socket_lost_counters(_socket, send_syn_ret_val);
+                if (receive_synack_ret_val == MICROTCP_RECV_SYN_ACK_FATAL_ERROR)
+                        return MICROTCP_CONNECT_FAILURE;
+                if (receive_synack_ret_val == MICROTCP_RECV_SYN_ACK_TIMEOUT || /* Timeout occurred. */
+                    receive_synack_ret_val == MICROTCP_RECV_SYN_ACK_ERROR)     /* Corrupt packet, etc */
+                        continue;
+        }
+        // send_ack_segment();
+        _socket->state = ESTABLISHED;
 }
 
 /* Remember to allocate the receiver buffer (socket's recvbuf).*/

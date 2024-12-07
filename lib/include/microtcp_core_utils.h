@@ -6,12 +6,26 @@
 
 #include "microtcp_core_macros.h"
 
+/* Internal MACRO defines. */
 #define ACK_BIT (1 << 12)
 #define RST_BIT (1 << 13)
 #define SYN_BIT (1 << 14)
 #define FIN_BIT (1 << 15)
 
 #define NO_SENDTO_FLAGS 0
+#define NO_RECVFROM_FLAGS 0
+
+/* Error values returned internally to microtcp_connect(), if any of its stages fail. */
+#define MICROTCP_SEND_SYN_ERROR -1
+#define MICROTCP_SEND_SYN_FATAL_ERROR -2
+
+#define MICROTCP_RECV_SYN_ACK_TIMEOUT 0
+#define MICROTCP_RECV_SYN_ACK_ERROR -1
+#define MICROTCP_RECV_SYN_ACK_FATAL_ERROR -2
+
+#define MICROTCP_SEND_ACK_ERROR -1
+#define MICROTCP_SEND_ACK_FATAL_ERROR -2
+
 
 typedef struct
 {
@@ -34,6 +48,10 @@ ssize_t receive_synack_segment(microtcp_sock_t *_socket, struct sockaddr *_addre
  * @returns pointer to the beginning of newly allocated buffer, is allocation succeeds, NULL if not.
  */
 void *allocate_receive_buffer(microtcp_sock_t *_socket);
+
+void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent);
+void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received);
+void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost);
 
 
 #endif /* MICROTCP_CORE_UTILS_H */
