@@ -28,12 +28,13 @@ static void seed_random_number_generator(void)
         PRINT_INFO("RNG seeding successed; Seed = %u", seed);
 }
 
-uint32_t generate_initial_sequence_number(void)
+void generate_initial_sequence_number(microtcp_sock_t *_socket)
 {
         uint32_t high = rand() & 0xFFFF;   /* Get only the 16 lower bits. */
         uint32_t low = rand() & 0xFFFF;    /* Get only the 16 lower bits. */
         uint32_t isn = (high << 16) | low; /* Combine 16-bit random of low and 16-bit random of high, to create a 32-bit random ISN. */
-        return isn;
+        _socket->seq_number = isn;
+        PRINT_INFO("ISN generated. %u", _socket->seq_number);
 }
 
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload)
@@ -90,7 +91,7 @@ void *serialize_microtcp_segment(microtcp_segment_t *_segment)
         return bytestream_buffer;
 }
 
-static inline int is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length)
+static inline _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
         uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 
@@ -127,16 +128,25 @@ microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _b
 
 ssize_t send_syn_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len)
 {
+        /* Create segment. */
         microtcp_segment_t *syn_segment = create_microtcp_segment(_socket, SYN_BIT, (microtcp_payload_t){.raw_bytes = NULL, .size = 0});
         if (syn_segment == NULL)
                 PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed creating %s.", STRINGIFY(syn_segment));
+
+        /* Convert it to bytestream. */
         void *syn_bytestream_buffer = serialize_microtcp_segment(syn_segment);
         if (syn_bytestream_buffer == NULL)
                 PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to serialize %s", STRINGIFY(syn_segment));
+
+        /* Send segment to server with UDP's sendto(). */
         size_t syn_segment_length = ((sizeof(syn_segment->header)) + syn_segment->header.data_len);
         ssize_t sendto_ret_val = sendto(_socket->sd, syn_bytestream_buffer, syn_segment_length, NO_SENDTO_FLAGS, _address, _address_len);
+
+        /* Clean-up resources. */
         FREE_NULLIFY_LOG(syn_segment);
         FREE_NULLIFY_LOG(syn_bytestream_buffer);
+
+        /* Log operation's outcome. */
         if (sendto_ret_val != syn_segment_length)
                 PRINT_WARNING_RETURN(sendto_ret_val, "SYN segment sending failed.");
         PRINT_INFO_RETURN(sendto_ret_val, "SYN segment sent.");
@@ -144,59 +154,49 @@ ssize_t send_syn_segment(microtcp_sock_t *_socket, const struct sockaddr *_addre
 
 ssize_t receive_synack_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len)
 {
-        // size_t expected_segment_size = sizeof(microtcp_segment_t);
-        // // void *const synack_bytestream_buffer = _socket->recvbuf + _socket->buf_fill_level;
+        if (_socket->buf_fill_level != 0)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Receive buffer contains registered bytes before establishing a connection.");
 
-        // if (_socket->buf_fill_level + expected_segment_size > MICROTCP_RECVBUF_LEN)
-        //         PRINT_WARNING_RETURN(0, "Not enough space in the receive buffer, to receive syn-ack segment. (%s = %u)|(%s = %u)|(Limit = %d)",
-        //                              STRINGIFY(_socket->buf_fill_level), _socket->buf_fill_level,
-        //                              STRINGIFY(expected_segment_size), expected_segment_size,
-        //                              MICROTCP_RECVBUF_LEN);
+        size_t expected_segment_size = sizeof(microtcp_header_t);
+        void *const synack_bytestream_buffer = _socket->recvbuf;
 
-        // ssize_t recvfrom_ret_val = recvfrom(_socket->sd, synack_bytestream_buffer, expected_segment_size, NO_SENDTO_FLAGS, _address, &_address_len);
-        // if (recvfrom_ret_val != expected_segment_size)
-        //         PRINT_WARNING("Received bytestream size mismatch.");
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, synack_bytestream_buffer, expected_segment_size, NO_SENDTO_FLAGS, _address, &_address_len);
+        if (recvfrom_ret_val == 0)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "recvfrom returned 0, which points a closed UDP connection.");
+        if (recvfrom_ret_val == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+                PRINT_WARNING_RETURN(MICROTCP_CONNECT_FAILURE, "recvfrom timeout.");
+        if (recvfrom_ret_val < 0)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
 
-        // if (!is_valid_microtcp_bytestream(synack_bytestream_buffer, recvfrom_ret_val))
-        //         PRINT_WARNING("Received microtcp bytestream is corrupted.");
+        if (recvfrom_ret_val < expected_segment_size)
+                PRINT_WARNING_RETURN(MICROTCP_CONNECT_FAILURE, "Received bytestream size is less than required for a microtcp_header_t.");
+        if (!is_valid_microtcp_bytestream(synack_bytestream_buffer, recvfrom_ret_val))
+                PRINT_WARNING_RETURN(MICROTCP_CONNECT_FAILURE, "Received microtcp bytestream is corrupted.");
 
-        // microtcp_segment_t *synack_segment = extract_microtcp_segment(synack_bytestream_buffer, recvfrom_ret_val);
-        // /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        /* You where heere, CAUSe compile eeror to return hre: */
-        return 0;
+        microtcp_segment_t *synack_segment = extract_microtcp_segment(synack_bytestream_buffer, recvfrom_ret_val);
+        if (synack_segment == NULL)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Extracting SYN-ACK segment resulted to a NULL pointer.");
+        if (synack_segment->header.control != SYN_BIT | ACK_BIT)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Received segment control field != SYN|ACK");
+        if (synack_segment->header.ack_number != _socket->seq_number + 1)
+                PRINT_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Received segment ACK number mismatch. (Got = %d)|(Expected = %d)",
+                                   synack_segment->header.ack_number, _socket->seq_number + 1);
+
+        _socket->ack_number = synack_segment->header.seq_number + 1;
+        _socket->peer_win_size = synack_segment->header.window;
+        _socket->bytes_received += recvfrom_ret_val; /* We only count valid packets. Not the ones we discarded. */
+        _socket->packets_received++;                 /* We only count valid bytes. Not the ones we discarded. */
 }
 
 /**
  * @returns pointer to the newly allocated recvbuf. If allocation fails returns NULL;
+ * @brief There are two states where recvbuf memory allocation is possible.
+ * Client allocates its recvbuf in connect(), socket in CLOSED state.
+ * Server allocates its recvbuf in accept(),  socket in BOUND  state.
+ * So we use ANY for state parameter on the following socket check.
  */
 void *allocate_receive_buffer(microtcp_sock_t *_socket)
 {
-        /* There are two states where recvbuf memory allocation is possible.
-         * Client allocates its recvbuf in connect(), socket in CLOSED state.
-         * Server allocates its recvbuf in accept(),  socket in BOUND  state.
-         * So we use ANY for state parameter on the following socket check.
-         */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ANY);
         if (_socket->recvbuf != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
                 PRINT_WARNING("recvbuf is not NULL before allocation; possible memory leak. Previous address: %x", _socket->recvbuf);

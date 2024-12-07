@@ -25,10 +25,11 @@ typedef struct
         uint8_t *raw_payload_bytes;
 } microtcp_segment_t;
 
-uint32_t generate_initial_sequence_number(void);
+void generate_initial_sequence_number(microtcp_sock_t *_socket);
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
 void * serialize_microtcp_segment(microtcp_segment_t *segment);
 ssize_t send_syn_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+ssize_t receive_synack_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len);
 /**
  * @returns pointer to the beginning of newly allocated buffer, is allocation succeeds, NULL if not.
  */

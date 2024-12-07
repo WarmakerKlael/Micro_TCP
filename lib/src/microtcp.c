@@ -22,17 +22,18 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
             .sd = POSIX_SOCKET_FAILURE_VALUE,   /* We assume socket descriptor contains FAILURE value; Should change from POSIX's socket() */
             .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
             .init_win_size = MICROTCP_WIN_SIZE, /* Our initial window size. */
-            .curr_win_size = MICROTCP_WIN_SIZE, /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
+            .curr_win_size = MICROTCP_WIN_SIZE, /* Our window size. */
+            .peer_win_size = 0,                 /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
             .recvbuf = NULL,                    /* Buffer gets allocated in 3-way handshake. */
             .buf_fill_level = 0,
             .cwnd = MICROTCP_INIT_CWND,
             .ssthresh = MICROTCP_INIT_SSTHRESH,
             .seq_number = 0, /* Default value, waiting 3 way. */
             .ack_number = 0, /* Default value */
-            .packets_send = 0,
+            .packets_sent = 0,
             .packets_received = 0,
             .packets_lost = 0,
-            .bytes_send = 0,
+            .bytes_sent = 0,
             .bytes_received = 0,
             .bytes_lost = 0};
 
@@ -77,13 +78,11 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *_address, 
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(struct sockaddr));
-        
-        _socket->seq_number = generate_initial_sequence_number();
-        PRINT_INFO("Connection begins with ISN == %u", _socket->seq_number);
+
         allocate_receive_buffer(_socket);
-        
+        generate_initial_sequence_number(_socket);
+
         send_syn_segment(_socket, _address, _address_len);
-        
 }
 
 /* Remember to allocate the receiver buffer (socket's recvbuf).*/
