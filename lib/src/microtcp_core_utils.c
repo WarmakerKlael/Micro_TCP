@@ -347,6 +347,7 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         if (_socket->buf_fill_level != 0)
                 LOG_ERROR_RETURN(fatal_error_value, "Receive buffer contains registered bytes before establishing a connection.");
 
+        /* All handshake segments contain no data. */
         size_t expected_segment_size = sizeof(microtcp_header_t);
         void *const bytestream_buffer = _socket->recvbuf;
 
@@ -365,8 +366,9 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         microtcp_segment_t *handshake_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
         if (handshake_segment == NULL)
                 LOG_ERROR_RETURN(fatal_error_value, "Extracting SYN-ACK segment resulted to a NULL pointer.");
-        if (handshake_segment->header.control != SYN_BIT | ACK_BIT)
-                LOG_ERROR_RETURN(error_value, "Received segment control field != SYN|ACK");
+        if (handshake_segment->header.control != _control)
+                LOG_ERROR_RETURN(error_value, "Received segment control field != %s", get_microtcp_control_to_string(_control));
+                /////
         if (handshake_segment->header.ack_number != _socket->seq_number + 1)
                 LOG_ERROR_RETURN(error_value, "Received segment ACK number mismatch. (Got = %d)|(Expected = %d)",
                                  handshake_segment->header.ack_number, _socket->seq_number + 1);
