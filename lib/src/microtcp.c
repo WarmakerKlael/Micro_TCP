@@ -83,6 +83,7 @@ that client sent the last ACK on the 3-way handshake, but it was probably lost.
  */
 int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _address, socklen_t _address_len)
 {
+        LOG_INFO("Connect operation begun.");
         /* Validate input parameters. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
@@ -100,12 +101,13 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         if (connect_state_machine_result == MICROTCP_CONNECT_FAILURE)
                 deallocate_receive_buffer(_socket);
 
-        return connect_state_machine_result;
+        LOG_INFO_RETURN(connect_state_machine_result, "Connect operation succeeded.");
 }
 
 int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
                     socklen_t _address_len)
 {
+        LOG_INFO("Accept operation begun.");
         /* Validate input parameters. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, LISTEN);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
@@ -115,15 +117,15 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
         generate_initial_sequence_number(_socket);
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
-                
+
         /* Run the `accept` state machine. */
         int accept_state_machine_result = microtcp_accept_state_machine(_socket, _address, _address_len);
-        
+
         /* Clean-up on failure. */
         if (accept_state_machine_result == MICROTCP_ACCEPT_FAILURE)
                 deallocate_receive_buffer(_socket);
 
-        return accept_state_machine_result;
+        LOG_INFO_RETURN(accept_state_machine_result, "Accept operation succeeded.");
 }
 
 int microtcp_shutdown(microtcp_sock_t *_socket, int _how)

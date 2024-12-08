@@ -14,9 +14,7 @@ int main(int argc, char **argv)
         microtcp_sock_t new_micro_socket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
         // Cast to generic struct sockaddr
-        struct sockaddr *generic_addr = (struct sockaddr *)&addr_in;
 
-        microtcp_bind(&new_micro_socket, generic_addr, sizeof(generic_addr));
-
-
+        microtcp_bind(&new_micro_socket, (struct sockaddr *) &addr_in, sizeof(addr_in));
+        microtcp_accept(&new_micro_socket, (struct sockaddr*) &addr_in, sizeof(addr_in));
 }
