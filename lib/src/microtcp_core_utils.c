@@ -194,9 +194,27 @@ ssize_t send_syn_segment(microtcp_sock_t *const _socket, const struct sockaddr *
  * @returns the number of bytes, validly send into the socket.
  * This implies that a packet was validly send into the socket.
  */
+ssize_t send_synack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return send_handshake_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, LISTEN);
+}
+
+/**
+ * @returns the number of bytes, validly send into the socket.
+ * This implies that a packet was validly send into the socket.
+ */
 ssize_t send_ack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
         return send_handshake_segment(_socket, _address, _address_len, ACK_BIT, CLOSED);
+}
+
+/**
+ * @returns the number of bytes, validly send into the socket.
+ * This implies that a packet was validly send into the socket.
+ */
+ssize_t receive_syn_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return receive_handshake_segment(_socket, _address, _address_len, SYN_BIT, LISTEN);
 }
 
 /**
@@ -212,9 +230,9 @@ ssize_t receive_synack_segment(microtcp_sock_t *const _socket, struct sockaddr *
  * @returns the number of bytes, validly send into the socket.
  * This implies that a packet was validly send into the socket.
  */
-ssize_t receive_syn_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
+ssize_t receive_ack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, SYN_BIT, LISTEN);
+        return receive_handshake_segment(_socket, _address, _address_len, ACK_BIT, LISTEN);
 }
 
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
@@ -357,7 +375,7 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         if (_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number + 1)
                 LOG_ERROR_RETURN(error_value, "Received segment %s number mismatch. (Got = %d)|(Expected = %d)",
                                  get_microtcp_control_to_string(_control), handshake_segment->header.ack_number, _socket->seq_number + 1);
-        
+
         _socket->ack_number = handshake_segment->header.seq_number + 1;
         _socket->peer_win_size = handshake_segment->header.window;
         return recvfrom_ret_val;

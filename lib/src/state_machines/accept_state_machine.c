@@ -44,6 +44,16 @@ static accept_internal_states execute_start_state(microtcp_sock_t *_socket, stru
         return SYN_RECEIVED_STATE;
 }
 
+static accept_internal_states execute_syn_received_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                         socklen_t _address_len, state_machine_context_t *_context)
+{
+        _context->send_synack_ret_val = send_synack_segment(_socket, _address, _address_len);
+        if (_context->send_synack_ret_val == MICROTCP_SEND_SYN_ACK_FATAL_ERROR)
+                return EXIT_FAILURE_STATE;
+        if (_context->send_synack_ret_val == MICROTCP_SEND_SYN_ACK_ERROR)
+
+}
+
 int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len)
 {
 
