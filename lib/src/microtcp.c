@@ -104,7 +104,7 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
         generate_initial_sequence_number(_socket);
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
-
+        return microtcp_accept_state_machine(_socket, _address, _address_len);
 }
 
 int microtcp_shutdown(microtcp_sock_t *socket, int how)
