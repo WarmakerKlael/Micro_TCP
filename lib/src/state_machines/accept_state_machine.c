@@ -90,6 +90,7 @@ static accept_internal_states execute_synack_sent_state(microtcp_sock_t *_socket
         if (_context->recv_syn_ret_val == MICROTCP_RECV_SYN_TIMEOUT ||
             _context->recv_syn_ret_val == MICROTCP_RECV_SYN_ERROR)
         {
+                /* Well.. if you dont receive and ACK after sometime (or retransmittion times)... you could go to initial state. So you can accept some other connection. */
                 update_socket_lost_counters(_socket, _context->send_synack_ret_val);
                 return SYN_RECEIVED_STATE;
         }

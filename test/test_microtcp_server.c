@@ -15,7 +15,8 @@ int main(int argc, char **argv)
 
         // Cast to generic struct sockaddr
         struct sockaddr *generic_addr = (struct sockaddr *)&addr_in;
-        microtcp_connect(&new_micro_socket, generic_addr, sizeof(addr_in));
+
+        microtcp_bind(&new_micro_socket, generic_addr, sizeof(generic_addr));
 
 
 }
