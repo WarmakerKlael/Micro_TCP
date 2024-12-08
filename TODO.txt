@@ -33,3 +33,6 @@ Include function that can set the print stream.
 
 
 9) IF connection is closed by peer, recv should return 0, (Per recvfrom in UDP)... Check this more
+
+10)
+CHECK sequence number (in the specific check) of send_handshake_segment() and receive_handshake_segment().

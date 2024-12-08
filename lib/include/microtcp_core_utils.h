@@ -63,17 +63,19 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket);
  */
 void *deallocate_receive_buffer(microtcp_sock_t *_socket);
 
-ssize_t send_syn_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
 /**
  * @returns the number of bytes, it validly received.
  * This also implies that a packet was correctly received.
  */
-ssize_t receive_synack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, socklen_t _address_len);
+
+ssize_t send_syn_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
 /**
  * @returns the number of bytes, validly send into the socket.
  * This implies that a packet was validly send into the socket.
  */
 ssize_t send_ack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_synack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_syn_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent);
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received);
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost);
