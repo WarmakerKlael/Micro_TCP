@@ -1,9 +1,7 @@
-#include "microtcp_core_utils.h"
 #include "state_machines/state_machines.h"
+#include "state_machines_common.h"
+#include "microtcp_core_utils.h"
 #include "logging/logger.h"
-
-#define SENT_SYN_SEQUENCE_NUMBER_INCREMENT 1
-#define SENT__ACK_SEQUENCE_NUMBER_INCREMENT 0
 
 typedef enum
 {
@@ -41,8 +39,6 @@ static const char *get_connect_state_to_string(connect_internal_states _state)
         }
 }
 // clang-format on
-
-/* TODO: inline actions of states of state machine. See what happens. */
 
 static connect_internal_states execute_start_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                    socklen_t _address_len, state_machine_context_t *_context)
@@ -88,6 +84,7 @@ static connect_internal_states execute_synack_received_state(microtcp_sock_t *_s
                 return EXIT_FAILURE_STATE;
         if (_context->send_ack_ret_val == MICROTCP_SEND_SYN_ERROR)
                 return SYNACK_RECEIVED_STATE;
+
         update_socket_sent_counters(_socket, _context->send_ack_ret_val);
         return ACK_SENT_STATE;
 }

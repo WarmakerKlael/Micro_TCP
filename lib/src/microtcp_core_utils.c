@@ -334,11 +334,11 @@ static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const stru
  * This also implies that a packet was correctly received.
  */
 static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                         socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state)
+                                         socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
 {
-        ssize_t timeout_value = get_receive_handshake_segment_timeout_value(_control);
-        ssize_t error_value = get_receive_handshake_segment_error_value(_control);
-        ssize_t fatal_error_value = get_receive_handshake_segment_fatal_error_value(_control);
+        ssize_t timeout_value = get_receive_handshake_segment_timeout_value(_required_control);
+        ssize_t error_value = get_receive_handshake_segment_error_value(_required_control);
+        ssize_t fatal_error_value = get_receive_handshake_segment_fatal_error_value(_required_control);
 
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(fatal_error_value, _socket, _required_state);
@@ -368,13 +368,13 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         microtcp_segment_t *handshake_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
         if (handshake_segment == NULL)
                 LOG_ERROR_RETURN(fatal_error_value, "Extracting SYN-ACK segment resulted to a NULL pointer.");
-        if (handshake_segment->header.control != _control)
-                LOG_ERROR_RETURN(error_value, "Received segment control field != %s", get_microtcp_control_to_string(_control));
+        if (handshake_segment->header.control != _required_control)
+                LOG_ERROR_RETURN(error_value, "Received segment control field != %s", get_microtcp_control_to_string(_required_control));
 
         /* Ignore check if waiting to receive SYN (server side). */
-        if (_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number + 1)
+        if (_required_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number + 1)
                 LOG_ERROR_RETURN(error_value, "Received segment %s number mismatch. (Got = %d)|(Expected = %d)",
-                                 get_microtcp_control_to_string(_control), handshake_segment->header.ack_number, _socket->seq_number + 1);
+                                 get_microtcp_control_to_string(_required_control), handshake_segment->header.ack_number, _socket->seq_number + 1);
 
         _socket->ack_number = handshake_segment->header.seq_number + 1;
         _socket->peer_win_size = handshake_segment->header.window;

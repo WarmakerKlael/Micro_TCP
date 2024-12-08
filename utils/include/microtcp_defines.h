@@ -23,11 +23,15 @@
 #define MICROTCP_CONNECT_SUCCESS 0
 #define MICROTCP_CONNECT_FAILURE -1
 
+/* microtcp_accept() possible return values. */
+#define MICROTCP_ACCEPT_SUCCESS 0
+#define MICROTCP_ACCEPT_FAILURE -1
+
 /* POSIX's bind() possible return values. */
 #define POSIX_BIND_SUCCESS 0
 #define POSIX_BIND_FAILURE -1
 
-/* PROJECT_TOP_LEVEL_DIRECTORY is defined by Top Level CMakeLists.txt 
+/* PROJECT_TOP_LEVEL_DIRECTORY is defined by Top Level CMakeLists.txt
    I inlclude the following macro to make Intellisense stop showing error.*/
 #ifdef __INTELLISENSE__
 #define PROJECT_TOP_LEVEL_DIRECTORY ""
