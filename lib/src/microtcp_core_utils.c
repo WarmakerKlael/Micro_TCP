@@ -357,7 +357,7 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         if (_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number + 1)
                 LOG_ERROR_RETURN(error_value, "Received segment %s number mismatch. (Got = %d)|(Expected = %d)",
                                  get_microtcp_control_to_string(_control), handshake_segment->header.ack_number, _socket->seq_number + 1);
-
+        
         _socket->ack_number = handshake_segment->header.seq_number + 1;
         _socket->peer_win_size = handshake_segment->header.window;
         return recvfrom_ret_val;
@@ -369,6 +369,8 @@ static ssize_t get_send_handshake_segment_error_value(uint16_t _control)
                 return MICROTCP_SEND_SYN_ERROR;
         if (_control == ACK_BIT)
                 return MICROTCP_SEND_ACK_ERROR;
+        if (_control == SYN_BIT | ACK_BIT)
+                return MICROTCP_SEND_SYN_ACK_ERROR;
         LOG_ERROR("Unsupported `_control` field was given.");
         return -1; /* As general error value. */
 }
@@ -379,6 +381,8 @@ static ssize_t get_send_handshake_segment_fatal_error_value(uint16_t _control)
                 return MICROTCP_SEND_SYN_FATAL_ERROR;
         if (_control == ACK_BIT)
                 return MICROTCP_SEND_ACK_FATAL_ERROR;
+        if (_control == SYN_BIT | ACK_BIT)
+                return MICROTCP_SEND_SYN_ACK_FATAL_ERROR;
         LOG_ERROR("Unsupported `_control` field was given.");
         return -2; /* As general fatal error value. */
 }
@@ -389,6 +393,8 @@ static ssize_t get_receive_handshake_segment_timeout_value(uint16_t _control)
                 return MICROTCP_RECV_SYN_TIMEOUT;
         if (_control == SYN_BIT | ACK_BIT)
                 return MICROTCP_RECV_SYN_ACK_TIMEOUT;
+        if (_control == ACK_BIT)
+                return MICROTCP_RECV_ACK_TIMEOUT;
         LOG_ERROR("Unsupported `_control` field was given.");
         return 0; /* As general timeout value. */
 }
@@ -399,6 +405,8 @@ static ssize_t get_receive_handshake_segment_error_value(uint16_t _control)
                 return MICROTCP_RECV_SYN_ERROR;
         if (_control == SYN_BIT | ACK_BIT)
                 return MICROTCP_RECV_SYN_ACK_ERROR;
+        if (_control == ACK_BIT)
+                return MICROTCP_RECV_ACK_ERROR;
         LOG_ERROR("Unsupported `_control` field was given.");
         return -1; /* As general error value. */
 }
@@ -409,6 +417,8 @@ static ssize_t get_receive_handshake_segment_fatal_error_value(uint16_t _control
                 return MICROTCP_RECV_SYN_FATAL_ERROR;
         if (_control == SYN_BIT | ACK_BIT)
                 return MICROTCP_RECV_SYN_ACK_FATAL_ERROR;
+        if (_control == ACK_BIT)
+                return MICROTCP_RECV_ACK_FATAL_ERROR;
         LOG_ERROR("Unsupported `_control` field was given.");
         return -2; /* As general fatal error value. */
 }

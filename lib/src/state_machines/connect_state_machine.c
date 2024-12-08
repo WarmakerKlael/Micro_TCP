@@ -2,6 +2,9 @@
 #include "state_machines/state_machines.h"
 #include "logging/logger.h"
 
+#define SENT_SYN_SEQUENCE_NUMBER_INCREMENT 1
+#define SENT__ACK_SEQUENCE_NUMBER_INCREMENT 0
+
 typedef enum
 {
         START_STATE,
@@ -16,6 +19,12 @@ typedef struct
         ssize_t send_syn_ret_val;
         ssize_t recv_synack_ret_val;
         ssize_t send_ack_ret_val;
+
+        ssize_t socket_init_seq_num;
+        /* By adding the socket's initial sequence number in the
+         * state machine's context, we avoid having to do errorneous
+         * subtractions, like seq_number -= 1, in order to match ISN.
+         */
 } state_machine_context_t;
 
 // clang-format off
@@ -38,11 +47,19 @@ static const char *get_connect_state_to_string(connect_internal_states _state)
 static connect_internal_states execute_start_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                    socklen_t _address_len, state_machine_context_t *_context)
 {
+        /* When ever we start, we reset socket's sequence number, as it might be a retry. */
+        _socket->seq_number = _context->socket_init_seq_num;
+
         _context->send_syn_ret_val = send_syn_segment(_socket, _address, _address_len);
         if (_context->send_syn_ret_val == MICROTCP_SEND_SYN_FATAL_ERROR)
                 return EXIT_FAILURE_STATE;
         if (_context->send_syn_ret_val == MICROTCP_SEND_SYN_ERROR)
                 return START_STATE;
+
+        /* In TCP, segments containing control flags (e.g., SYN, FIN),
+         * other than pure ACKs, are treated as carrying a virtual payload.
+         * As a result, they are incrementing the sequence number by 1. */
+        _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
         update_socket_sent_counters(_socket, _context->send_syn_ret_val);
         return SYN_RECEIVED_STATE;
 }
@@ -76,6 +93,7 @@ static connect_internal_states execute_synack_received_state(microtcp_sock_t *_s
 int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockaddr *const _address, socklen_t _address_len)
 {
         state_machine_context_t context = {0};
+        context.socket_init_seq_num = _socket->seq_number;
         connect_internal_states current_connection_state = START_STATE;
         while (TRUE)
         {

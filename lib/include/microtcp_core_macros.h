@@ -25,6 +25,13 @@
 #define MICROTCP_RECV_SYN_ERROR -1
 #define MICROTCP_RECV_SYN_FATAL_ERROR -2
 
+#define MICROTCP_SEND_SYN_ACK_ERROR -1
+#define MICROTCP_SEND_SYN_ACK_FATAL_ERROR -2
+
+#define MICROTCP_RECV_ACK_TIMEOUT 0
+#define MICROTCP_RECV_ACK_ERROR -1
+#define MICROTCP_RECV_ACK_FATAL_ERROR -2
+
 /* Directly used in: microtcp_socket() */
 #define FUNCTION_MICROTCP_SOCKET_PARAMETER_IS_VALID(_given_parameter,               \
                                                     _expected_parameter)            \
