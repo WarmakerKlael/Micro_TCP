@@ -41,7 +41,7 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket);
  *
  * @param _socket A pointer to the `microtcp_sock_t` structure.
  */
-void *deallocate_receive_buffer(microtcp_sock_t *_socket);
+void deallocate_receive_buffer(microtcp_sock_t *_socket);
 
 /**
  * @returns the number of bytes, it validly received.

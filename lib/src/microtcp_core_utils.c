@@ -176,7 +176,7 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket)
         return _socket->recvbuf = CALLOC_LOG(_socket->recvbuf, MICROTCP_RECVBUF_LEN);
 }
 
-void *deallocate_receive_buffer(microtcp_sock_t *_socket)
+void deallocate_receive_buffer(microtcp_sock_t *_socket)
 {
         FREE_NULLIFY_LOG(_socket->recvbuf);
 }

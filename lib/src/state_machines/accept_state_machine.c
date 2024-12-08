@@ -95,7 +95,6 @@ static accept_internal_states execute_synack_sent_state(microtcp_sock_t *_socket
         }
         update_socket_received_counters(_socket, _context->recv_ack_ret_val);
         return ACK_RECEIVED_STATE;
-
 }
 
 int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len)
@@ -112,16 +111,18 @@ int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *con
                         current_connection_state = execute_start_state(_socket, _address, _address_len, &context);
                         break;
                 case SYN_RECEIVED_STATE:
-                        current_connection_state = execute_syn_received_state(_socket,_address, _address_len, &context);
+                        current_connection_state = execute_syn_received_state(_socket, _address, _address_len, &context);
                         break;
                 case SYNACK_SENT_STATE:
                         current_connection_state = execute_synack_sent_state(_socket, _address, _address_len, &context);
                         break;
                 case ACK_RECEIVED_STATE:
                         _socket->state = ESTABLISHED;
+                        return MICROTCP_ACCEPT_SUCCESS;
                 case EXIT_FAILURE_STATE:
+                        return MICROTCP_ACCEPT_FAILURE;
                 default:
-                        LOG_ERROR("Connect state machine entered an undefined state. Prior state = %s",
+                        LOG_ERROR("Accept's state machine entered an undefined state. Prior state = %s",
                                   get_accept_state_to_string(current_connection_state));
                         current_connection_state = EXIT_FAILURE_STATE;
                         break;

@@ -90,10 +90,13 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         generate_initial_sequence_number(_socket);
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Memory allocation for receive buffer failed.");
-        return microtcp_connect_state_machine(_socket, _address, _address_len);
+
+        int connect_state_machine_result = microtcp_connect_state_machine(_socket, _address, _address_len);
+        if (connect_state_machine_result == MICROTCP_CONNECT_FAILURE)
+                deallocate_receive_buffer(_socket);
+        return connect_state_machine_result;
 }
 
-/* Remember to allocate the receiver buffer (socket's recvbuf).*/
 int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
                     socklen_t _address_len)
 {
@@ -104,7 +107,11 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
         generate_initial_sequence_number(_socket);
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
-        return microtcp_accept_state_machine(_socket, _address, _address_len);
+
+        int accept_state_machine_result = microtcp_accept_state_machine(_socket, _address, _address_len);
+        if (accept_state_machine_result == MICROTCP_ACCEPT_FAILURE)
+                deallocate_receive_buffer(_socket);
+        return accept_state_machine_result;
 }
 
 int microtcp_shutdown(microtcp_sock_t *socket, int how)
