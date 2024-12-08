@@ -2,13 +2,16 @@
 #include "microtcp_defines.h"
 #include "logging/logger_options.h"
 
+/**
+ * @brief A stream to which the logger outputs its messages.
+ */
 FILE *print_stream;
 
 _Bool logger_enabled = FALSE;
-_Bool logger_info_enabled = TRUE;
-_Bool logger_warning_enabled = TRUE;
-_Bool logger_error_enabled = TRUE;
-_Bool logger_allocator_enabled = TRUE;
+_Bool logger_info_enabled = FALSE;
+_Bool logger_warning_enabled = FALSE;
+_Bool logger_error_enabled = FALSE;
+_Bool logger_allocator_enabled = FALSE;
 
 /* Logger Option Getters: */
 _Bool logger_is_enabled(void)

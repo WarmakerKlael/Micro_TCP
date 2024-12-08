@@ -16,6 +16,11 @@
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
 
+#define ACK_BIT (1 << 12)
+#define RST_BIT (1 << 13)
+#define SYN_BIT (1 << 14)
+#define FIN_BIT (1 << 15)
+
 /**
  * Possible states of the microTCP socket
  *
@@ -27,7 +32,6 @@ typedef enum
         INVALID = -1,
         ANY = 0,
         CLOSED, /* When there is no connection. Like when Creating the socket, or after ending a connection. */
-        BOUND,
         LISTEN,
         ESTABLISHED,
         CLOSING_BY_PEER,

@@ -1,7 +1,8 @@
 #ifndef MICROTCP_DEFINES_H
 #define MICROTCP_DEFINES_H
 
-#define PROJECT_NAME "Micro_TCP"
+#define PROJECT_NAME "MicroTCP"
+
 #define TRUE 1
 #define FALSE 0
 
@@ -25,5 +26,11 @@
 /* POSIX's bind() possible return values. */
 #define POSIX_BIND_SUCCESS 0
 #define POSIX_BIND_FAILURE -1
+
+/* PROJECT_TOP_LEVEL_DIRECTORY is defined by Top Level CMakeLists.txt 
+   I inlclude the following macro to make Intellisense stop showing error.*/
+#ifdef __INTELLISENSE__
+#define PROJECT_TOP_LEVEL_DIRECTORY ""
+#endif
 
 #endif /* MICROTCP_DEFINES_H */
