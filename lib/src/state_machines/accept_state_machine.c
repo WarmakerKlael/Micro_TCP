@@ -8,7 +8,7 @@ typedef enum
         SYNACK_SENT_STATE,
         ACK_RECEIVED_STATE,
         EXIT_FAILURE_STATE
-} connect_internal_states;
+} accept_internal_states;
 
 typedef struct
 {
@@ -18,7 +18,7 @@ typedef struct
 } state_machine_context_t;
 
 // clang-format off
-static const char *get_connect_state_to_string(connect_internal_states _state)
+static const char *get_accept_state_to_string(accept_internal_states _state)
 {
         switch (_state)
         {
@@ -31,3 +31,38 @@ static const char *get_connect_state_to_string(connect_internal_states _state)
         }
 }
 // clang-format on
+
+static accept_internal_states execute_start_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                  socklen_t _address_len, state_machine_context_t *_context)
+{
+        _context->recv_syn_ret_val = receive_syn_segment(_socket, _address, _address_len);
+        if (_context->recv_syn_ret_val == MICROTCP_RECV_SYN_FATAL_ERROR)
+                return EXIT_FAILURE_STATE;
+        if (_context->recv_syn_ret_val == MICROTCP_RECV_SYN_ERROR)
+                return START_STATE;
+        update_socket_received_counters(_socket, _context->recv_syn_ret_val);
+        return SYN_RECEIVED_STATE;
+}
+
+int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len)
+{
+
+        state_machine_context_t context = {0};
+        accept_internal_states current_connection_state = START_STATE;
+        while (TRUE)
+        {
+                switch (current_connection_state)
+                {
+                case START_STATE:
+                case SYN_RECEIVED_STATE:
+                case SYNACK_SENT_STATE:
+                case ACK_RECEIVED_STATE:
+                case EXIT_FAILURE_STATE:
+                default:
+                        LOG_ERROR("Connect state machine entered an undefined state. Prior state = %s",
+                                  get_accept_state_to_string(current_connection_state));
+                        current_connection_state = EXIT_FAILURE_STATE;
+                        break;
+                }
+        }
+}

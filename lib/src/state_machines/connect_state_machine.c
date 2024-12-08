@@ -97,7 +97,7 @@ int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockad
                         deallocate_receive_buffer(_socket->recvbuf);
                         return MICROTCP_CONNECT_FAILURE;
                 default:
-                        LOG_ERROR("State machine entered an undefined state. Prior state = %s",
+                        LOG_ERROR("Connect state machine entered an undefined state. Prior state = %s",
                                   get_connect_state_to_string(current_connection_state));
                         current_connection_state = EXIT_FAILURE_STATE;
                         break;

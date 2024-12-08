@@ -5,6 +5,26 @@
 #include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"
 
+/* Internal MACRO defines. */
+#define NO_SENDTO_FLAGS 0
+#define NO_RECVFROM_FLAGS 0
+
+/* Error values returned internally to microtcp_connect(), if any of its stages fail. */
+#define MICROTCP_SEND_SYN_ERROR -1
+#define MICROTCP_SEND_SYN_FATAL_ERROR -2
+
+#define MICROTCP_RECV_SYN_ACK_TIMEOUT 0
+#define MICROTCP_RECV_SYN_ACK_ERROR -1
+#define MICROTCP_RECV_SYN_ACK_FATAL_ERROR -2
+
+#define MICROTCP_SEND_ACK_ERROR -1
+#define MICROTCP_SEND_ACK_FATAL_ERROR -2
+
+/* Error values returned internally to microtcp_accept(), if any of its stages fail. */
+#define MICROTCP_RECV_SYN_TIMEOUT 0
+#define MICROTCP_RECV_SYN_ERROR -1
+#define MICROTCP_RECV_SYN_FATAL_ERROR -2
+
 /* Directly used in: microtcp_socket() */
 #define FUNCTION_MICROTCP_SOCKET_PARAMETER_IS_VALID(_given_parameter,               \
                                                     _expected_parameter)            \

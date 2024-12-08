@@ -6,26 +6,6 @@
 
 #include "microtcp_core_macros.h"
 
-/* Internal MACRO defines. */
-#define NO_SENDTO_FLAGS 0
-#define NO_RECVFROM_FLAGS 0
-
-/* Error values returned internally to microtcp_connect(), if any of its stages fail. */
-#define MICROTCP_SEND_SYN_ERROR -1
-#define MICROTCP_SEND_SYN_FATAL_ERROR -2
-
-#define MICROTCP_RECV_SYN_ACK_TIMEOUT 0
-#define MICROTCP_RECV_SYN_ACK_ERROR -1
-#define MICROTCP_RECV_SYN_ACK_FATAL_ERROR -2
-
-#define MICROTCP_SEND_ACK_ERROR -1
-#define MICROTCP_SEND_ACK_FATAL_ERROR -2
-
-/* Error values returned internally to microtcp_accept(), if any of its stages fail. */
-#define MICROTCP_RECV_SYN_TIMEOUT 0
-#define MICROTCP_RECV_SYN_ERROR -1
-#define MICROTCP_RECV_SYN_FATAL_ERROR -2
-
 typedef struct
 {
         uint8_t *raw_bytes;
