@@ -1,5 +1,5 @@
-#ifndef MICROTCP_CORE_UTILS_H
-#define MICROTCP_CORE_UTILS_H
+#ifndef MICROTCP_CORE_H
+#define MICROTCP_CORE_H
 
 #include <stdint.h>
 #include <sys/socket.h>

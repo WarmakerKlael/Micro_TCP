@@ -49,7 +49,7 @@ main(int argc, char **argv)
 {
     struct sockaddr_in servaddr;
 
-    microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, 0);
+    microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     memset(&servaddr, 0, sizeof(servaddr));
 

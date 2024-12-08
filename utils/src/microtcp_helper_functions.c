@@ -1,7 +1,6 @@
 #include <string.h>
 #include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"
-
 // clang-format off
 const char *get_microtcp_state_to_string(mircotcp_state_t _state)
 {
@@ -28,6 +27,7 @@ const char *get_microtcp_control_to_string(uint16_t _control)
         };
 
         static char string_buffer[STRING_BUFFER_SIZE] = {0};
+        memset(string_buffer, 0, STRING_BUFFER_SIZE);
 
         if (_control & SYN_BIT) strcat(string_buffer, "SYN|");
         if (_control & FIN_BIT) strcat(string_buffer, "FIN|");

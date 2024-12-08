@@ -53,7 +53,7 @@ main(int argc, char **argv)
     memset(&servaddr, 0, sizeof(servaddr));
     memset(&clientaddr, 0, sizeof(clientaddr));
 
-    microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, 0);
+    microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = INADDR_ANY;

@@ -1,6 +1,6 @@
 #include "state_machines/state_machines.h"
 #include "state_machines_common.h"
-#include "microtcp_core_utils.h"
+#include "microtcp_core.h"
 #include "logging/logger.h"
 
 typedef enum

@@ -6,7 +6,7 @@
 #include "logging/logger.h"
 #include "microtcp_helper_functions.h"
 #include "microtcp_core_macros.h"
-#include "microtcp_core_utils.h"
+#include "microtcp_core.h"
 #include "microtcp_defines.h"
 #include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"

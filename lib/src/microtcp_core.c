@@ -4,7 +4,7 @@
 #include <time.h>
 
 #include "microtcp.h"
-#include "microtcp_core_utils.h"
+#include "microtcp_core.h"
 #include "logging/logger.h"
 #include "microtcp_defines.h"
 #include "microtcp_common_macros.h"
@@ -52,6 +52,7 @@ void generate_initial_sequence_number(microtcp_sock_t *_socket)
         uint32_t low = rand() & 0xFFFF;    /* Get only the 16 lower bits. */
         uint32_t isn = (high << 16) | low; /* Combine 16-bit random of low and 16-bit random of high, to create a 32-bit random ISN. */
         _socket->seq_number = isn;
+
         LOG_INFO("ISN generated. %u", _socket->seq_number);
 }
 
@@ -291,10 +292,10 @@ void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost)
  * This also implies that a packet was correctly received.
  */
 static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                      const socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state)
+                                      const socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
 {
-        ssize_t error_value = get_send_handshake_segment_error_value(_control);
-        ssize_t fatal_error_value = get_send_handshake_segment_fatal_error_value(_control);
+        ssize_t error_value = get_send_handshake_segment_error_value(_required_control);
+        ssize_t fatal_error_value = get_send_handshake_segment_fatal_error_value(_required_control);
 
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(fatal_error_value, _socket, _required_state);
@@ -302,14 +303,14 @@ static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const stru
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(fatal_error_value, _address_len, sizeof(struct sockaddr));
 
         /* Create handshake segment. */
-        microtcp_segment_t *handshake_segment = create_microtcp_segment(_socket, _control, (microtcp_payload_t){.raw_bytes = NULL, .size = 0});
+        microtcp_segment_t *handshake_segment = create_microtcp_segment(_socket, _required_control, (microtcp_payload_t){.raw_bytes = NULL, .size = 0});
         if (handshake_segment == NULL)
-                LOG_ERROR_RETURN(fatal_error_value, "Failed creating %s segment.", get_microtcp_control_to_string(_control));
+                LOG_ERROR_RETURN(fatal_error_value, "Failed creating %s segment.", get_microtcp_control_to_string(_required_control));
 
         /* Convert it to bytestream. */
         void *bytestream_buffer = serialize_microtcp_segment(handshake_segment);
         if (bytestream_buffer == NULL)
-                LOG_ERROR_RETURN(fatal_error_value, "Failed to serialize %s segment", get_microtcp_control_to_string(_control));
+                LOG_ERROR_RETURN(fatal_error_value, "Failed to serialize %s segment", get_microtcp_control_to_string(_required_control));
 
         /* Send handshake segment to server with UDP's sendto(). */
         size_t segment_length = ((sizeof(handshake_segment->header)) + handshake_segment->header.data_len);
@@ -322,11 +323,11 @@ static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const stru
         /* Log operation's outcome. */
         if (sendto_ret_val == SENDTO_ERROR)
                 LOG_ERROR_RETURN(fatal_error_value, "Sending %s segment failed. sendto() errno(%d):%s.",
-                                 get_microtcp_state_to_string(_control), errno, strerror(errno));
+                                 get_microtcp_state_to_string(_required_control), errno, strerror(errno));
         if (sendto_ret_val != segment_length)
                 LOG_WARNING_RETURN(error_value, "Failed sending %s segment. sendto() sent %d bytes, but was asked to sent %d bytes",
-                                   get_microtcp_state_to_string(_control), sendto_ret_val, segment_length);
-        LOG_INFO_RETURN(sendto_ret_val, "%s segment sent.", get_microtcp_control_to_string(_control));
+                                   get_microtcp_state_to_string(_required_control), sendto_ret_val, segment_length);
+        LOG_INFO_RETURN(sendto_ret_val, "%s segment sent.", get_microtcp_control_to_string(_required_control));
 }
 
 /**
@@ -369,16 +370,17 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         if (handshake_segment == NULL)
                 LOG_ERROR_RETURN(fatal_error_value, "Extracting SYN-ACK segment resulted to a NULL pointer.");
         if (handshake_segment->header.control != _required_control)
-                LOG_ERROR_RETURN(error_value, "Received segment control field != %s", get_microtcp_control_to_string(_required_control));
+                LOG_ERROR_RETURN(error_value, "Control: Received = `%s`; Expected = `%s`.",
+                                 get_microtcp_control_to_string(handshake_segment->header.control), get_microtcp_control_to_string(_required_control));
 
         /* Ignore check if waiting to receive SYN (server side). */
-        if (_required_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number + 1)
-                LOG_ERROR_RETURN(error_value, "Received segment %s number mismatch. (Got = %d)|(Expected = %d)",
+        if (_required_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
+                LOG_ERROR_RETURN(error_value, "Received segment %s and ACK number mismatch occured. (Got = %d)|(Expected = %d)",
                                  get_microtcp_control_to_string(_required_control), handshake_segment->header.ack_number, _socket->seq_number + 1);
 
         _socket->ack_number = handshake_segment->header.seq_number + 1;
         _socket->peer_win_size = handshake_segment->header.window;
-        return recvfrom_ret_val;
+        LOG_INFO_RETURN(recvfrom_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
 }
 
 static ssize_t get_send_handshake_segment_error_value(uint16_t _control)

@@ -1,4 +1,4 @@
-add_library(microtcp STATIC microtcp.c microtcp_core_utils.c)
+add_library(microtcp STATIC microtcp.c microtcp_core.c)
 
 target_link_libraries(microtcp Logger)
 target_link_libraries(microtcp microtcp_helpers)
