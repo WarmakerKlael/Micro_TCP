@@ -10,6 +10,7 @@
 #include "microtcp_defines.h"
 #include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"
+#include "state_machines/state_machines.h"
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * We won't allocate memory to 'recvbuf' in microtcp_socket(), as newer TCP          *
@@ -88,45 +89,8 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
 
         generate_initial_sequence_number(_socket);
         if (allocate_receive_buffer(_socket) == NULL)
-                LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
-        while (TRUE)
-        {
-                ssize_t send_syn_ret_val = send_syn_segment(_socket, _address, _address_len);
-                if (send_syn_ret_val == MICROTCP_SEND_SYN_FATAL_ERROR)
-                        goto abort_connection;
-                if (send_syn_ret_val == MICROTCP_SEND_SYN_ERROR)
-                        continue;
-                update_socket_sent_counters(_socket, send_syn_ret_val);
-
-                ssize_t receive_synack_ret_val = receive_synack_segment(_socket, (struct sockaddr *)_address, _address_len);
-                if (receive_synack_ret_val > 0) /* Values <= 0 returned from receive_synack_segment indicate errors. */
-                {
-                        update_socket_received_counters(_socket, receive_synack_ret_val);
-                        break;
-                }
-
-                update_socket_lost_counters(_socket, send_syn_ret_val);
-                if (receive_synack_ret_val == MICROTCP_RECV_SYN_ACK_FATAL_ERROR)
-                        goto abort_connection;
-                if (receive_synack_ret_val == MICROTCP_RECV_SYN_ACK_TIMEOUT || /* Timeout occurred. */
-                    receive_synack_ret_val == MICROTCP_RECV_SYN_ACK_ERROR)     /* Corrupt packet, etc */
-                        continue;
-        }
-        while (TRUE)
-        {
-                ssize_t send_ack_ret_val = send_ack_segment(_socket, _address, _address_len);
-                if (send_ack_ret_val == MICROTCP_SEND_SYN_FATAL_ERROR)
-                        goto abort_connection;
-                if (send_ack_ret_val == MICROTCP_SEND_SYN_ERROR)
-                        continue;
-                update_socket_sent_counters(_socket, send_ack_ret_val);
-                break;
-        }
-        _socket->state = ESTABLISHED;
-        return MICROTCP_CONNECT_SUCCESS;
-abort_connection:
-        deallocate_receive_buffer(_socket->recvbuf);
-        return MICROTCP_CONNECT_FAILURE;
+                LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Memory allocation for receive buffer failed.");
+        return microtcp_connect_state_machine(_socket, _address, _address_len);
 }
 
 /* Remember to allocate the receiver buffer (socket's recvbuf).*/
@@ -141,11 +105,6 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
 
-        while (TRUE)
-        {
-                ;
-                // RECEIVE_SYN_SEGMENT; :
-        }
 }
 
 int microtcp_shutdown(microtcp_sock_t *socket, int how)
