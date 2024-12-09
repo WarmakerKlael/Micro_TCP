@@ -49,7 +49,6 @@ static shutdown_internal_states execute_initial_state(microtcp_sock_t *const _so
 {
         /* TODO? do you reset  your shutdown ISN here? */
         _socket->seq_number = _context->socket_shutdown_isn;
-        printf("FAILED\n\n\n");
         _context->send_finack_ret_val = send_finack_segment(_socket, _address, _address_len);
         if (_context->send_finack_ret_val == SEND_SEGMENT_FATAL_ERROR)
                 return EXIT_FAILURE_STATE;

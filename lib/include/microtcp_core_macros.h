@@ -29,22 +29,25 @@
                           _expected_parameter,                                                          \
                           #_expected_parameter,                                                         \
                           _given_parameter);                                                            \
-                return _failure_return_value;                                                            \
+                return _failure_return_value;                                                           \
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() &  create_microtcp_segment() */
-#define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _required_state)                                       \
-        do                                                                                                                             \
-        {                                                                                                                              \
-                if (_socket == NULL)                                                                                                   \
-                        LOG_ERROR_RETURN(_failure_return_value, "NULL pointer passed to variable '%s'.", STRINGIFY(_socket));          \
-                                                                                                                                       \
-                if (_required_state != ANY && _socket->state != _required_state)                                                       \
-                        LOG_ERROR_RETURN(_failure_return_value, "Expected socket in %s state; (state = %s).",                          \
-                                         get_microtcp_state_to_string(_required_state), get_microtcp_state_to_string(_socket->state)); \
-                                                                                                                                       \
-                if (_socket->sd < 0)                                                                                                   \
-                        LOG_ERROR_RETURN(_failure_return_value, "Invalid MicroTCP socket descriptor; (sd = %d).", _socket->sd);        \
+#define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                              \
+        do                                                                                                                                    \
+        {                                                                                                                                     \
+                if (_socket == NULL)                                                                                                          \
+                        LOG_ERROR_RETURN(_failure_return_value, "NULL pointer passed to variable '%s'.", STRINGIFY(_socket));                 \
+                                                                                                                                              \
+                if (!(_socket->state & _allowed_states))                                                                                      \
+                {                                                                                                                             \
+                        /* Separated these... because they cause problems with static buffer. */                                              \
+                        LOG_ERROR("Expected socket in state(s): %s.", get_microtcp_state_to_string(_allowed_states));                         \
+                        LOG_ERROR_RETURN(_failure_return_value, "Current socket->state = %s.", get_microtcp_state_to_string(_socket->state)); \
+                }                                                                                                                             \
+                                                                                                                                              \
+                if (_socket->sd < 0)                                                                                                          \
+                        LOG_ERROR_RETURN(_failure_return_value, "Invalid MicroTCP socket descriptor; (sd = %d).", _socket->sd);               \
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() */

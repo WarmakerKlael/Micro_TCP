@@ -22,10 +22,10 @@
  * @returns the number of bytes, validly send into the socket.
  * This implies that a packet was validly send into the socket.
  */
-static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                      const socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
-static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                         socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
+static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
+                                    const socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
+static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                       socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
 
 __attribute__((constructor(RNG_CONSTRUCTOR_PRIORITY))) static void seed_random_number_generator(void)
 {
@@ -101,7 +101,7 @@ void cleanup_microtcp_socket(microtcp_sock_t *_socket)
 
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload)
 {
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ANY);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ~INVALID);
         RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(NULL, _payload);
 
         microtcp_segment_t *new_segment = CALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
@@ -209,7 +209,7 @@ microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _b
  */
 void *allocate_receive_buffer(microtcp_sock_t *_socket)
 {
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ANY);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ~INVALID);
         if (_socket->recvbuf != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
                 LOG_WARNING("recvbuf is not NULL before allocation; possible memory leak. Previous address: %x", _socket->recvbuf);
 
@@ -283,8 +283,8 @@ void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost)
  * @returns the number of bytes, it validly received.
  * This also implies that a packet was correctly received.
  */
-static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                      const socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
+static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
+                                    const socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
 {
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(SEND_SEGMENT_FATAL_ERROR, _socket, _required_state);
@@ -292,21 +292,21 @@ static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const stru
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(SEND_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
 
         /* Create handshake segment. */
-        microtcp_segment_t *handshake_segment = create_microtcp_segment(_socket, _required_control, (microtcp_payload_t){.raw_bytes = NULL, .size = 0});
-        if (handshake_segment == NULL)
+        microtcp_segment_t *control_segment = create_microtcp_segment(_socket, _required_control, (microtcp_payload_t){.raw_bytes = NULL, .size = 0});
+        if (control_segment == NULL)
                 LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Failed creating %s segment.", get_microtcp_control_to_string(_required_control));
 
         /* Convert it to bytestream. */
-        void *bytestream_buffer = serialize_microtcp_segment(handshake_segment);
+        void *bytestream_buffer = serialize_microtcp_segment(control_segment);
         if (bytestream_buffer == NULL)
                 LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Failed to serialize %s segment", get_microtcp_control_to_string(_required_control));
 
         /* Send handshake segment to server with UDP's sendto(). */
-        size_t segment_length = ((sizeof(handshake_segment->header)) + handshake_segment->header.data_len);
+        size_t segment_length = ((sizeof(control_segment->header)) + control_segment->header.data_len);
         ssize_t sendto_ret_val = sendto(_socket->sd, bytestream_buffer, segment_length, NO_SENDTO_FLAGS, _address, _address_len);
 
         /* Clean-up resources. */
-        FREE_NULLIFY_LOG(handshake_segment);
+        FREE_NULLIFY_LOG(control_segment);
         FREE_NULLIFY_LOG(bytestream_buffer);
 
         /* Log operation's outcome. */
@@ -323,8 +323,8 @@ static ssize_t send_handshake_segment(microtcp_sock_t *const _socket, const stru
  * @returns the number of bytes, it validly received.
  * This also implies that a packet was correctly received.
  */
-static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                         socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
+static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                       socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
 {
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, _required_state);
@@ -350,61 +350,61 @@ static ssize_t receive_handshake_segment(microtcp_sock_t *const _socket, struct 
         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
 
-        microtcp_segment_t *handshake_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
-        if (handshake_segment == NULL)
+        microtcp_segment_t *control_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
+        if (control_segment == NULL)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting SYN-ACK segment resulted to a NULL pointer.");
-        if (handshake_segment->header.control != _required_control)
+        if (control_segment->header.control != _required_control)
                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control: Received = `%s`; Expected = `%s`.",
-                                 get_microtcp_control_to_string(handshake_segment->header.control), get_microtcp_control_to_string(_required_control));
+                                 get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
 
         /* Ignore check if waiting to receive SYN (server side). */
-        if (_required_control != SYN_BIT && handshake_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
+        if (_required_control != SYN_BIT && control_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Received segment %s and ACK number mismatch occured. (Got = %d)|(Expected = %d)",
-                                 get_microtcp_control_to_string(_required_control), handshake_segment->header.ack_number, _socket->seq_number + 1);
+                                 get_microtcp_control_to_string(_required_control), control_segment->header.ack_number, _socket->seq_number + 1);
 
-        _socket->ack_number = handshake_segment->header.seq_number + 1;
-        _socket->peer_win_size = handshake_segment->header.window;
+        _socket->ack_number = control_segment->header.seq_number + 1;
+        _socket->peer_win_size = control_segment->header.window;
         LOG_INFO_RETURN(recvfrom_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
 }
 
 ssize_t send_syn_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_handshake_segment(_socket, _address, _address_len, SYN_BIT, CLOSED);
+        return send_control_segment(_socket, _address, _address_len, SYN_BIT, CLOSED);
 }
 
 ssize_t send_synack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_handshake_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, LISTEN);
+        return send_control_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, LISTEN);
 }
 
 ssize_t send_ack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_handshake_segment(_socket, _address, _address_len, ACK_BIT, ANY);
+        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
 }
 
 ssize_t send_finack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST);
+        return send_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
 ssize_t receive_syn_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, SYN_BIT, LISTEN);
+        return receive_control_segment(_socket, _address, _address_len, SYN_BIT, LISTEN);
 }
 
 ssize_t receive_synack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, CLOSED);
+        return receive_control_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, CLOSED);
 }
 
 ssize_t receive_ack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, ACK_BIT, ANY);
+        return receive_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
 }
 
 ssize_t receive_finack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST);
+        return receive_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
 void set_workaround_shutdown_address(microtcp_sock_t *const _socket, struct sockaddr *const _address)

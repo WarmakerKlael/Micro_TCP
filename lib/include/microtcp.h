@@ -29,13 +29,19 @@
  */
 typedef enum
 {
-        INVALID = -1,
-        ANY = 0,
-        CLOSED, /* When there is no connection. Like when Creating the socket, or after ending a connection. */
+        INVALID,
+#define INVALID 1 << INVALID
+        CLOSED, /* when there is no connection. Like when Creating the socket, or after ending a connection. */
+#define CLOSED 1 << CLOSED
         LISTEN,
+#define LISTEN 1 << LISTEN
         ESTABLISHED,
+#define ESTABLISHED 1 << ESTABLISHED
         CLOSING_BY_PEER,
-        CLOSING_BY_HOST
+#define CLOSING_BY_PEER 1 << CLOSING_BY_PEER
+        CLOSING_BY_HOST,
+#define CLOSING_BY_HOST 1 << CLOSING_BY_HOST
+        MICROTCP_TOTAL_STATES
 } mircotcp_state_t;
 
 /**
@@ -67,7 +73,7 @@ typedef struct
         uint64_t bytes_sent;       /* Bytes that were sent from socket. */
         uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
         uint64_t bytes_received;   /* Bytes that were received from socket. */
-        
+
         /* The following field is neccesary, as `microtcp_shutdown` signature can not be changed... */
         /* SHOULD ONLY BE USED FOR PASSING SOCKET ADDRESS TO `microtcp_shutdown`. */
         struct sockaddr *_workaround_shutdown_address_;
