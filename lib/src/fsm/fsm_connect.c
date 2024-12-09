@@ -1,5 +1,5 @@
-#include "state_machines/state_machines.h"
-#include "state_machines_common.h"
+#include "fsm/microtcp_fsm.h"
+#include "fsm_common.h"
 #include "microtcp_defines.h"
 #include "microtcp_core.h"
 #include "logging/logger.h"
@@ -11,7 +11,7 @@ typedef enum
         SYNACK_RECEIVED_STATE,
         ACK_SENT_STATE,
         EXIT_FAILURE_STATE
-} connect_internal_states;
+} connect_fsm_states;
 
 typedef struct
 {
@@ -21,13 +21,13 @@ typedef struct
 
         ssize_t socket_init_seq_num;
         /* By adding the socket's initial sequence number in the
-         * state machine's context, we avoid having to do errorneous
+         * FSM's context, we avoid having to do errorneous
          * subtractions, like seq_number -= 1, in order to match ISN.
          */
-} state_machine_context_t;
+} fsm_context_t;
 
 // clang-format off
-static const char *get_connect_state_to_string(connect_internal_states _state)
+static const char *convert_state_to_string(connect_fsm_states _state)
 {
         switch (_state)
         {
@@ -41,8 +41,8 @@ static const char *get_connect_state_to_string(connect_internal_states _state)
 }
 // clang-format on
 
-static connect_internal_states execute_initial_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                   socklen_t _address_len, state_machine_context_t *_context)
+static connect_fsm_states execute_initial_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
+                                                   socklen_t _address_len, fsm_context_t *_context)
 {
         /* When ever we start, we reset socket's sequence number, as it might be a retry. */
         _socket->seq_number = _context->socket_init_seq_num;
@@ -61,8 +61,8 @@ static connect_internal_states execute_initial_state(microtcp_sock_t *_socket, c
         return SYN_SENT_STATE;
 }
 
-static connect_internal_states execute_syn_sent_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                      socklen_t _address_len, state_machine_context_t *_context)
+static connect_fsm_states execute_syn_sent_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
+                                                      socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_synack_ret_val = receive_synack_segment(_socket, (struct sockaddr *)_address, _address_len);
         if (_context->recv_synack_ret_val == RECV_SEGMENT_FATAL_ERROR)
@@ -77,8 +77,8 @@ static connect_internal_states execute_syn_sent_state(microtcp_sock_t *_socket, 
         return SYNACK_RECEIVED_STATE;
 }
 
-static connect_internal_states execute_synack_received_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                             socklen_t _address_len, state_machine_context_t *_context)
+static connect_fsm_states execute_synack_received_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
+                                                             socklen_t _address_len, fsm_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_segment(_socket, _address, _address_len);
         if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
@@ -91,15 +91,15 @@ static connect_internal_states execute_synack_received_state(microtcp_sock_t *_s
 }
 
 /* Argument check is for the most part redundant are FSM callers, have validated their input arguments. */
-int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockaddr *const _address, socklen_t _address_len)
+int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const _address, socklen_t _address_len)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        state_machine_context_t context = {0};
+        fsm_context_t context = {0};
         context.socket_init_seq_num = _socket->seq_number;
-        connect_internal_states current_state = INITIAL_STATE;
+        connect_fsm_states current_state = INITIAL_STATE;
         while (TRUE)
         {
                 switch (current_state)
@@ -119,8 +119,8 @@ int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockad
                 case EXIT_FAILURE_STATE:
                         return MICROTCP_CONNECT_FAILURE;
                 default:
-                        LOG_ERROR("Connect's state machine entered an undefined state. Prior state = %s",
-                                  get_connect_state_to_string(current_state));
+                        LOG_ERROR("Connect's FSM entered an `undefined` state. Prior state = %s",
+                                  convert_state_to_string(current_state));
                         current_state = EXIT_FAILURE_STATE;
                         break;
                 }

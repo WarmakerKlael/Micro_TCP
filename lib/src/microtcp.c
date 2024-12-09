@@ -98,7 +98,7 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
 
         /* Run the `accept's` state machine. */
-        int accept_state_machine_result = microtcp_accept_state_machine(_socket, _address, _address_len);
+        int accept_state_machine_result = microtcp_accept_fsm(_socket, _address, _address_len);
 
         /* Clean-up on failure. */
         if (accept_state_machine_result == MICROTCP_ACCEPT_FAILURE)
@@ -121,7 +121,7 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         socklen_t address_len = sizeof(*(_socket->_workaround_shutdown_address_));
 
         /* Run the `shutdown's` state machine. */
-        int shutdown_state_machine_result = microtcp_shutdown_state_machine(_socket, address, address_len);
+        int shutdown_state_machine_result = microtcp_shutdown_fsm(_socket, address, address_len);
 
         /* Clean-up on failure. */
         if (shutdown_state_machine_result == MICROTCP_SHUTDOWN_FAILURE)

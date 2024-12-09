@@ -1,6 +1,6 @@
 
-#include "state_machines/state_machines.h"
-#include "state_machines_common.h"
+#include "fsm/microtcp_fsm.h"
+#include "fsm_common.h"
 #include "microtcp_core.h"
 #include "logging/logger.h"
 
@@ -8,14 +8,14 @@
 
 typedef enum
 {
-        INITIAL_STATE, /* Start state. */
+        INITIAL_STATE, /* Start state. */ /* You enter from the MicroTCP's `Established` state. */
         FIN_WAIT_1_STATE,
         FIN_WAIT_2_RECV_STATE, /* Sub state. */
         FIN_WAIT_2_SEND_STATE, /* Sub state. */
         TIME_WAIT_STATE,
         CLOSED_STATE, /* End state. */
         EXIT_FAILURE_STATE
-} shutdown_internal_states;
+} shutdown_fsm_states;
 
 typedef struct
 {
@@ -25,10 +25,10 @@ typedef struct
         ssize_t send_ack_ret_val;
 
         ssize_t socket_shutdown_isn;
-} state_machine_context_t;
+} fsm_context_t;
 
 // clang-format off
-static const char *get_shutdown_state_to_string(shutdown_internal_states _state)
+static const char *convert_state_to_string(shutdown_fsm_states _state)
 {
         switch (_state)
         {
@@ -44,8 +44,8 @@ static const char *get_shutdown_state_to_string(shutdown_internal_states _state)
 }
 // clang-format on
 
-static shutdown_internal_states execute_initial_state(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                                      socklen_t _address_len, state_machine_context_t *_context)
+static shutdown_fsm_states execute_initial_state(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
+                                                      socklen_t _address_len, fsm_context_t *_context)
 {
         /* TODO? do you reset  your shutdown ISN here? */
         _socket->seq_number = _context->socket_shutdown_isn;
@@ -63,8 +63,8 @@ static shutdown_internal_states execute_initial_state(microtcp_sock_t *const _so
         return FIN_WAIT_1_STATE;
 }
 
-static shutdown_internal_states execute_fin_wait_1_state(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                         socklen_t _address_len, state_machine_context_t *_context)
+static shutdown_fsm_states execute_fin_wait_1_state(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                         socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_ack_ret_val = receive_ack_segment(_socket, _address, _address_len);
         if (_context->recv_ack_ret_val == RECV_SEGMENT_FATAL_ERROR)
@@ -79,8 +79,8 @@ static shutdown_internal_states execute_fin_wait_1_state(microtcp_sock_t *const 
         return FIN_WAIT_2_RECV_STATE;
 }
 
-static shutdown_internal_states execute_fin_wait_2_recv_state(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                              socklen_t _address_len, state_machine_context_t *_context)
+static shutdown_fsm_states execute_fin_wait_2_recv_state(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                              socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_finack_ret_val = receive_finack_segment(_socket, _address, _address_len);
         if (_context->recv_finack_ret_val == RECV_SEGMENT_FATAL_ERROR)
@@ -93,8 +93,8 @@ static shutdown_internal_states execute_fin_wait_2_recv_state(microtcp_sock_t *c
         return FIN_WAIT_2_SEND_STATE;
 }
 
-static shutdown_internal_states execute_fin_wait_2_send_state(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                                              socklen_t _address_len, state_machine_context_t *_context)
+static shutdown_fsm_states execute_fin_wait_2_send_state(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
+                                                              socklen_t _address_len, fsm_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_segment(_socket, _address, _address_len);
         if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
@@ -108,13 +108,13 @@ static shutdown_internal_states execute_fin_wait_2_send_state(microtcp_sock_t *c
         return TIME_WAIT_STATE;
 }
 
-static shutdown_internal_states execute_time_wait_state(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                        socklen_t _address_len, state_machine_context_t *_context)
+static shutdown_fsm_states execute_time_wait_state(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                        socklen_t _address_len, fsm_context_t *_context)
 {
         /* In TIME_WAIT state, we set our timer to expire after 2*MSL (per TCP protocol). */
         if (set_socket_timeout(_socket, TIME_WAIT_PERIOD, 0) == POSIX_SETSOCKOPT_FAILURE)
                 LOG_ERROR_RETURN(CLOSED_STATE, "Failed to set timeout on socket descriptor. Ignoring %s state.",
-                                 get_shutdown_state_to_string(TIME_WAIT_STATE));
+                                 convert_state_to_string(TIME_WAIT_STATE));
 
         _context->recv_finack_ret_val = receive_finack_segment(_socket, _address, _address_len);
         if (_context->recv_finack_ret_val == RECV_SEGMENT_FATAL_ERROR)
@@ -132,15 +132,15 @@ static shutdown_internal_states execute_time_wait_state(microtcp_sock_t *const _
          * closed, as for the host there is no away to identify such scenario. */
 }
 
-int microtcp_shutdown_state_machine(microtcp_sock_t *const _socket, struct sockaddr *_address, socklen_t _address_len)
+int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_address, socklen_t _address_len)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, ESTABLISHED);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address_len, sizeof(*_address));
 
-        state_machine_context_t context = {0};
+        fsm_context_t context = {0};
         context.socket_shutdown_isn = _socket->seq_number;
-        shutdown_internal_states current_state = INITIAL_STATE;
+        shutdown_fsm_states current_state = INITIAL_STATE;
         while (TRUE)
         {
                 switch (current_state)
@@ -169,8 +169,8 @@ int microtcp_shutdown_state_machine(microtcp_sock_t *const _socket, struct socka
                         _socket->state = ESTABLISHED; /* Shutdown failed, thus connection remains ESTABLISHED. */
                         return MICROTCP_SHUTDOWN_FAILURE;
                 default:
-                        LOG_ERROR("Shutdown's state machine entered an undefined state. Prior state = %s",
-                                  get_shutdown_state_to_string(current_state));
+                        LOG_ERROR("Shutdown's FSM entered an `undefined` state. Prior state = %s",
+                                  convert_state_to_string(current_state));
                         current_state = EXIT_FAILURE_STATE;
                         break;
                 }

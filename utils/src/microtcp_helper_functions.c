@@ -1,60 +1,122 @@
-#include <string.h>
-#include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"
+
+/**
+ * @note Procomputed strings why? Cant you automate it you dumbo? Well ...
+ * There were more automatedand modular ways to assemble 
+ * the following strings, it was problematic, when this function
+ * was called twice or more on the same line. E.g. inside of
+ * printf() placeholders for example). So `static string IT IS`.
+ * (NO dynamic allocation wasn't worth it, create deallocating memory headches).
+ */
 
 // clang-format off
 const char *get_microtcp_state_to_string(mircotcp_state_t _state)
 {
-#define STATE_SEPARATOR "|"
-        enum constants
+        #define CASE_RETURN_STRING(_case) case _case: return #_case
+        switch (_state)
         {
-                SEPARATOR_SIZE = 2,
-                TERM_NULL_SIZE = 1,
-                STRING_BUFFER_SIZE = sizeof(STRINGIFY(INVALID)) - TERM_NULL_SIZE + SEPARATOR_SIZE +
-                                     sizeof(STRINGIFY(CLOSED)) - TERM_NULL_SIZE + SEPARATOR_SIZE +
-                                     sizeof(STRINGIFY(LISTEN)) - TERM_NULL_SIZE + SEPARATOR_SIZE +
-                                     sizeof(STRINGIFY(ESTABLISHED)) - TERM_NULL_SIZE + SEPARATOR_SIZE +
-                                     sizeof(STRINGIFY(CLOSING_BY_HOST)) - TERM_NULL_SIZE + SEPARATOR_SIZE +
-                                     sizeof(STRINGIFY(CLOSING_BY_PEER)) + SEPARATOR_SIZE
-        };
+        /* Single States */
+        CASE_RETURN_STRING(INVALID);
+        CASE_RETURN_STRING(CLOSED);
+        CASE_RETURN_STRING(LISTEN);
+        CASE_RETURN_STRING(ESTABLISHED);
+        CASE_RETURN_STRING(CLOSING_BY_HOST);
+        CASE_RETURN_STRING(CLOSING_BY_PEER);
 
-        static char string_buffer[STRING_BUFFER_SIZE] = {0};
-        memset(string_buffer, 0, STRING_BUFFER_SIZE);
+        /* Two-State Combinations */
+        CASE_RETURN_STRING(INVALID | CLOSED);
+        CASE_RETURN_STRING(INVALID | LISTEN);
+        CASE_RETURN_STRING(INVALID | ESTABLISHED);
+        CASE_RETURN_STRING(INVALID | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | LISTEN);
+        CASE_RETURN_STRING(CLOSED | ESTABLISHED);
+        CASE_RETURN_STRING(CLOSED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(CLOSED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(LISTEN | ESTABLISHED);
+        CASE_RETURN_STRING(LISTEN | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(LISTEN | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSING_BY_HOST | CLOSING_BY_PEER);
 
-        if (_state & INVALID)           strcat(string_buffer, STRINGIFY(INVALID) STATE_SEPARATOR);
-        if (_state & CLOSED)            strcat(string_buffer, STRINGIFY(CLOSED) STATE_SEPARATOR);
-        if (_state & LISTEN)            strcat(string_buffer, STRINGIFY(LISTEN) STATE_SEPARATOR);
-        if (_state & ESTABLISHED)       strcat(string_buffer, STRINGIFY(ESTABLISHED) STATE_SEPARATOR);
-        if (_state & CLOSING_BY_HOST)   strcat(string_buffer, STRINGIFY(CLOSING_BY_HOST) STATE_SEPARATOR);
-        if (_state & CLOSING_BY_PEER)   strcat(string_buffer, STRINGIFY(CLOSING_BY_PEER) STATE_SEPARATOR);
+        /* Three-State Combinations */
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN);
+        CASE_RETURN_STRING(INVALID | CLOSED | ESTABLISHED);
+        CASE_RETURN_STRING(INVALID | CLOSED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | CLOSED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | LISTEN | ESTABLISHED);
+        CASE_RETURN_STRING(INVALID | LISTEN | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | LISTEN | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | LISTEN | ESTABLISHED);
+        CASE_RETURN_STRING(CLOSED | LISTEN | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(CLOSED | LISTEN | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(CLOSED | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(LISTEN | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(LISTEN | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(LISTEN | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 
-        size_t string_length = strlen(string_buffer);
-        if (string_length > 0) string_buffer[string_length - 1] = '\0'; /* Remove trailing - */
+        /* Four-State Combinations */
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | ESTABLISHED);
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | CLOSED | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | CLOSED | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | CLOSED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | LISTEN | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | LISTEN | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | LISTEN | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | LISTEN | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(CLOSED | LISTEN | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | LISTEN | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(LISTEN | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 
-        return string_length > 0 ? string_buffer : "??MICROTCP_STATE??";
+        /* Five-State Combinations */
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | ESTABLISHED | CLOSING_BY_HOST);
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | ESTABLISHED | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | CLOSED | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(INVALID | LISTEN | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        CASE_RETURN_STRING(CLOSED | LISTEN | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+
+        /* Six-State Combination. */
+        CASE_RETURN_STRING(INVALID | CLOSED | LISTEN | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+
+        default: return "??MICROTCP_STATE??";
+    }
 }
 
 const char *get_microtcp_control_to_string(uint16_t _control)
 {
-        enum constants
+        switch (_control)
         {
-                BITS_PER_BYTE = 8,
-                CONTROL_BITS = sizeof(uint16_t) * BITS_PER_BYTE,
-                MAX_STRING_SIZE_PER_CONTROL_BIT = 4, /* 3 letters + 1 separator (|). */
-                STRING_BUFFER_SIZE = CONTROL_BITS * MAX_STRING_SIZE_PER_CONTROL_BIT
-        };
+        case SYN_BIT: return "SYN";
+        case ACK_BIT: return "ACK";
+        case RST_BIT: return "RST";
+        case FIN_BIT: return "FIN";
 
-        static char string_buffer[STRING_BUFFER_SIZE] = {0};
-        memset(string_buffer, 0, STRING_BUFFER_SIZE);
+        case SYN_BIT | ACK_BIT: return "SYN|ACK";
+        case SYN_BIT | RST_BIT: return "SYN|RST";
+        case SYN_BIT | FIN_BIT: return "SYN|FIN";
+        case ACK_BIT | RST_BIT: return "ACK|RST";
+        case ACK_BIT | FIN_BIT: return "ACK|FIN";
+        case RST_BIT | FIN_BIT: return "RST|FIN";
 
-        if (_control & SYN_BIT) strcat(string_buffer, "SYN|");
-        if (_control & FIN_BIT) strcat(string_buffer, "FIN|");
-        if (_control & RST_BIT) strcat(string_buffer, "RST|");
-        if (_control & ACK_BIT) strcat(string_buffer, "ACK|");
+        case SYN_BIT | ACK_BIT | RST_BIT: return "SYN|ACK|RST";
+        case SYN_BIT | ACK_BIT | FIN_BIT: return "SYN|ACK|FIN";
+        case SYN_BIT | RST_BIT | FIN_BIT: return "SYN|RST|FIN";
+        case ACK_BIT | RST_BIT | FIN_BIT: return "ACK|RST|FIN";
 
-        size_t string_length = strlen(string_buffer);
-        if (string_length > 0) string_buffer[string_length - 1] = '\0'; /* Remove trailing | */
-
-        return string_length > 0 ? string_buffer : "??NO_CONTROL??";
+        case SYN_BIT | ACK_BIT | RST_BIT | FIN_BIT: return "SYN|ACK|RST|FIN";
+        default: return "??MICROTCP_CONTROL??";
+        }
 }
 // clang-format on

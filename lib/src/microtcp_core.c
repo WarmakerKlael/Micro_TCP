@@ -352,7 +352,7 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
 
         microtcp_segment_t *control_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
         if (control_segment == NULL)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting SYN-ACK segment resulted to a NULL pointer.");
+                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting %s segment resulted to a NULL pointer.", get_microtcp_control_to_string(_required_control));
         if (control_segment->header.control != _required_control)
                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control: Received = `%s`; Expected = `%s`.",
                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));

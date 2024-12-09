@@ -1,5 +1,5 @@
-#include "state_machines/state_machines.h"
-#include "state_machines_common.h"
+#include "fsm/microtcp_fsm.h"
+#include "fsm_common.h"
 #include "microtcp_core.h"
 #include "logging/logger.h"
 
@@ -10,7 +10,7 @@ typedef enum
         SYNACK_SENT_STATE,
         ACK_RECEIVED_STATE,
         EXIT_FAILURE_STATE
-} accept_internal_states;
+} accept_fsm_states;
 
 typedef struct
 {
@@ -20,13 +20,13 @@ typedef struct
 
         ssize_t socket_init_seq_num;
         /* By adding the socket's initial sequence number in the
-         * state machine's context, we avoid having to do errorneous
+         * FSM's context, we avoid having to do errorneous
          * subtractions, like seq_number -= 1, in order to match ISN.
          */
-} state_machine_context_t;
+} fsm_context_t;
 
 // clang-format off
-static const char *get_accept_state_to_string(accept_internal_states _state)
+static const char *convert_state_to_string(accept_fsm_states _state)
 {
         switch (_state)
         {
@@ -40,8 +40,8 @@ static const char *get_accept_state_to_string(accept_internal_states _state)
 }
 // clang-format on
 
-static accept_internal_states execute_initial_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                  socklen_t _address_len, state_machine_context_t *_context)
+static accept_fsm_states execute_initial_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                  socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_syn_ret_val = receive_syn_segment(_socket, _address, _address_len);
         if (_context->recv_syn_ret_val == RECV_SEGMENT_FATAL_ERROR)
@@ -57,8 +57,8 @@ static accept_internal_states execute_initial_state(microtcp_sock_t *_socket, st
         return SYN_RECEIVED_STATE;
 }
 
-static accept_internal_states execute_syn_received_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                         socklen_t _address_len, state_machine_context_t *_context)
+static accept_fsm_states execute_syn_received_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                         socklen_t _address_len, fsm_context_t *_context)
 {
         /* When ever we receive a SYN, we reset socket's sequence number, as it might be a retry. */
         _socket->seq_number = _context->socket_init_seq_num;
@@ -77,8 +77,8 @@ static accept_internal_states execute_syn_received_state(microtcp_sock_t *_socke
         return SYNACK_SENT_STATE;
 }
 
-static accept_internal_states execute_synack_sent_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                        socklen_t _address_len, state_machine_context_t *_context)
+static accept_fsm_states execute_synack_sent_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                        socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_ack_ret_val = receive_ack_segment(_socket, _address, _address_len);
 
@@ -99,16 +99,16 @@ static accept_internal_states execute_synack_sent_state(microtcp_sock_t *_socket
 }
 
 /* Argument check is for the most part redundant are FSM callers, have validated their input arguments. */
-int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len)
+int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_ACCEPT_FAILURE, _socket, LISTEN);
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_ACCEPT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_ACCEPT_FAILURE, _address_len, sizeof(*_address));
         /* No argument validation needed. FSMs are called from their 
          * respective functions which already vildated their input arguments. */
-        state_machine_context_t context = {0};
+        fsm_context_t context = {0};
         context.socket_init_seq_num = _socket->seq_number;
-        accept_internal_states current_state = INITIAL_STATE;
+        accept_fsm_states current_state = INITIAL_STATE;
         while (TRUE)
         {
                 switch (current_state)
@@ -128,8 +128,8 @@ int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *con
                 case EXIT_FAILURE_STATE:
                         return MICROTCP_ACCEPT_FAILURE;
                 default:
-                        LOG_ERROR("Accept's state machine entered an undefined state. Prior state = %s",
-                                  get_accept_state_to_string(current_state));
+                        LOG_ERROR("Accept's FSM entered an `undefined` state. Prior state = %s",
+                                  convert_state_to_string(current_state));
                         current_state = EXIT_FAILURE_STATE;
                         break;
                 }
