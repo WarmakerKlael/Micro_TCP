@@ -8,10 +8,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add defintions for debug and verbose mode.
 if(DEBUG_MODE)
+        message("CMAKE: set project in DEBUG_MODE.")
         add_compile_definitions(DEBUG_MODE)
 endif()
 
 if(VERBOSE_MODE)
+        message("CMAKE: set project in VERBOSE_MODE.")
         add_compile_definitions(VERBOSE_MODE)
 endif()
 add_subdirectory(lib)

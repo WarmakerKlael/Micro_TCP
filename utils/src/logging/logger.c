@@ -70,9 +70,10 @@ static void logger_initialize(void)
 {
 #ifdef DEBUG_MODE
 	logger_set_allocator_enabled(TRUE);
-#elif VERBOSE_MODE
+#endif /* DEBUG_MODE  */
+#ifdef VERBOSE_MODE
 	logger_set_info_enabled(TRUE);
-#endif /* DEBUG_MODE  or VERBOSE_MODE */
+#endif /* VERBOSE_MODE  */
 	logger_set_enabled(TRUE);
 	logger_set_warning_enabled(TRUE);
 	logger_set_error_enabled(TRUE);
@@ -131,7 +132,7 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 		return;
 
 	const char *colored_string_log_tag = get_colored_log_tag_string(_log_tag);
-	fprintf(print_stream, "[%s][FILE %s][LINE %d][FUNCTION %s()]: %s", colored_string_log_tag, _file, _line, _func, LOG_MESSAGE_COLOR);
+	fprintf(print_stream, "[%s][%s:%d][%s()]: %s", colored_string_log_tag, _file, _line, _func, LOG_MESSAGE_COLOR);
 	vfprintf(print_stream, _format_message, arg_list);
 	fprintf(print_stream, "%s\n", RESET_COLOR);
 }

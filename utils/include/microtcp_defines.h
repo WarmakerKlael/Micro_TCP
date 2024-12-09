@@ -1,7 +1,7 @@
 #ifndef MICROTCP_DEFINES_H
 #define MICROTCP_DEFINES_H
 
-#define PROJECT_NAME "MicroTCP"
+#define PROJECT_NAME "μTCP"
 
 #define TRUE 1
 #define FALSE 0
@@ -19,17 +19,26 @@
 #define MICROTCP_BIND_SUCCESS 0
 #define MICROTCP_BIND_FAILURE -1
 
-/* microtcp_connect() possible return values. */
+/* microtcp_connect() possible return values. (and its FSM) */
 #define MICROTCP_CONNECT_SUCCESS 0
 #define MICROTCP_CONNECT_FAILURE -1
 
-/* microtcp_accept() possible return values. */
+/* microtcp_accept() possible return values. (and its FSM) */
 #define MICROTCP_ACCEPT_SUCCESS 0
 #define MICROTCP_ACCEPT_FAILURE -1
+
+/* microtcp_shutdown() possible return values. (and its FSM) */
+#define MICROTCP_SHUTDOWN_SUCCESS 0
+#define MICROTCP_SHUTDOWN_FAILURE -1
 
 /* POSIX's bind() possible return values. */
 #define POSIX_BIND_SUCCESS 0
 #define POSIX_BIND_FAILURE -1
+
+/* POSIX's setsockopt() possible return values. */
+#define POSIX_SETSOCKOPT_SUCCESS 0
+#define POSIX_SETSOCKOPT_FAILURE -1
+
 
 /* PROJECT_TOP_LEVEL_DIRECTORY is defined by Top Level CMakeLists.txt
    I inlclude the following macro to make Intellisense stop showing error.*/

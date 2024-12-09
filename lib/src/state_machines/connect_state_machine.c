@@ -1,5 +1,6 @@
 #include "state_machines/state_machines.h"
 #include "state_machines_common.h"
+#include "microtcp_defines.h"
 #include "microtcp_core.h"
 #include "logging/logger.h"
 
@@ -47,9 +48,9 @@ static connect_internal_states execute_start_state(microtcp_sock_t *_socket, con
         _socket->seq_number = _context->socket_init_seq_num;
 
         _context->send_syn_ret_val = send_syn_segment(_socket, _address, _address_len);
-        if (_context->send_syn_ret_val == MICROTCP_SEND_SYN_FATAL_ERROR)
+        if (_context->send_syn_ret_val == SEND_SEGMENT_FATAL_ERROR)
                 return EXIT_FAILURE_STATE;
-        if (_context->send_syn_ret_val == MICROTCP_SEND_SYN_ERROR)
+        if (_context->send_syn_ret_val == SEND_SEGMENT_ERROR)
                 return START_STATE;
 
         /* In TCP, segments containing control flags (e.g., SYN, FIN),
@@ -64,10 +65,10 @@ static connect_internal_states execute_syn_sent_state(microtcp_sock_t *_socket, 
                                                       socklen_t _address_len, state_machine_context_t *_context)
 {
         _context->recv_synack_ret_val = receive_synack_segment(_socket, (struct sockaddr *)_address, _address_len);
-        if (_context->recv_synack_ret_val == MICROTCP_RECV_SYN_ACK_FATAL_ERROR)
+        if (_context->recv_synack_ret_val == RECV_SEGMENT_FATAL_ERROR)
                 return EXIT_FAILURE_STATE;
-        if (_context->recv_synack_ret_val == MICROTCP_RECV_SYN_ACK_TIMEOUT || /* Timeout occurred. */
-            _context->recv_synack_ret_val == MICROTCP_RECV_SYN_ACK_ERROR)     /* Corrupt packet, etc */
+        if (_context->recv_synack_ret_val == RECV_SEGMENT_TIMEOUT || /* Timeout occurred. */
+            _context->recv_synack_ret_val == RECV_SEGMENT_ERROR)     /* Corrupt packet, etc */
         {
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
                 return START_STATE;
@@ -80,32 +81,37 @@ static connect_internal_states execute_synack_received_state(microtcp_sock_t *_s
                                                              socklen_t _address_len, state_machine_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_segment(_socket, _address, _address_len);
-        if (_context->send_ack_ret_val == MICROTCP_SEND_SYN_FATAL_ERROR)
+        if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
                 return EXIT_FAILURE_STATE;
-        if (_context->send_ack_ret_val == MICROTCP_SEND_SYN_ERROR)
+        if (_context->send_ack_ret_val == SEND_SEGMENT_ERROR)
                 return SYNACK_RECEIVED_STATE;
 
         update_socket_sent_counters(_socket, _context->send_ack_ret_val);
         return ACK_SENT_STATE;
 }
 
+/* Argument check is for the most part redundant are FSM callers, have validated their input arguments. */
 int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockaddr *const _address, socklen_t _address_len)
 {
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, CLOSED);
+        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
+        RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
+
         state_machine_context_t context = {0};
         context.socket_init_seq_num = _socket->seq_number;
-        connect_internal_states current_connection_state = START_STATE;
+        connect_internal_states current_state = START_STATE;
         while (TRUE)
         {
-                switch (current_connection_state)
+                switch (current_state)
                 {
                 case START_STATE:
-                        current_connection_state = execute_start_state(_socket, _address, _address_len, &context);
+                        current_state = execute_start_state(_socket, _address, _address_len, &context);
                         break;
                 case SYN_SENT_STATE:
-                        current_connection_state = execute_syn_sent_state(_socket, _address, _address_len, &context);
+                        current_state = execute_syn_sent_state(_socket, _address, _address_len, &context);
                         break;
                 case SYNACK_RECEIVED_STATE:
-                        current_connection_state = execute_synack_received_state(_socket, _address, _address_len, &context);
+                        current_state = execute_synack_received_state(_socket, _address, _address_len, &context);
                         break;
                 case ACK_SENT_STATE:
                         _socket->state = ESTABLISHED;
@@ -114,8 +120,8 @@ int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockad
                         return MICROTCP_CONNECT_FAILURE;
                 default:
                         LOG_ERROR("Connect's state machine entered an undefined state. Prior state = %s",
-                                  get_connect_state_to_string(current_connection_state));
-                        current_connection_state = EXIT_FAILURE_STATE;
+                                  get_connect_state_to_string(current_state));
+                        current_state = EXIT_FAILURE_STATE;
                         break;
                 }
         }

@@ -9,40 +9,28 @@
 #define NO_SENDTO_FLAGS 0
 #define NO_RECVFROM_FLAGS 0
 
-/* Error values returned internally to microtcp_connect(), if any of its stages fail. */
-#define MICROTCP_SEND_SYN_ERROR -1
-#define MICROTCP_SEND_SYN_FATAL_ERROR -2
+#define SEND_SEGMENT_ERROR -1
+#define SEND_SEGMENT_FATAL_ERROR -2
 
-#define MICROTCP_RECV_SYN_ACK_TIMEOUT 0
-#define MICROTCP_RECV_SYN_ACK_ERROR -1
-#define MICROTCP_RECV_SYN_ACK_FATAL_ERROR -2
-
-#define MICROTCP_SEND_ACK_ERROR -1
-#define MICROTCP_SEND_ACK_FATAL_ERROR -2
-
-/* Error values returned internally to microtcp_accept(), if any of its stages fail. */
-#define MICROTCP_RECV_SYN_TIMEOUT 0
-#define MICROTCP_RECV_SYN_ERROR -1
-#define MICROTCP_RECV_SYN_FATAL_ERROR -2
-
-#define MICROTCP_SEND_SYN_ACK_ERROR -1
-#define MICROTCP_SEND_SYN_ACK_FATAL_ERROR -2
-
-#define MICROTCP_RECV_ACK_TIMEOUT 0
-#define MICROTCP_RECV_ACK_ERROR -1
-#define MICROTCP_RECV_ACK_FATAL_ERROR -2
+#define RECV_SEGMENT_TIMEOUT 0
+#define RECV_SEGMENT_ERROR -1
+#define RECV_SEGMENT_FATAL_ERROR -2
 
 /* Directly used in: microtcp_socket() */
-#define FUNCTION_MICROTCP_SOCKET_PARAMETER_IS_VALID(_given_parameter,               \
-                                                    _expected_parameter)            \
-        ((_given_parameter == _expected_parameter)                                  \
-             ? TRUE                                                                 \
-             : (LOG_ERROR("Only %s %d (%s) is supported for socket; %d was given.", \
-                          #_given_parameter,                                        \
-                          _expected_parameter,                                      \
-                          #_expected_parameter,                                     \
-                          _given_parameter),                                        \
-                FALSE))
+#define RETURN_ERROR_IF_FUNCTION_PARAMETER_MICROTCP_SOCKET_INVALID(_failure_return_value,               \
+                                                                   _given_parameter,                    \
+                                                                   _expected_parameter)                 \
+        do                                                                                              \
+        {                                                                                               \
+                if (_given_parameter == _expected_parameter)                                            \
+                        break;                                                                          \
+                LOG_ERROR("Failing to proceed. Only %s %d (%s) is supported for socket; %d was given.", \
+                          #_given_parameter,                                                            \
+                          _expected_parameter,                                                          \
+                          #_expected_parameter,                                                         \
+                          _given_parameter);                                                            \
+                return _failure_return_value;                                                            \
+        } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() &  create_microtcp_segment() */
 #define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _required_state)                                       \

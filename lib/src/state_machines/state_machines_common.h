@@ -2,7 +2,9 @@
 #define STATE_MACHINES_COMMON_H
 
 #define SENT_SYN_SEQUENCE_NUMBER_INCREMENT 1
-#define SENT_ACK_SEQUENCE_NUMBER_INCREMENT 0
+#define SENT_FIN_SEQUENCE_NUMBER_INCREMENT 1
+
+#define MICROTCP_MSL_SECONDS 10 /* Maximum Segment Lifetime. Used for transitioning from TIME_WAIT -> CLOSED */
 
 /* TODO: inline actions of states of state machine. See what happens. */
 
