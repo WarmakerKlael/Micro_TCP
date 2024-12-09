@@ -70,6 +70,7 @@ static void logger_initialize(void)
 {
 #ifdef DEBUG_MODE
 	logger_set_allocator_enabled(TRUE);
+	logger_set_info_enabled(TRUE);
 #endif /* DEBUG_MODE  */
 #ifdef VERBOSE_MODE
 	logger_set_info_enabled(TRUE);

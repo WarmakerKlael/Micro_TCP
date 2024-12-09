@@ -5,7 +5,7 @@
 #include "microtcp_defines.h"
 #include "microtcp_core_macros.h"
 #include "microtcp_common_macros.h"
-#include "state_machines/state_machines.h"
+#include "fsm/microtcp_fsm.h"
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
 {
@@ -70,7 +70,7 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Memory allocation for receive buffer failed.");
 
         /* Run the `connect's` state machine. */
-        int connect_state_machine_result = microtcp_connect_state_machine(_socket, _address, _address_len);
+        int connect_state_machine_result = microtcp_connect_fsm(_socket, _address, _address_len);
 
         /* Clean-up on failure. */
         if (connect_state_machine_result == MICROTCP_CONNECT_FAILURE)
