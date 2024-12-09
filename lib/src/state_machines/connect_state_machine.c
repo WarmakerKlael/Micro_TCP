@@ -6,7 +6,7 @@
 
 typedef enum
 {
-        START_STATE,
+        INITIAL_STATE,
         SYN_SENT_STATE,
         SYNACK_RECEIVED_STATE,
         ACK_SENT_STATE,
@@ -31,7 +31,7 @@ static const char *get_connect_state_to_string(connect_internal_states _state)
 {
         switch (_state)
         {
-        case START_STATE:               return STRINGIFY(START_STATE);
+        case INITIAL_STATE:             return STRINGIFY(INITIAL_STATE);
         case SYN_SENT_STATE:            return STRINGIFY(SYN_SENT_STATE);
         case SYNACK_RECEIVED_STATE:     return STRINGIFY(SYNACK_RECEIVED_STATE);
         case ACK_SENT_STATE:            return STRINGIFY(ACK_SENT_STATE);
@@ -41,7 +41,7 @@ static const char *get_connect_state_to_string(connect_internal_states _state)
 }
 // clang-format on
 
-static connect_internal_states execute_start_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
+static connect_internal_states execute_initial_state(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                    socklen_t _address_len, state_machine_context_t *_context)
 {
         /* When ever we start, we reset socket's sequence number, as it might be a retry. */
@@ -51,7 +51,7 @@ static connect_internal_states execute_start_state(microtcp_sock_t *_socket, con
         if (_context->send_syn_ret_val == SEND_SEGMENT_FATAL_ERROR)
                 return EXIT_FAILURE_STATE;
         if (_context->send_syn_ret_val == SEND_SEGMENT_ERROR)
-                return START_STATE;
+                return INITIAL_STATE;
 
         /* In TCP, segments containing control flags (e.g., SYN, FIN),
          * other than pure ACKs, are treated as carrying a virtual payload.
@@ -71,7 +71,7 @@ static connect_internal_states execute_syn_sent_state(microtcp_sock_t *_socket, 
             _context->recv_synack_ret_val == RECV_SEGMENT_ERROR)     /* Corrupt packet, etc */
         {
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
-                return START_STATE;
+                return INITIAL_STATE;
         }
         update_socket_received_counters(_socket, _context->recv_synack_ret_val);
         return SYNACK_RECEIVED_STATE;
@@ -99,13 +99,13 @@ int microtcp_connect_state_machine(microtcp_sock_t *_socket, const struct sockad
 
         state_machine_context_t context = {0};
         context.socket_init_seq_num = _socket->seq_number;
-        connect_internal_states current_state = START_STATE;
+        connect_internal_states current_state = INITIAL_STATE;
         while (TRUE)
         {
                 switch (current_state)
                 {
-                case START_STATE:
-                        current_state = execute_start_state(_socket, _address, _address_len, &context);
+                case INITIAL_STATE:
+                        current_state = execute_initial_state(_socket, _address, _address_len, &context);
                         break;
                 case SYN_SENT_STATE:
                         current_state = execute_syn_sent_state(_socket, _address, _address_len, &context);

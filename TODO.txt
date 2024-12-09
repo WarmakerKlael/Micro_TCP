@@ -40,3 +40,5 @@ CHECK sequence number (in the specific check) of send_handshake_segment() and re
 11) Define different macros (or variables) for chaning TIMEOUT timer and RECVBUF of a socket. in order to increate μTCP performance.
 
 12) What's up with RST_BIT flag?
+
+13) Let some NULL pointers cause a segmentation fault. for example INput argument pointers.

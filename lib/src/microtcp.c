@@ -20,7 +20,10 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
                                  STRINGIFY(_protocol), _protocol, errno, strerror(errno));
 
         if (set_socket_timeout(&new_socket, 0, MICROTCP_ACK_TIMEOUT_US) == POSIX_SETSOCKOPT_FAILURE)
+        {
+                cleanup_microtcp_socket(&new_socket);
                 LOG_ERROR_RETURN(new_socket, "Failed to set timeout on socket descriptor.");
+        }
 
         new_socket.state = CLOSED; /* Socket successfully transitions to CLOSED state (from INVALID). */
         LOG_INFO("Socket successfully created. (sd = %d | state = %s)", new_socket.sd, get_microtcp_state_to_string(new_socket.state));
@@ -66,18 +69,22 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Memory allocation for receive buffer failed.");
 
-        /* Run the `connect` state machine. */
+        /* Run the `connect's` state machine. */
         int connect_state_machine_result = microtcp_connect_state_machine(_socket, _address, _address_len);
 
         /* Clean-up on failure. */
         if (connect_state_machine_result == MICROTCP_CONNECT_FAILURE)
-                deallocate_receive_buffer(_socket);
+        {
 
+                deallocate_receive_buffer(_socket);
+                LOG_ERROR_RETURN(connect_state_machine_result, "Connect operation failed.");
+        }
+
+        set_workaround_shutdown_address(_socket, (struct sockaddr *)_address); /* Hack to pass sockaddr to shutdown. */
         LOG_INFO_RETURN(connect_state_machine_result, "Connect operation succeeded.");
 }
 
-int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
-                    socklen_t _address_len)
+int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len)
 {
         LOG_INFO("Accept operation initiated.");
         /* Validate input parameters. */
@@ -90,13 +97,17 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address,
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
 
-        /* Run the `accept` state machine. */
+        /* Run the `accept's` state machine. */
         int accept_state_machine_result = microtcp_accept_state_machine(_socket, _address, _address_len);
 
         /* Clean-up on failure. */
         if (accept_state_machine_result == MICROTCP_ACCEPT_FAILURE)
+        {
                 deallocate_receive_buffer(_socket);
+                LOG_ERROR_RETURN(accept_state_machine_result, "Accept operation failed.");
+        }
 
+        set_workaround_shutdown_address(_socket, (struct sockaddr *)_address); /* Hack to pass sockaddr to shutdown. */
         LOG_INFO_RETURN(accept_state_machine_result, "Accept operation succeeded.");
 }
 
@@ -105,6 +116,19 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         LOG_INFO("Shutdown operation initiated.");
         /* Validate input parameters. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
+
+        struct sockaddr *address = _socket->_workaround_shutdown_address_;
+        socklen_t address_len = sizeof(*(_socket->_workaround_shutdown_address_));
+
+        /* Run the `shutdown's` state machine. */
+        int shutdown_state_machine_result = microtcp_shutdown_state_machine(_socket, address, address_len);
+
+        /* Clean-up on failure. */
+        if (shutdown_state_machine_result == MICROTCP_SHUTDOWN_FAILURE)
+                LOG_ERROR_RETURN(shutdown_state_machine_result, "Shutdown operation failed.");
+
+        deallocate_receive_buffer(_socket);
+        LOG_INFO_RETURN(shutdown_state_machine_result, "Shutdown operation succeeded.");
 }
 
 ssize_t

@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <time.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 #include "microtcp.h"
 #include "microtcp_core.h"
@@ -76,8 +77,26 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .packets_lost = 0,
             .bytes_sent = 0,
             .bytes_received = 0,
-            .bytes_lost = 0};
+            .bytes_lost = 0,
+            ._workaround_shutdown_address_ = NULL};
         return new_socket;
+}
+
+void cleanup_microtcp_socket(microtcp_sock_t *_socket)
+{
+        if (_socket == NULL)
+        {
+                LOG_ERROR("Invalid Argument: %s = NULL", STRINGIFY(_socket));
+                return;
+        }
+        if (_socket->recvbuf != NULL)
+                deallocate_receive_buffer(_socket);
+        if (_socket->sd != POSIX_SOCKET_FAILURE_VALUE)
+                close(_socket->sd);
+        _socket->sd = POSIX_SOCKET_FAILURE_VALUE;
+        _socket->buf_fill_level = 0;
+        _socket->state = INVALID;
+        _socket->_workaround_shutdown_address_ = NULL;
 }
 
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload)
@@ -203,6 +222,9 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket)
 
 void deallocate_receive_buffer(microtcp_sock_t *_socket)
 {
+        if (_socket == NULL)
+                LOG_ERROR("Invalid argument: %s = NULL.", STRINGIFY(_socket));
+        /* Let it cause a segmentation fault.*/
         FREE_NULLIFY_LOG(_socket->recvbuf);
 }
 
@@ -383,4 +405,13 @@ ssize_t receive_ack_segment(microtcp_sock_t *const _socket, struct sockaddr *con
 ssize_t receive_finack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
         return receive_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSED);
+}
+
+void set_workaround_shutdown_address(microtcp_sock_t *const _socket, struct sockaddr *const _address)
+{
+        if (_socket == NULL)
+                LOG_ERROR("Invalid argument: %s == NULL", STRINGIFY(_socket));
+        if (_address == NULL)
+                LOG_ERROR("Invalid argument: %s == NULL", STRINGIFY(_address));
+        _socket->_workaround_shutdown_address_ = _address;
 }

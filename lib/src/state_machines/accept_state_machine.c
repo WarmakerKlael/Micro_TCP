@@ -5,7 +5,7 @@
 
 typedef enum
 {
-        START_STATE,
+        INITIAL_STATE,
         SYN_RECEIVED_STATE,
         SYNACK_SENT_STATE,
         ACK_RECEIVED_STATE,
@@ -30,7 +30,7 @@ static const char *get_accept_state_to_string(accept_internal_states _state)
 {
         switch (_state)
         {
-        case START_STATE:               return STRINGIFY(START_STATE);
+        case INITIAL_STATE:             return STRINGIFY(INITIAL_STATE);
         case SYN_RECEIVED_STATE:        return STRINGIFY(SYN_RECEIVED_STATE);
         case SYNACK_SENT_STATE:         return STRINGIFY(SYNACK_SENT_STATE);
         case ACK_RECEIVED_STATE:        return STRINGIFY(ACK_RECEIVED_STATE);
@@ -40,7 +40,7 @@ static const char *get_accept_state_to_string(accept_internal_states _state)
 }
 // clang-format on
 
-static accept_internal_states execute_start_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
+static accept_internal_states execute_initial_state(microtcp_sock_t *_socket, struct sockaddr *const _address,
                                                   socklen_t _address_len, state_machine_context_t *_context)
 {
         _context->recv_syn_ret_val = receive_syn_segment(_socket, _address, _address_len);
@@ -52,7 +52,7 @@ static accept_internal_states execute_start_state(microtcp_sock_t *_socket, stru
          * it will resend a SYN packet after a timeout occurs on its side. */
         if (_context->recv_syn_ret_val == RECV_SEGMENT_TIMEOUT ||
             _context->recv_syn_ret_val == RECV_SEGMENT_ERROR)
-                return START_STATE;
+                return INITIAL_STATE;
         update_socket_received_counters(_socket, _context->recv_syn_ret_val);
         return SYN_RECEIVED_STATE;
 }
@@ -108,13 +108,13 @@ int microtcp_accept_state_machine(microtcp_sock_t *_socket, struct sockaddr *con
          * respective functions which already vildated their input arguments. */
         state_machine_context_t context = {0};
         context.socket_init_seq_num = _socket->seq_number;
-        accept_internal_states current_state = START_STATE;
+        accept_internal_states current_state = INITIAL_STATE;
         while (TRUE)
         {
                 switch (current_state)
                 {
-                case START_STATE:
-                        current_state = execute_start_state(_socket, _address, _address_len, &context);
+                case INITIAL_STATE:
+                        current_state = execute_initial_state(_socket, _address, _address_len, &context);
                         break;
                 case SYN_RECEIVED_STATE:
                         current_state = execute_syn_received_state(_socket, _address, _address_len, &context);
