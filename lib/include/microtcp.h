@@ -118,4 +118,6 @@ ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length
 
 ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags);
 
+void microtcp_close_socket(microtcp_sock_t *_socket);
+
 #endif /* LIB_MICROTCP_H_ */

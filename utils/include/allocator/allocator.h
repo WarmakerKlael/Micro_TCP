@@ -21,7 +21,7 @@
 #define MALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                                 \
         void *_malloc_result_ptr = malloc(_size_in_bytes);                                                \
         const char *message = "Allocation of %d bytes to '%s'; %s";                                       \
-        log_tag_t log_tag = _malloc_result_ptr ? LOG_INFO : LOG_ERROR;                                    \
+        enum log_tag log_tag = _malloc_result_ptr ? LOG_INFO : LOG_ERROR;                                    \
         const char *message_suffix = _malloc_result_ptr ? "SUCCEEDED" : "FAILED";                         \
         if (logger_is_allocator_enabled())                                                                \
                 LOG_MESSAGE_NON_THREAD_SAFE(log_tag, message, _size_in_bytes, #_passed_memory_ptr, message_suffix); \

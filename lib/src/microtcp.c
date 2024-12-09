@@ -21,7 +21,7 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
 
         if (set_socket_timeout(&new_socket, 0, MICROTCP_ACK_TIMEOUT_US) == POSIX_SETSOCKOPT_FAILURE)
         {
-                cleanup_microtcp_socket(&new_socket);
+                microtcp_close_socket(&new_socket);
                 LOG_ERROR_RETURN(new_socket, "Failed to set timeout on socket descriptor.");
         }
 
@@ -127,19 +127,29 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         if (shutdown_state_machine_result == MICROTCP_SHUTDOWN_FAILURE)
                 LOG_ERROR_RETURN(shutdown_state_machine_result, "Shutdown operation failed.");
 
-        deallocate_receive_buffer(_socket);
+        deallocate_receive_buffer(_socket); /* We can not cleanup sockets... As we dont know if they will be reused. */
         LOG_INFO_RETURN(shutdown_state_machine_result, "Shutdown operation succeeded.");
 }
 
-ssize_t
-microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length,
+ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length,
               int flags)
 {
         /* Your code here */
 }
 
-ssize_t
-microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags)
+ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags)
 {
         /* Your code here */
+}
+
+void microtcp_close_socket(microtcp_sock_t *_socket)
+{
+        if (_socket == NULL)
+                LOG_ERROR("Invalid argument: %s = NULL", STRINGIFY (_socket));
+        /* Let it cause a segmentation fault. */
+
+        if (_socket->state == ESTABLISHED)
+                microtcp_shutdown(_socket, SHUT_RDWR);
+        cleanup_microtcp_socket(_socket);
+        LOG_INFO("MicroTCP socket closed successfully.");
 }

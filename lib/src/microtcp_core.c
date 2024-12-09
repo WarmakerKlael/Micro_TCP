@@ -2,8 +2,8 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include <sys/time.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include "microtcp.h"
 #include "microtcp_core.h"
@@ -379,12 +379,12 @@ ssize_t send_synack_segment(microtcp_sock_t *const _socket, const struct sockadd
 
 ssize_t send_ack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_handshake_segment(_socket, _address, _address_len, ACK_BIT, CLOSED);
+        return send_handshake_segment(_socket, _address, _address_len, ACK_BIT, ANY);
 }
 
 ssize_t send_finack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSED);
+        return send_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST);
 }
 
 ssize_t receive_syn_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
@@ -399,12 +399,12 @@ ssize_t receive_synack_segment(microtcp_sock_t *const _socket, struct sockaddr *
 
 ssize_t receive_ack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, ACK_BIT, LISTEN);
+        return receive_handshake_segment(_socket, _address, _address_len, ACK_BIT, ANY);
 }
 
 ssize_t receive_finack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return receive_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSED);
+        return receive_handshake_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST);
 }
 
 void set_workaround_shutdown_address(microtcp_sock_t *const _socket, struct sockaddr *const _address)
