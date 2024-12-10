@@ -19,7 +19,7 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
                                  STRINGIFY(_domain), _domain, STRINGIFY(_type), _type,
                                  STRINGIFY(_protocol), _protocol, errno, strerror(errno));
 
-        if (set_socket_timeout(&new_socket, 0, MICROTCP_ACK_TIMEOUT_US) == POSIX_SETSOCKOPT_FAILURE)
+        if (set_recvfrom_timeout(&new_socket, 0, MICROTCP_ACK_TIMEOUT_US) == POSIX_SETSOCKOPT_FAILURE)
         {
                 microtcp_close_socket(&new_socket);
                 LOG_ERROR_RETURN(new_socket, "Failed to set timeout on socket descriptor.");
@@ -139,7 +139,7 @@ ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length
 
 ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags)
 {
-        /* Your code here */
+        ssize_t rfa_ret_val  = receive_finack_control_segment(, )
 }
 
 void microtcp_close_socket(microtcp_sock_t *_socket)

@@ -1,8 +1,9 @@
 #include "microtcp_helper_functions.h"
+#include <sys/time.h>
 
 /**
  * @note Procomputed strings why? Cant you automate it you dumbo? Well ...
- * There were more automatedand modular ways to assemble 
+ * There were more automatedand modular ways to assemble
  * the following strings, it was problematic, when this function
  * was called twice or more on the same line. E.g. inside of
  * printf() placeholders for example). So `static string IT IS`.

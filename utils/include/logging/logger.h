@@ -2,6 +2,7 @@
 #define LOGGER_H
 
 #include <stdio.h>
+#include <assert.h>
 #include <stdarg.h>
 #include <string.h>
 #include "cli_color.h"
@@ -95,65 +96,6 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 	log_message_thread_safe(_log_tag, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
 
 /**
- * @brief Logs an informational message and returns a specified value.
- *
- * Logs a message with the `LOG_INFO` level, including contextual information
- * such as the file name, line number, and function name, and then returns
- * the provided value.
- *
- * @param _return_value The value to return after logging the message.
- * @param _format_message The format string for the log message.
- * @param ... Additional arguments to format the log message.
- *
- * @note This macro ensures thread safety while logging the message.
- */
-#define LOG_INFO_RETURN(_return_value, _format_message, ...)           \
-	do                                                             \
-	{                                                              \
-		LOG_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__); \
-		return _return_value;                                  \
-	} while (0)
-
-/**
- * @brief Logs a warning message and returns a specified value.
- *
- * Logs a message with the `LOG_WARNING` level, including contextual information
- * such as the file name, line number, and function name, and then returns
- * the provided value.
- *
- * @param _return_value The value to return after logging the message.
- * @param _format_message The format string for the log message.
- * @param ... Additional arguments to format the log message.
- *
- * @note This macro ensures thread safety while logging the message.
- */
-#define LOG_WARNING_RETURN(_return_value, _format_message, ...)           \
-	do                                                                \
-	{                                                                 \
-		LOG_MESSAGE(LOG_WARNING, _format_message, ##__VA_ARGS__); \
-		return _return_value;                                     \
-	} while (0)
-/**
- * @brief Logs an error message and returns a specified value.
- *
- * Logs a message with the `LOG_ERROR` level, including contextual information
- * such as the file name, line number, and function name, and then returns
- * the provided value.
- *
- * @param _return_value The value to return after logging the message.
- * @param _format_message The format string for the log message.
- * @param ... Additional arguments to format the log message.
- *
- * @note This macro ensures thread safety while logging the message.
- */
-#define LOG_ERROR_RETURN(_return_value, _format_message, ...)           \
-	do                                                              \
-	{                                                               \
-		LOG_MESSAGE(LOG_ERROR, _format_message, ##__VA_ARGS__); \
-		return _return_value;                                   \
-	} while (0)
-
-/**
  * @brief Logs an informational message.
  *
  * Logs a message with the `LOG_INFO` level, including contextual information
@@ -191,5 +133,72 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_ERROR(_format_message, ...) LOG_MESSAGE(LOG_ERROR, _format_message, ##__VA_ARGS__)
+
+/**
+ * @brief Logs an informational message and returns a specified value.
+ *
+ * Logs a message with the `LOG_INFO` level, including contextual information
+ * such as the file name, line number, and function name, and then returns
+ * the provided value.
+ *
+ * @param _return_value The value to return after logging the message.
+ * @param _format_message The format string for the log message.
+ * @param ... Additional arguments to format the log message.
+ *
+ * @note This macro ensures thread safety while logging the message.
+ */
+#define LOG_INFO_RETURN(_return_value, _format_message, ...) \
+	do                                                   \
+	{                                                    \
+		LOG_INFO(_format_message, ##__VA_ARGS__);    \
+		return _return_value;                        \
+	} while (0)
+
+/**
+ * @brief Logs a warning message and returns a specified value.
+ *
+ * Logs a message with the `LOG_WARNING` level, including contextual information
+ * such as the file name, line number, and function name, and then returns
+ * the provided value.
+ *
+ * @param _return_value The value to return after logging the message.
+ * @param _format_message The format string for the log message.
+ * @param ... Additional arguments to format the log message.
+ *
+ * @note This macro ensures thread safety while logging the message.
+ */
+#define LOG_WARNING_RETURN(_return_value, _format_message, ...) \
+	do                                                      \
+	{                                                       \
+		LOG_WARNING(_format_message, ##__VA_ARGS__);    \
+		return _return_value;                           \
+	} while (0)
+/**
+ * @brief Logs an error message and returns a specified value.
+ *
+ * Logs a message with the `LOG_ERROR` level, including contextual information
+ * such as the file name, line number, and function name, and then returns
+ * the provided value.
+ *
+ * @param _return_value The value to return after logging the message.
+ * @param _format_message The format string for the log message.
+ * @param ... Additional arguments to format the log message.
+ *
+ * @note This macro ensures thread safety while logging the message.
+ */
+#define LOG_ERROR_RETURN(_return_value, _format_message, ...) \
+	do                                                    \
+	{                                                     \
+		LOG_ERROR(_format_message, ##__VA_ARGS__);    \
+		return _return_value;                         \
+	} while (0)
+
+#define LOG_ASSERT(_condition)                                                     \
+	do                                                                         \
+	{                                                                          \
+		if (!_condition)                                                   \
+			LOG_ERROR("Assertion failed. Condition: %s", #_condition); \
+		assert(_condition);                                                \
+	} while (0)
 
 #endif /* LOGGER_H */

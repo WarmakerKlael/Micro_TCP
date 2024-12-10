@@ -67,16 +67,17 @@
         } while (0)
 
 /* Directly used in: create_microtcp_segment() */
-#define RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(_failure_return_value, _microtcp_payload)                                              \
-        do                                                                                                                              \
-        {                                                                                                                               \
-                if (_microtcp_payload.size > MICROTCP_MSS)                                                                              \
-                        LOG_ERROR_RETURN(_failure_return_value, "Tried to create %s with %d bytes of payload; Limit is %s = %d",        \
-                                         STRINGIFY(microtcp_segment_t), _microtcp_payload.size, STRINGIFY(MICROTCP_MSS), MICROTCP_MSS); \
-                                                                                                                                        \
-                if ((_microtcp_payload.size == 0) != (_microtcp_payload.raw_bytes == NULL))                                             \
-                        LOG_ERROR_RETURN(_failure_return_value, "Payload field mismatch: size is %d, but raw_bytes is %s.",             \
-                                         _microtcp_payload.size, (_microtcp_payload.raw_bytes ? "not NULL" : "NULL"));                  \
+#define RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(_failure_return_value, _microtcp_payload)                                               \
+        do                                                                                                                               \
+        {                                                                                                                                \
+                if (_microtcp_payload.size + sizeof(microtcp_header_t) > MICROTCP_MSS)                                                   \
+                        LOG_ERROR_RETURN(_failure_return_value, "Tried to create %s with %d bytes of payload; Limit is %s = %d",         \
+                                         STRINGIFY(microtcp_segment_t), _microtcp_payload.size,                                          \
+                                         STRINGIFY(MICROTCP_MSS - sizeof(microtcp_header_t)), MICROTCP_MSS - sizeof(microtcp_header_t)); \
+                                                                                                                                         \
+                if ((_microtcp_payload.size == 0) != (_microtcp_payload.raw_bytes == NULL))                                              \
+                        LOG_ERROR_RETURN(_failure_return_value, "Payload field mismatch: size is %d, but raw_bytes is %s.",              \
+                                         _microtcp_payload.size, (_microtcp_payload.raw_bytes ? "not NULL" : "NULL"));                   \
         } while (0);
 
 #endif /* MICROTCP_CORE_MACROS_H */

@@ -74,9 +74,7 @@ typedef struct
         uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
         uint64_t bytes_received;   /* Bytes that were received from socket. */
 
-        /* The following field is neccesary, as `microtcp_shutdown` signature can not be changed... */
-        /* SHOULD ONLY BE USED FOR PASSING SOCKET ADDRESS TO `microtcp_shutdown`. */
-        struct sockaddr *_workaround_shutdown_address_;
+        struct sockaddr *peer_socket_address;
 } microtcp_sock_t;
 
 /**

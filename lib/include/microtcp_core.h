@@ -20,7 +20,8 @@ typedef struct
 
 microtcp_sock_t initialize_microtcp_socket(void);
 void generate_initial_sequence_number(microtcp_sock_t *_socket);
-int set_socket_timeout(microtcp_sock_t *_socket, time_t _sec, time_t _usec);
+int set_recvfrom_timeout(microtcp_sock_t *_socket, time_t _sec, time_t _usec);
+int get_recvfrom_timeout(microtcp_sock_t *_socket, time_t *_sec, time_t *_usec);
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
 void *serialize_microtcp_segment(microtcp_segment_t *_segment);
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length);
@@ -50,15 +51,15 @@ void deallocate_receive_buffer(microtcp_sock_t *_socket);
  * This also implies that a packet was correctly received.
  */
 
-ssize_t send_syn_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_synack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_ack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_finack_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t send_syn_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
 
-ssize_t receive_syn_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t receive_synack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t receive_ack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t receive_finack_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_synack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_ack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent);
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received);
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost);

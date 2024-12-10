@@ -64,3 +64,12 @@ You have to keep track of the regions containing valid bytes. If a region is con
 
 And a static buffer for bytestream, after you assemble segment to bytestream, you send the bytestream using sendto() (UDP) and "reset" the static buffers.
 That way you avoid real time memory allocation (faster solution).
+
+
+17)
+
+
+        // TODO: Either use static buffer.. But this will limit you to a single socket.. Or used dynamic allocated buffer bound to each socket,
+        // When you de allocate the socket, you de allocate its buffers (or during shutdown)
+
+18) Extensively log FSMs
