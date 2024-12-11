@@ -58,7 +58,7 @@ typedef struct
         size_t curr_win_size;   /* The current window size. */
         size_t peer_win_size;
 
-        void *recvbuf;
+        void *recvbuf; /* Used to assemble out of order packets (bytes). */
 
         size_t buf_fill_level; /* Amount of data in the buffer. */
 
@@ -73,6 +73,8 @@ typedef struct
         uint64_t bytes_sent;       /* Bytes that were sent from socket. */
         uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
         uint64_t bytes_received;   /* Bytes that were received from socket. */
+        void *bytestream_builder_buffer;
+        void *bytestream_extraction_buffer;
 
         struct sockaddr *peer_socket_address;
 } microtcp_sock_t;

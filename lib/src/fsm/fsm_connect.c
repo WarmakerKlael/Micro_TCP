@@ -1,21 +1,9 @@
 #include "fsm/microtcp_fsm.h"
 #include "fsm_common.h"
+#include "microtcp_settings.h"
 #include "microtcp_defines.h"
 #include "microtcp_core.h"
 #include "logging/microtcp_logger.h"
-
-#define DEFAULT_RETRIES_AFTER_RST 3
-static size_t connect_rst_retries = DEFAULT_RETRIES_AFTER_RST; /* Default. Can be changed from following "API". */
-
-size_t get_connect_rst_retries(void)
-{
-        return connect_rst_retries;
-}
-
-void set_connect_rst_retries(size_t _retries_count)
-{
-        connect_rst_retries = _retries_count;
-}
 
 typedef enum
 {

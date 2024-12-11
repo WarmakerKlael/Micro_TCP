@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifndef __FILENAME__
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif /* __FILENAME__ */
+
 #define _TRUE 1
 #define _FALSE 0
 
@@ -33,7 +37,7 @@
 #define _PRINT_SMART_ASSERT(_format, ...)                                                      \
         do                                                                                    \
         {                                                                                     \
-                fprintf(stderr, "%s:%d: %s: SMART_ASSERT(): ", __FILE__, __LINE__, __func__); \
+                fprintf(stderr, "%s:%d: %s: SMART_ASSERT(): ", __FILENAME__, __LINE__, __func__); \
                 fprintf(stderr, _format, ##__VA_ARGS__);                                      \
                 fprintf(stderr, "\n");                                                        \
         } while (0);

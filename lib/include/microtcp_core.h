@@ -50,6 +50,7 @@ void deallocate_receive_buffer(microtcp_sock_t *_socket);
  * @returns the number of bytes, it validly received.
  * This also implies that a packet was correctly received.
  */
+void deallocate_pre_handshake_buffers(microtcp_sock_t *_socket);
 
 ssize_t send_syn_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
 ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
@@ -63,6 +64,18 @@ ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct so
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent);
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received);
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost);
+
+
+/**
+ * @brief Allocates buffers required for MicroTCP's handshake.
+ *
+ * Allocates `bytestream_builder_buffer` and `bytestream_extraction_buffer`.
+ * Cleans up on failure to prevent memory leaks.
+ *
+ * @param _socket Pointer to the `microtcp_sock_t` socket.
+ * @returns 1 on success, 0 on failure.
+ */
+status_t allocate_pre_handshake_buffers(microtcp_sock_t *_socket);
 
 void cleanup_microtcp_socket(microtcp_sock_t *_socket);
 

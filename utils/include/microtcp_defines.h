@@ -3,8 +3,13 @@
 
 #define PROJECT_NAME "μTCP"
 
-#define TRUE 1
 #define FALSE 0
+#define FAILURE 1
+
+#define SUCCESS 1
+#define FAILURE 0
+typedef _Bool status_t; 
+
 
 /* Priority numbers of constructors/destructors. */
 #define LOGGER_CONSTRUCTOR_PRIORITY 1001

@@ -2,13 +2,11 @@
 #include "fsm/microtcp_fsm.h"
 #include "fsm_common.h"
 #include "microtcp_core.h"
+#include "microtcp_settings.h"
 #include "logging/microtcp_logger.h"
 #include "sys/time.h"
 
-#define TCP_RETRIES2 15 /* TCP default value for `TCP_RETRIES2` variable.*/
-
-static struct timeval shutdown_time_wait_period = {.tv_sec = 2 * MICROTCP_MSL_SECONDS, .tv_usec = 0};
-static size_t shutdown_finack_retries = TCP_RETRIES2; /* Default. Can be changed from following "API". */
+/* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
 
 static inline void subtract_and_normalize_timeval(struct timeval *_subtrahend, const struct timeval _minuend);
 static inline time_t timeval_to_us(const struct timeval _timeval);
@@ -123,7 +121,8 @@ static shutdown_fsm_substates execute_fin_wait_2_recv_substate(microtcp_sock_t *
                         subtract_and_normalize_timeval(&(_context->finack_wait_time_timer), _context->recvfrom_timeout);
                         return FIN_WAIT_2_RECV_SUBSTATE;
                 }
-                _context->finack_wait_time_timer = shutdown_time_wait_period; /* Reset counters. */
+                _context->finack_wait_time_timer.tv_sec = get_shutdown_time_wait_period_sec();   /* Reset counters. */
+                _context->finack_wait_time_timer.tv_usec = get_shutdown_time_wait_period_usec(); /* Reset counters. */
                 return CLOSED_1_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
@@ -161,7 +160,7 @@ static shutdown_fsm_substates execute_time_wait_substate(microtcp_sock_t *const 
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
         /* In TIME_WAIT state, we set our timer to expire after 2*MSL (per TCP protocol). */
-        if (set_recvfrom_timeout(_socket, shutdown_time_wait_period.tv_sec, shutdown_time_wait_period.tv_usec) == POSIX_SETSOCKOPT_FAILURE)
+        if (set_recvfrom_timeout(_socket, get_shutdown_time_wait_period_sec(), get_shutdown_time_wait_period_usec()) == POSIX_SETSOCKOPT_FAILURE)
                 LOG_ERROR_RETURN(CLOSED_1_SUBSTATE, "Failed to set timeout on socket descriptor. Ignoring %s state.",
                                  convert_substate_to_string(TIME_WAIT_SUBSTATE));
 
@@ -205,7 +204,10 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
         fsm_context_t context = {
             .socket_shutdown_isn = _socket->seq_number,
             .finack_retries_counter = get_shutdown_finack_retries(),
-            .finack_wait_time_timer = shutdown_time_wait_period};
+            .finack_wait_time_timer = {
+                .tv_sec = get_shutdown_time_wait_period_sec(),
+                .tv_usec = get_shutdown_time_wait_period_usec()}};
+
         get_recvfrom_timeout(_socket, &(context.recvfrom_timeout.tv_sec), &(context.recvfrom_timeout.tv_usec));
 
         /* If we are in shutdown()'s FSM, that means that host (local) called shutdown not peer. */
@@ -246,32 +248,7 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
         }
 }
 
-/* ----------------------------------------- CONFIGURATION FUNCTIONS ----------------------------------------- */
-
-size_t get_shutdown_finack_retries(void)
-{
-        return shutdown_finack_retries;
-}
-
-void set_shutdown_finack_retries(size_t _retries_count)
-{
-        shutdown_finack_retries = _retries_count;
-}
-
-void get_shutdown_time_wait_period(time_t *_sec, time_t *_usec)
-{
-        *_sec = shutdown_time_wait_period.tv_sec;
-        *_usec = shutdown_time_wait_period.tv_usec;
-}
-
-void set_shutdown_time_wait_period(time_t _sec, time_t _usec)
-{
-        shutdown_time_wait_period.tv_sec = _sec;
-        shutdown_time_wait_period.tv_usec = _usec;
-}
-
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
-
 /* Helper function: Safely subtract _minuend from _subtrahend and store the result in t1 */
 static inline void subtract_and_normalize_timeval(struct timeval *_subtrahend, const struct timeval _minuend)
 {

@@ -8,6 +8,7 @@
 #include "microtcp.h"
 #include "microtcp_core.h"
 #include "microtcp_defines.h"
+#include "microtcp_settings.h"
 #include "microtcp_common_macros.h"
 #include "logging/microtcp_logger.h"
 #include "allocator/allocator.h"
@@ -26,6 +27,10 @@ static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct
                                     const socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
 static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                        socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
+void *allocate_bytestream_extraction_buffer(microtcp_sock_t *_socket);
+void *allocate_bytestream_builder_buffer(microtcp_sock_t *_socket);
+static void deallocate_bytestream_builder_buffer(microtcp_sock_t *_socket);
+static void deallocate_bytestream_extraction_buffer(microtcp_sock_t *_socket);
 
 __attribute__((constructor(RNG_CONSTRUCTOR_PRIORITY))) static void seed_random_number_generator(void)
 {
@@ -92,6 +97,8 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .bytes_sent = 0,
             .bytes_received = 0,
             .bytes_lost = 0,
+            .bytestream_builder_buffer = NULL,
+            .bytestream_extraction_buffer = NULL,
             .peer_socket_address = NULL};
         return new_socket;
 }
@@ -204,29 +211,50 @@ microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _b
 }
 
 /**
- * @returns pointer to the newly allocated recvbuf. If allocation fails returns NULL;
+ * @returns pointer to the newly allocated `recvbuf`. If allocation fails returns `NULL`;
  * @brief There are two states where recvbuf memory allocation is possible.
  * Client allocates its recvbuf in connect(), socket in CLOSED state.
  * Server allocates its recvbuf in accept(),  socket in LISTEN  state.
- * So we use ANY for state parameter on the following socket check.
  */
-void *allocate_receive_buffer(microtcp_sock_t *_socket)
+status_t allocate_receive_buffer(microtcp_sock_t *_socket)
 {
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ~INVALID);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, CLOSED | LISTEN);
         if (_socket->recvbuf != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
-                LOG_WARNING("recvbuf is not NULL before allocation; possible memory leak. Previous address: %x", _socket->recvbuf);
+                LOG_WARNING("`recvbuf` is not NULL before allocation; possible memory leak. Previous address: %x", _socket->recvbuf);
 
         if (_socket->buf_fill_level != 0)
-                LOG_ERROR_RETURN(NULL, "recvbuf is not empty; allocation aborted. %s = %d",
+                LOG_ERROR_RETURN(FAILURE, "recvbuf is not empty; allocation aborted. %s = %d",
                                  STRINGIFY(_socket->buf_fill_level), _socket->buf_fill_level);
-
-        return _socket->recvbuf = CALLOC_LOG(_socket->recvbuf, MICROTCP_RECVBUF_LEN);
+        _socket->recvbuf = CALLOC_LOG(_socket->recvbuf, get_microtcp_recvbuf_len());
+        if (_socket->recvbuf == NULL)
+                LOG_ERROR_RETURN(FAILURE, "Failed to allocate socket's `recvbuf`.");
+        LOG_INFO(SUCCESS, "Succesful allocation of `recvbuf`.");
 }
 
 void deallocate_receive_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
+        SMART_ASSERT(_socket->state != ESTABLISHED);
         FREE_NULLIFY_LOG(_socket->recvbuf);
+}
+
+status_t allocate_pre_handshake_buffers(microtcp_sock_t *_socket)
+{
+        if (allocate_bytestream_builder_buffer(_socket) == NULL)
+                return FAILURE;
+        if (allocate_bytestream_extraction_buffer(_socket) == NULL)
+        {
+                deallocate_bytestream_builder_buffer(_socket); /* Cleanup allocation of previous buffer. */
+                return FAILURE;
+        }
+        return SUCCESS;
+}
+
+void deallocate_pre_handshake_buffers(microtcp_sock_t *_socket)
+{
+        SMART_ASSERT(_socket != NULL);
+        deallocate_bytestream_builder_buffer(_socket);
+        deallocate_bytestream_extraction_buffer(_socket);
 }
 
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
@@ -278,6 +306,46 @@ void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost)
         _socket->bytes_lost += _bytes_lost;
         _socket->packets_lost++;
         LOG_INFO("Socket's lost counters updated.");
+}
+
+ssize_t send_syn_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return send_control_segment(_socket, _address, _address_len, SYN_BIT, CLOSED);
+}
+
+ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return send_control_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, LISTEN);
+}
+
+ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
+}
+
+ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return send_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST | CLOSING_BY_PEER);
+}
+
+ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return receive_control_segment(_socket, _address, _address_len, SYN_BIT, LISTEN);
+}
+
+ssize_t receive_synack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return receive_control_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, CLOSED);
+}
+
+ssize_t receive_ack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return receive_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
+}
+
+ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return receive_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
 /**
@@ -372,46 +440,57 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         LOG_INFO_RETURN(recvfrom_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
 }
 
-ssize_t send_syn_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+/**
+ * @returns pointer to the newly allocated `bytestream_builder_buffer`. If allocation fails returns `NULL`;
+ * @brief There are two states where `bytestream_builder_buffer` memory allocation is possible.
+ * Client allocates its `bytestream_builder_buffer` in connect(), socket in CLOSED state.
+ * Server allocates its `bytestream_builder_buffer` in accept(),  socket in LISTEN  state.
+ */
+static void *allocate_bytestream_builder_buffer(microtcp_sock_t *_socket)
 {
-        return send_control_segment(_socket, _address, _address_len, SYN_BIT, CLOSED);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, (CLOSED | LISTEN));
+        if (_socket->bytestream_builder_buffer != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
+                LOG_WARNING("`bytestream_builder_buffer` is not NULL before allocation; possible memory leak. Previous address: %x",
+                            _socket->bytestream_builder_buffer);
+
+        _socket->bytestream_builder_buffer = CALLOC_LOG(_socket->bytestream_builder_buffer, MICROTCP_MSS);
+        if (_socket->bytestream_builder_buffer == NULL)
+                LOG_ERROR_RETURN(_socket->bytestream_builder_buffer, "Failed to allocate socket's `bytestream_builder_buffer`.");
+        LOG_INFO(_socket->bytestream_builder_buffer, "Succesful allocation of `bytestream_buffer_builder`.");
 }
 
-ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+/**
+ * @returns pointer to the newly allocated `bytestream_extraction_buffer`. If allocation fails returns `NULL`;
+ * @brief There are two states where `bytestream_extraction_buffer` memory allocation is possible.
+ * Client allocates its `bytestream_extraction_buffer` in connect(), socket in CLOSED state.
+ * Server allocates its `bytestream_extraction_buffer` in accept(),  socket in LISTEN  state.
+ */
+static void *allocate_bytestream_extraction_buffer(microtcp_sock_t *_socket)
 {
-        return send_control_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, LISTEN);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, (CLOSED | LISTEN));
+        if (_socket->bytestream_extraction_buffer != NULL) /* Maybe memory is freed() but still we expect such pointers to be zeroed. */
+                LOG_WARNING("`bytestream_extraction_buffer` is not NULL before allocation; possible memory leak. Previous address: %x",
+                            _socket->bytestream_extraction_buffer);
+
+        _socket->bytestream_extraction_buffer = CALLOC_LOG(_socket->bytestream_extraction_buffer, MICROTCP_MSS);
+        if (_socket->bytestream_extraction_buffer == NULL)
+                LOG_ERROR_RETURN(_socket->bytestream_extraction_buffer, "Failed to allocate socket's `bytestream_extraction_buffer`.");
+        LOG_INFO(_socket->bytestream_extraction_buffer, "Succesful allocation of `bytestream_extraction_buffer`.");
 }
 
-ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+static void deallocate_bytestream_builder_buffer(microtcp_sock_t *_socket)
 {
-        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
+        SMART_ASSERT(_socket != NULL);
+        SMART_ASSERT(_socket->state != ESTABLISHED);
+        FREE_NULLIFY_LOG(_socket->bytestream_builder_buffer);
 }
 
-ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+static void deallocate_bytestream_extraction_buffer(microtcp_sock_t *_socket)
 {
-        return send_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST | CLOSING_BY_PEER);
+        SMART_ASSERT(_socket != NULL);
+        SMART_ASSERT(_socket->state != ESTABLISHED);
+        FREE_NULLIFY_LOG(_socket->bytestream_extraction_buffer);
 }
-
-ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
-{
-        return receive_control_segment(_socket, _address, _address_len, SYN_BIT, LISTEN);
-}
-
-ssize_t receive_synack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
-{
-        return receive_control_segment(_socket, _address, _address_len, SYN_BIT | ACK_BIT, CLOSED);
-}
-
-ssize_t receive_ack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
-{
-        return receive_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
-}
-
-ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
-{
-        return receive_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
-}
-
 /* TODO: */
 /* SEND SEGMENT */
 /* RECEIVE SEGMENT */

@@ -2,19 +2,7 @@
 #include "fsm_common.h"
 #include "microtcp_core.h"
 #include "logging/microtcp_logger.h"
-
-#define LINUX_DEFAULT_ACCEPT_TIMEOUTS 5
-static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS; /* Default. Can be changed from following "API". */
-
-size_t get_accept_synack_retries(void)
-{
-        return accept_synack_retries;
-}
-
-void set_accept_synack_retries(size_t _retries_count)
-{
-        accept_synack_retries = _retries_count;
-}
+#include "microtcp_settings.h"
 
 typedef enum
 {
@@ -145,6 +133,7 @@ static accept_fsm_substates execute_ack_received_substate(microtcp_sock_t *_sock
 {
         _socket->peer_socket_address = _address;
         _socket->state = ESTABLISHED;
+        deallocate_receive_buffer(_socket);
         // TODO: LOG FSM's result (Like: "FSM succeded: Established connection.") or similar.
         return CONNECTION_ESTABLISHED_SUBSTATE;
 }

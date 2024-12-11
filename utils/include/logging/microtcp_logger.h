@@ -22,7 +22,9 @@
  * @note This macro helps generate shorter, more readable file paths in logs.
  */
 // #define __FILENAME__ (strstr(__FILE__, PROJECT_TOP_LEVEL_DIRECTORY) ? strstr(__FILE__, PROJECT_TOP_LEVEL_DIRECTORY) : __FILE__)
+#ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif /* __FILENAME__ */
 
 enum log_tag
 {

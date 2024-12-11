@@ -66,6 +66,7 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
 
         /* Initialize resources for the socket. */
         generate_initial_sequence_number(_socket);
+        // TODO: Allocate this buffer, after successful connection. Protects against SYN flood attacks.
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Memory allocation for receive buffer failed.");
 
@@ -91,22 +92,23 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        /* Initialize resources for the socket. */
+        SMART_ASSERT(0); // DEALLOCATE YOUR RESOURCES...  WHERE?? TODO: :w
+        /* Initialize socket's resources required for 3-way handshake. */
         generate_initial_sequence_number(_socket);
+        if (allocate_pre_handshake_buffers(_socket) == FAILURE)
+                return MICROTCP_CONNECT_FAILURE;
+
+        /* Run the `accept's` state machine. */
+        if(microtcp_accept_fsm(_socket, _address, _address_len) == MICROTCP_ACCEPT_FAILURE)
+                goto failure_cleanup;
+
         if (allocate_receive_buffer(_socket) == NULL)
                 LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
 
-        /* Run the `accept's` state machine. */
-        int accept_state_machine_result = microtcp_accept_fsm(_socket, _address, _address_len);
-
-        /* Clean-up on failure. */
-        if (accept_state_machine_result == MICROTCP_ACCEPT_FAILURE)
-        {
-                deallocate_receive_buffer(_socket);
-                LOG_ERROR_RETURN(accept_state_machine_result, "Accept operation failed.");
-        }
-
         LOG_INFO_RETURN(accept_state_machine_result, "Accept operation succeeded.");
+failure_cleanup:
+                LOG_ERROR_RETURN(MICROTCP_ACCEPT_FAILURE, "Accept operation failed.");
+                deallocate_pre_handshake_buffers(_socket);
 }
 
 int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
