@@ -3,9 +3,14 @@
 
 #include "microtcp.h"
 
+/* Connect()'s FSM settings. */
+size_t get_connect_rst_retries(void);
+void set_connect_rst_retries(size_t _retries_count);
+
 /* Accept()'s FSM settings. */
 size_t get_accept_synack_retries(void);
 void set_accept_synack_retries(size_t _retries_count);
+
 
 /* Shutdown()'s FSM settings. */
 size_t get_shutdown_finack_retries(void);

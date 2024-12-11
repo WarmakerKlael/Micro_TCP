@@ -61,47 +61,63 @@ static shutdown_fsm_substates execute_connection_established_substate(microtcp_s
 {
         _socket->seq_number = _context->socket_shutdown_isn;
         _context->send_finack_ret_val = send_finack_control_segment(_socket, _address, _address_len);
-        if (_context->send_finack_ret_val == SEND_SEGMENT_FATAL_ERROR)
+        switch (_context->send_finack_ret_val)
+        {
+        case SEND_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
-        if (_context->send_finack_ret_val == SEND_SEGMENT_ERROR)
+
+        case SEND_SEGMENT_ERROR:
                 return CONNECTION_ESTABLISHED_SUBSTATE;
 
-        /* In TCP, segments containing control flags (e.g., SYN, FIN),
-         * other than pure ACKs, are treated as carrying a virtual payload.
-         * As a result, they are incrementing the sequence number by 1. */
-        _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
-        update_socket_sent_counters(_socket, _context->send_finack_ret_val);
-        return FIN_WAIT_1_SUBSTATE;
+        default:
+                /* In TCP, segments containing control flags (e.g., SYN, FIN),
+                 * other than pure ACKs, are treated as carrying a virtual payload.
+                 * As a result, they are incrementing the sequence number by 1. */
+                _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
+                update_socket_sent_counters(_socket, _context->send_finack_ret_val);
+                return FIN_WAIT_1_SUBSTATE;
+        }
 }
 
 static shutdown_fsm_substates execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                           socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
-        if (_context->recv_ack_ret_val == RECV_SEGMENT_FATAL_ERROR)
-                return EXIT_FAILURE_SUBSTATE;
-        if (_context->recv_ack_ret_val == RECV_SEGMENT_TIMEOUT || /* Timeout occurred. */
-            _context->recv_ack_ret_val == RECV_SEGMENT_ERROR)     /* Corrupt packet, etc */
+        switch (_context->recv_ack_ret_val)
         {
+        case RECV_SEGMENT_FATAL_ERROR:
+                return EXIT_FAILURE_SUBSTATE;
+
+        /* Actions on the following two cases are the same. */
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
                 if (_context->finack_retries_counter == 0) /* Run out of retries. */
-                        return CLOSED_1_SUBSTATE;          /* 4 step termination process failed, closing forcibly. */
+                        return CLOSED_1_SUBSTATE;          /* 4th step termination process failed, closing forcibly. */
                 _context->finack_retries_counter--;
                 return CONNECTION_ESTABLISHED_SUBSTATE;
+        case RECV_SEGMENT_RST_BIT:
+                SMART_ASSERT(0, "NOT IMPLEMENTED YET."); // TODO: Well implement it..
+                /* DO we return success on shutdown? or shutdown failed... Peer told us to close forcibly... */
+
+        default:
+                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
+                return FIN_WAIT_2_RECV_SUBSTATE;
         }
-        update_socket_received_counters(_socket, _context->recv_ack_ret_val);
-        return FIN_WAIT_2_RECV_SUBSTATE;
 }
 
 static shutdown_fsm_substates execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
-        if (_context->recv_finack_ret_val == RECV_SEGMENT_FATAL_ERROR)
-                return EXIT_FAILURE_SUBSTATE;
-        if (_context->recv_finack_ret_val == RECV_SEGMENT_TIMEOUT || /* Timeout occurred. */
-            _context->recv_finack_ret_val == RECV_SEGMENT_ERROR)     /* Corrupt packet, etc */
+        switch (_context->recv_finack_ret_val)
         {
+        case RECV_SEGMENT_FATAL_ERROR:
+                return EXIT_FAILURE_SUBSTATE;
+
+        /* Actions on the following two cases are the same. */
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_TIMEOUT:
                 if (timeval_to_us(_context->finack_wait_time_timer) > 0)
                 {
                         subtract_and_normalize_timeval(&(_context->finack_wait_time_timer), _context->recvfrom_timeout);
@@ -109,25 +125,36 @@ static shutdown_fsm_substates execute_fin_wait_2_recv_substate(microtcp_sock_t *
                 }
                 _context->finack_wait_time_timer = shutdown_time_wait_period; /* Reset counters. */
                 return CLOSED_1_SUBSTATE;
-        }
 
-        update_socket_received_counters(_socket, _context->recv_finack_ret_val);
-        return FIN_WAIT_2_SEND_SUBSTATE;
+        case RECV_SEGMENT_RST_BIT:
+                SMART_ASSERT(0, "NOT IMPLEMENTED YET."); // TODO: Well implement it..
+                /* DO we return success on shutdown? or shutdown failed... Peer told us to close forcibly... */
+
+        default:
+                update_socket_received_counters(_socket, _context->recv_finack_ret_val);
+                return FIN_WAIT_2_SEND_SUBSTATE;
+        }
 }
 
 static shutdown_fsm_substates execute_fin_wait_2_send_substate(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
                                                                socklen_t _address_len, fsm_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
-        if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
+        switch (_context->send_ack_ret_val)
+        {
+        case SEND_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
-        if (_context->send_ack_ret_val == SEND_SEGMENT_ERROR)
+
+        case SEND_SEGMENT_ERROR:
                 return FIN_WAIT_2_SEND_SUBSTATE;
-        /* If while we experience errors sending out ACK segment,
-         * we re-receive peer's FIN-ACK segment its alright.
-         * As once we are able to send our ACK problem will be solved. */
-        update_socket_sent_counters(_socket, _context->send_ack_ret_val);
-        return TIME_WAIT_SUBSTATE;
+                /* If while we experience errors sending out ACK segment,
+                 * we re-receive peer's FIN-ACK segment its alright.
+                 * As once we are able to send our ACK problem will be resolved. */
+
+        default:
+                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
+                return TIME_WAIT_SUBSTATE;
+        }
 }
 
 static shutdown_fsm_substates execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
@@ -139,18 +166,22 @@ static shutdown_fsm_substates execute_time_wait_substate(microtcp_sock_t *const 
                                  convert_substate_to_string(TIME_WAIT_SUBSTATE));
 
         _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
-        if (_context->recv_finack_ret_val == RECV_SEGMENT_FATAL_ERROR)
+        switch (_context->recv_finack_ret_val)
+        {
+        case RECV_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
 
-        /* We want timeout to occur... Means sent its FIN-ACK and stopped sending (should receive our ACK though). */
-        if (_context->recv_finack_ret_val == RECV_SEGMENT_TIMEOUT || /* Timeout occurred. */
-            _context->recv_finack_ret_val == RECV_SEGMENT_ERROR)     /* Corrupt packet, etc */
-                return CLOSED_1_SUBSTATE;                            /* Healthy netowork case. */
+        /* Actions on the following two cases are the same. */
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
+                return CLOSED_1_SUBSTATE;
+                /* We want timeout to occur... Means peer sent its FIN-ACK and stopped sending (should receive our ACK though). */
 
-        update_socket_lost_counters(_socket, _context->send_ack_ret_val);
-        update_socket_received_counters(_socket, _context->recv_finack_ret_val);
-        return FIN_WAIT_2_SEND_SUBSTATE;
-
+        default:
+                update_socket_lost_counters(_socket, _context->send_ack_ret_val);
+                update_socket_received_counters(_socket, _context->recv_finack_ret_val);
+                return FIN_WAIT_2_SEND_SUBSTATE;
+        }
         /* In case host's LAST ACK gets lost, and peer's FIN-ACK gets lost.
          * The connection from the perspective of the host is considered
          * closed, as for the host there is no away to identify such scenario. */
@@ -160,7 +191,7 @@ static shutdown_fsm_substates execute_closed_1_substate(microtcp_sock_t *const _
                                                         socklen_t _address_len, fsm_context_t *_context)
 {
         _socket->state = CLOSED;
-        // LOG
+        // LOG // TODO:
         return CLOSED_2_SUBSTATE;
 }
 

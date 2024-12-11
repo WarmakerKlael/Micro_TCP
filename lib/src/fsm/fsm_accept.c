@@ -60,17 +60,25 @@ static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, st
                                                     socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_syn_ret_val = receive_syn_control_segment(_socket, _address, _address_len);
-        if (_context->recv_syn_ret_val == RECV_SEGMENT_FATAL_ERROR)
+        switch (_context->recv_syn_ret_val)
+        {
+        case RECV_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
 
-        /* If received SYN segment was corrupted, or for any other reason caused errors;
-         * We discard it. If client still wants to make a connection with the server
-         * it will resend a SYN packet after a timeout occurs on its side. */
-        if (_context->recv_syn_ret_val == RECV_SEGMENT_TIMEOUT ||
-            _context->recv_syn_ret_val == RECV_SEGMENT_ERROR)
+        /* Actions on the following three cases are the same. */
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_RST_BIT:
+                /* So far same action with cases above... Maybe you want to print a specific log? (Here and let it fall through..)*/
+        case RECV_SEGMENT_TIMEOUT:
+                /* If received SYN segment was corrupted, or for any other reason caused errors;
+                 * We discard it. If client still wants to make a connection with the server
+                 * it will resend a SYN packet after a timeout occurs on its side. */
                 return LISTEN_SUBSTATE;
-        update_socket_received_counters(_socket, _context->recv_syn_ret_val);
-        return SYN_RECEIVED_SUBSTATE;
+
+        default:
+                update_socket_received_counters(_socket, _context->recv_syn_ret_val);
+                return SYN_RECEIVED_SUBSTATE;
+        }
 }
 
 static accept_fsm_substates execute_syn_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
@@ -80,17 +88,22 @@ static accept_fsm_substates execute_syn_received_substate(microtcp_sock_t *_sock
         _socket->seq_number = _context->socket_init_seq_num;
 
         _context->send_synack_ret_val = send_synack_control_segment(_socket, _address, _address_len);
-        if (_context->send_synack_ret_val == SEND_SEGMENT_FATAL_ERROR)
+        switch (_context->send_synack_ret_val)
+        {
+        case SEND_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
-        if (_context->send_synack_ret_val == SEND_SEGMENT_ERROR)
+
+        case SEND_SEGMENT_ERROR:
                 return SYN_RECEIVED_SUBSTATE;
 
-        /* In TCP, segments containing control flags (e.g., SYN, FIN),
-         * other than pure ACKs, are treated as carrying a virtual payload.
-         * As a result, they are incrementing the sequence number by 1. */
-        _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
-        update_socket_sent_counters(_socket, _context->send_synack_ret_val);
-        return SYNACK_SENT_SUBSTATE;
+        default:
+                /* In TCP, segments containing control flags (e.g., SYN, FIN),
+                 * other than pure ACKs, are treated as carrying a virtual payload.
+                 * As a result, they are incrementing the sequence number by 1. */
+                _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
+                update_socket_sent_counters(_socket, _context->send_synack_ret_val);
+                return SYNACK_SENT_SUBSTATE;
+        }
 }
 
 static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
@@ -98,14 +111,14 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
 {
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
 
-        if (_context->recv_ack_ret_val == RECV_SEGMENT_FATAL_ERROR)
+        switch (_context->recv_ack_ret_val)
+        {
+        case RECV_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
 
-        /* If received ACK segment was corrupted, or for any other reason caused errors;
-         * We discard it. We resend SYN-ACK segment. */
-        if (_context->recv_ack_ret_val == RECV_SEGMENT_TIMEOUT ||
-            _context->recv_ack_ret_val == RECV_SEGMENT_ERROR)
-        {
+        /* Actions on the following two cases are the same. */
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_synack_ret_val);
                 if (_context->synack_retries_counter > 0)
                 {
@@ -113,12 +126,18 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
                         _context->synack_retries_counter--;
                         return SYN_RECEIVED_SUBSTATE; /* go resend SYN|ACK as it was might lost */
                 }
-                LOG_WARNING("Waiting for going back in waiting for `SYN`.\n");
+                LOG_WARNING("Synack retries exhausted; Going back in waiting for `SYN`.\n");
                 _context->synack_retries_counter = get_accept_synack_retries(); /* Reset contex's counter. */
                 return LISTEN_SUBSTATE;
+
+        case RECV_SEGMENT_RST_BIT:
+                /* So far same action with cases above... Maybe you want to print a specific log? (Here and let it fall through..)*/
+                return LISTEN_SUBSTATE;
+
+        default:
+                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
+                return ACK_RECEIVED_SUBSTATE;
         }
-        update_socket_received_counters(_socket, _context->recv_ack_ret_val);
-        return ACK_RECEIVED_SUBSTATE;
 }
 
 static accept_fsm_substates execute_ack_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,

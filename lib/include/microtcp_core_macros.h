@@ -16,6 +16,7 @@
 #define RECV_SEGMENT_TIMEOUT 0
 #define RECV_SEGMENT_ERROR -1
 #define RECV_SEGMENT_FATAL_ERROR -2
+#define RECV_SEGMENT_RST_BIT -3
 
 /* Directly used in: microtcp_socket() */
 #define RETURN_ERROR_IF_FUNCTION_PARAMETER_MICROTCP_SOCKET_INVALID(_failure_return_value,               \

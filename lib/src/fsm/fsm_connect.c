@@ -4,6 +4,19 @@
 #include "microtcp_core.h"
 #include "logging/microtcp_logger.h"
 
+#define DEFAULT_RETRIES_AFTER_RST 3
+static size_t connect_rst_retries = DEFAULT_RETRIES_AFTER_RST; /* Default. Can be changed from following "API". */
+
+size_t get_connect_rst_retries(void)
+{
+        return connect_rst_retries;
+}
+
+void set_connect_rst_retries(size_t _retries_count)
+{
+        connect_rst_retries = _retries_count;
+}
+
 typedef enum
 {
         CLOSED_SUBSTATE = CLOSED, /* Initial substate. FSM entry point. */
@@ -25,6 +38,7 @@ typedef struct
          * FSM's context, we avoid having to do errorneous
          * subtractions, like seq_number -= 1, in order to match ISN.
          */
+        ssize_t rst_retries_counter;
 } fsm_context_t;
 
 // clang-format off
@@ -48,51 +62,65 @@ static connect_fsm_substates execute_closed_substate(microtcp_sock_t *_socket, c
 {
         /* When ever we start, we reset socket's sequence number, as it might be a retry. */
         _socket->seq_number = _context->socket_init_seq_num;
-
         _context->send_syn_ret_val = send_syn_control_segment(_socket, _address, _address_len);
-        if (_context->send_syn_ret_val == SEND_SEGMENT_FATAL_ERROR)
+        switch (_context->send_syn_ret_val)
+        {
+        case SEND_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
-        if (_context->send_syn_ret_val == SEND_SEGMENT_ERROR)
+        case SEND_SEGMENT_ERROR:
                 return CLOSED_SUBSTATE;
-
-        /* In TCP, segments containing control flags (e.g., SYN, FIN),
-         * other than pure ACKs, are treated as carrying a virtual payload.
-         * As a result, they are incrementing the sequence number by 1. */
-        _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
-        update_socket_sent_counters(_socket, _context->send_syn_ret_val);
-        return SYN_SENT_SUBSTATE;
+        default:
+                /* In TCP, segments containing control flags (e.g., SYN, FIN),
+                 * other than pure ACKs, are treated as carrying a virtual payload.
+                 * As a result, they are incrementing the sequence number by 1. */
+                _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
+                update_socket_sent_counters(_socket, _context->send_syn_ret_val);
+                return SYN_SENT_SUBSTATE;
+        }
 }
 
 static connect_fsm_substates execute_syn_sent_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                        socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_synack_ret_val = receive_synack_control_segment(_socket, (struct sockaddr *)_address, _address_len);
-        if (_context->recv_synack_ret_val == RECV_SEGMENT_FATAL_ERROR)
-                return EXIT_FAILURE_SUBSTATE;
-        if (_context->recv_synack_ret_val == RECV_SEGMENT_TIMEOUT || /* Timeout occurred. */
-            _context->recv_synack_ret_val == RECV_SEGMENT_ERROR)     /* Corrupt packet, etc */
+        switch (_context->recv_synack_ret_val)
         {
+        case RECV_SEGMENT_FATAL_ERROR:
+                return EXIT_FAILURE_SUBSTATE;
+
+        /* Actions on the following two cases are the same. */
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
                 return CLOSED_SUBSTATE;
+
+        case RECV_SEGMENT_RST_BIT:
+                LOG_WARNING("Expected = `SYN|ACK` flag; Received = `RST`; Retries left = %d", _context->rst_retries_counter);
+                if (_context->rst_retries_counter == 0)
+                        LOG_ERROR_RETURN(EXIT_FAILURE_SUBSTATE, "Connect exhausted its retries for attempting to connect, after receiving `RST` flag.");
+                _context->rst_retries_counter--;
+                return CLOSED_SUBSTATE;
+
+        default:
+                update_socket_received_counters(_socket, _context->recv_synack_ret_val);
+                return SYNACK_RECEIVED_SUBSTATE;
         }
-        update_socket_received_counters(_socket, _context->recv_synack_ret_val);
-        return SYNACK_RECEIVED_SUBSTATE;
 }
 
 static connect_fsm_substates execute_synack_received_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                               socklen_t _address_len, fsm_context_t *_context)
 {
-        // TODO:remove
-        int x;
-        scanf("%d", &x);
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
-        if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
+        switch (_context->send_ack_ret_val)
+        {
+        case SEND_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
-        if (_context->send_ack_ret_val == SEND_SEGMENT_ERROR)
+        case SEND_SEGMENT_ERROR:
                 return SYNACK_RECEIVED_SUBSTATE;
-
-        update_socket_sent_counters(_socket, _context->send_ack_ret_val);
-        return ACK_SENT_SUBSTATE;
+        default:
+                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
+                return ACK_SENT_SUBSTATE;
+        }
 }
 
 static connect_fsm_substates execute_ack_sent_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
@@ -100,7 +128,7 @@ static connect_fsm_substates execute_ack_sent_substate(microtcp_sock_t *_socket,
 {
         _socket->peer_socket_address = (struct sockaddr *)_address;
         _socket->state = ESTABLISHED;
-        // LOG (just like accept()'s FSM)
+        // TODO: LOG (just like accept()'s FSM)
         return CONNESTION_ESTABLISHED_SUBSTATE;
 }
 
@@ -111,7 +139,8 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        fsm_context_t context = {.socket_init_seq_num = _socket->seq_number};
+        fsm_context_t context = {.socket_init_seq_num = _socket->seq_number,
+                                 .rst_retries_counter = get_connect_rst_retries()};
         connect_fsm_substates current_substate = CLOSED_SUBSTATE;
         while (TRUE)
         {

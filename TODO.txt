@@ -70,3 +70,13 @@ That way you avoid real time memory allocation (faster solution).
         // When you de allocate the socket, you de allocate its buffers (or during shutdown)
 
 18) Extensively log FSMs
+
+19)
+
+DO YOU WANT TO SEE CLEAN FUCKING CODE IN FSMS??? AND STOP REPEATING YOUR SELF??? THEN FUCKING CONVERT IF statements to SWITCH you NOOB!!
+
+
+20)
+COMPLETE YOUR TODOs... You have a lot of them...
+
+21) LOG each cases in SWITCHES in FSMs
