@@ -64,24 +64,26 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        /* Initialize resources for the socket. */
+        /* Initialize socket resources for connection. Unline server, client
+         * is not in any danger for SYN-flood attacks. so client allocates
+         * all required buffers before initiating the handshake process.*/
         generate_initial_sequence_number(_socket);
-        // TODO: Allocate this buffer, after successful connection. Protects against SYN flood attacks.
-        if (allocate_receive_buffer(_socket) == NULL)
-                LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Memory allocation for receive buffer failed.");
+        if (allocate_handshake_required_buffers(_socket) == FAILURE ||
+            allocate_receive_buffer(_socket) == FAILURE)
+                goto connect_failure_cleanup;
 
         /* Run the `connect's` state machine. */
-        int connect_state_machine_result = microtcp_connect_fsm(_socket, _address, _address_len);
+        if (microtcp_connect_fsm(_socket, _address, _address_len) == MICROTCP_CONNECT_FAILURE)
+                goto connect_failure_cleanup;
 
-        /* Clean-up on failure. */
-        if (connect_state_machine_result == MICROTCP_CONNECT_FAILURE)
-        {
+        if (allocate_receive_buffer(_socket) == FAILURE)
+                goto connect_failure_cleanup;
 
-                deallocate_receive_buffer(_socket);
-                LOG_ERROR_RETURN(connect_state_machine_result, "Connect operation failed.");
-        }
+        LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
 
-        LOG_INFO_RETURN(connect_state_machine_result, "Connect operation succeeded.");
+connect_failure_cleanup:
+        release_and_reset_handshake_resources(_socket, CLOSED);
+        LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Connect operation failed.");
 }
 
 int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len)
@@ -92,23 +94,23 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        SMART_ASSERT(0); // DEALLOCATE YOUR RESOURCES...  WHERE?? TODO: :w
         /* Initialize socket's resources required for 3-way handshake. */
         generate_initial_sequence_number(_socket);
-        if (allocate_pre_handshake_buffers(_socket) == FAILURE)
-                return MICROTCP_CONNECT_FAILURE;
+        if (allocate_handshake_required_buffers(_socket) == FAILURE)
+                goto accept_failure_cleanup;
 
         /* Run the `accept's` state machine. */
-        if(microtcp_accept_fsm(_socket, _address, _address_len) == MICROTCP_ACCEPT_FAILURE)
-                goto failure_cleanup;
+        if (microtcp_accept_fsm(_socket, _address, _address_len) == MICROTCP_ACCEPT_FAILURE)
+                goto accept_failure_cleanup;
 
-        if (allocate_receive_buffer(_socket) == NULL)
-                LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Failed to allocate recvbuf memory.");
+        if (allocate_receive_buffer(_socket) == FAILURE)
+                goto accept_failure_cleanup;
 
-        LOG_INFO_RETURN(accept_state_machine_result, "Accept operation succeeded.");
-failure_cleanup:
-                LOG_ERROR_RETURN(MICROTCP_ACCEPT_FAILURE, "Accept operation failed.");
-                deallocate_pre_handshake_buffers(_socket);
+        LOG_INFO_RETURN(MICROTCP_ACCEPT_SUCCESS, "Accept operation succeeded; Post handshake buffer allocated.");
+
+accept_failure_cleanup:
+        release_and_reset_handshake_resources(_socket, LISTEN);
+        LOG_ERROR_RETURN(MICROTCP_ACCEPT_FAILURE, "Accept operation failed.");
 }
 
 int microtcp_shutdown(microtcp_sock_t *_socket, int _how)

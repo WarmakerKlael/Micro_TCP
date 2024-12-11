@@ -27,8 +27,8 @@ static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct
                                     const socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
 static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                        socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
-void *allocate_bytestream_extraction_buffer(microtcp_sock_t *_socket);
-void *allocate_bytestream_builder_buffer(microtcp_sock_t *_socket);
+static void *allocate_bytestream_extraction_buffer(microtcp_sock_t *_socket);
+static void *allocate_bytestream_builder_buffer(microtcp_sock_t *_socket);
 static void deallocate_bytestream_builder_buffer(microtcp_sock_t *_socket);
 static void deallocate_bytestream_extraction_buffer(microtcp_sock_t *_socket);
 
@@ -228,17 +228,16 @@ status_t allocate_receive_buffer(microtcp_sock_t *_socket)
         _socket->recvbuf = CALLOC_LOG(_socket->recvbuf, get_microtcp_recvbuf_len());
         if (_socket->recvbuf == NULL)
                 LOG_ERROR_RETURN(FAILURE, "Failed to allocate socket's `recvbuf`.");
-        LOG_INFO(SUCCESS, "Succesful allocation of `recvbuf`.");
+        LOG_INFO_RETURN(SUCCESS, "Succesful allocation of `recvbuf`.");
 }
 
 void deallocate_receive_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
-        SMART_ASSERT(_socket->state != ESTABLISHED);
         FREE_NULLIFY_LOG(_socket->recvbuf);
 }
 
-status_t allocate_pre_handshake_buffers(microtcp_sock_t *_socket)
+status_t allocate_handshake_required_buffers(microtcp_sock_t *_socket)
 {
         if (allocate_bytestream_builder_buffer(_socket) == NULL)
                 return FAILURE;
@@ -250,11 +249,29 @@ status_t allocate_pre_handshake_buffers(microtcp_sock_t *_socket)
         return SUCCESS;
 }
 
-void deallocate_pre_handshake_buffers(microtcp_sock_t *_socket)
+void deallocate_handshake_required_buffers(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
+        SMART_ASSERT(_socket->state != ESTABLISHED);
         deallocate_bytestream_builder_buffer(_socket);
         deallocate_bytestream_extraction_buffer(_socket);
+}
+
+void release_and_reset_handshake_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state)
+{
+        SMART_ASSERT(_socket != NULL, _rollback_state != ESTABLISHED);
+
+        /* Reset connection if established (its not this function's job to terminate gracefully).
+        /* We dont check if RST_BIT is actually received; Its a best effort to warn client,
+         * that something went wrong with the connection, and we have to terminate immediately. */
+        if (_socket->state == ESTABLISHED)
+                send_rstack_control_segment(_socket, _socket->peer_socket_address, sizeof(*(_socket->peer_socket_address)));
+
+        _socket->state = _rollback_state;
+        _socket->peer_socket_address = NULL;
+        deallocate_receive_buffer(_socket);
+        deallocate_handshake_required_buffers(_socket);
+        LOG_INFO("Socket's handshake resources, released and reset.");
 }
 
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
@@ -326,6 +343,13 @@ ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct so
 ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
         return send_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST | CLOSING_BY_PEER);
+}
+
+/* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
+/* Every receive function returns special code if RST was received. So that how you detect it... */
+ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
+{
+        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
 ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
