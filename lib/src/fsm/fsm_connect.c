@@ -82,6 +82,9 @@ static connect_fsm_substates execute_syn_sent_substate(microtcp_sock_t *_socket,
 static connect_fsm_substates execute_synack_received_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                               socklen_t _address_len, fsm_context_t *_context)
 {
+        // TODO:remove
+        int x;
+        scanf("%d", &x);
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
         if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
                 return EXIT_FAILURE_SUBSTATE;

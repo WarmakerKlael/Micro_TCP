@@ -109,9 +109,11 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
                 update_socket_lost_counters(_socket, _context->send_synack_ret_val);
                 if (_context->synack_retries_counter > 0)
                 {
+                        LOG_WARNING("Waiting for FINAL `ACK`.\n");
                         _context->synack_retries_counter--;
                         return SYN_RECEIVED_SUBSTATE; /* go resend SYN|ACK as it was might lost */
                 }
+                LOG_WARNING("Waiting for going back in waiting for `SYN`.\n");
                 _context->synack_retries_counter = get_accept_synack_retries(); /* Reset contex's counter. */
                 return LISTEN_SUBSTATE;
         }
@@ -138,7 +140,7 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
          * respective functions which already vildated their input arguments. */
         fsm_context_t context = {.socket_init_seq_num = _socket->seq_number,
                                  .synack_retries_counter = get_accept_synack_retries()};
-                                 
+
         accept_fsm_substates current_substate = LISTEN_SUBSTATE;
         while (TRUE)
         {

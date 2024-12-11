@@ -72,9 +72,9 @@ main(int argc, char **argv)
     //     printf("From server: %s\n", rbuff);
     // } while (strcmp(sbuff, "exit\n") != 0);
 
-    printf("Closing connection...\n");
-    microtcp_shutdown(&tcpsocket, SHUT_RDWR);
-    printf("Connection closed\n");
+    // printf("Closing connection...\n");
+    // microtcp_shutdown(&tcpsocket, SHUT_RDWR);
+    // printf("Connection closed\n");
     
     return EXIT_SUCCESS;
 }
