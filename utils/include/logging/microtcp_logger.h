@@ -2,7 +2,6 @@
 #define MICROTCP_LOGGER_H
 
 #include <stdio.h>
-#include <assert.h>
 #include <stdarg.h>
 #include <string.h>
 #include "cli_color.h"
@@ -191,15 +190,6 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 	{                                                     \
 		LOG_ERROR(_format_message, ##__VA_ARGS__);    \
 		return _return_value;                         \
-	} while (0)
-
-#define LOG_ASSERT(...)                                                \
-	do                                                                         \
-	{                                                                          \
-		_Bool conditions_to_assert[] {} 
-		if (!_condition)                                                   \
-			LOG_ERROR("Assertion failed. Condition: %s", #_condition); \
-		assert(_condition);                                                \
 	} while (0)
 
 #endif /* MICROTCP_LOGGER_H */

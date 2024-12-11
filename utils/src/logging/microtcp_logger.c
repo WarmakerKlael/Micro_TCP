@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <pthread.h>
 
-#include "logging/logger.h"
+#include "logging/microtcp_logger.h"
 #include "logging/logger_options.h"
 #include "allocator/allocator.h"
 #include "microtcp_defines.h"

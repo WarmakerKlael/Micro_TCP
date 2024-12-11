@@ -1,10 +1,10 @@
 #include <errno.h>
-#include "logging/logger.h"
 #include "microtcp.h"
 #include "microtcp_core.h"
 #include "microtcp_defines.h"
 #include "microtcp_core_macros.h"
 #include "microtcp_common_macros.h"
+#include "logging/microtcp_logger.h"
 #include "fsm/microtcp_fsm.h"
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
@@ -144,7 +144,7 @@ ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int 
 
 void microtcp_close_socket(microtcp_sock_t *_socket)
 {
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL);
 
         if (_socket->state == ESTABLISHED)
                 microtcp_shutdown(_socket, SHUT_RDWR);

@@ -1,9 +1,10 @@
 #ifndef MICROTCP_CORE_MACROS_H
 #define MICROTCP_CORE_MACROS_H
 
-#include "logging/logger.h"
+#include "logging/microtcp_logger.h"
 #include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"
+#include "smart_assert.h"
 
 /* Internal MACRO defines. */
 #define NO_SENDTO_FLAGS 0
@@ -36,7 +37,7 @@
 #define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                              \
         do                                                                                                                                    \
         {                                                                                                                                     \
-                LOG_ASSERT(_socket != NULL);                                                                                                  \
+                SMART_ASSERT(_socket != NULL);                                                                                                  \
                                                                                                                                               \
                 if (!(_socket->state & _allowed_states))                                                                                      \
                 {                                                                                                                             \
@@ -53,8 +54,7 @@
 #define RETURN_ERROR_IF_SOCKADDR_INVALID(_failure_return_value, _address) \
         do                                                                \
         {                                                                 \
-                LOG_ASSERT(_address != NULL)                              \
-                A                                                         \
+                SMART_ASSERT(_address != NULL);                           \
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() */

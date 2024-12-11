@@ -7,9 +7,9 @@
 
 #include "microtcp.h"
 #include "microtcp_core.h"
-#include "logging/logger.h"
 #include "microtcp_defines.h"
 #include "microtcp_common_macros.h"
+#include "logging/microtcp_logger.h"
 #include "allocator/allocator.h"
 #include "crc32.h"
 
@@ -51,9 +51,8 @@ int set_recvfrom_timeout(microtcp_sock_t *_socket, time_t _sec, time_t _usec)
 int get_recvfrom_timeout(microtcp_sock_t *_socket, time_t *_sec, time_t *_usec)
 {
 
-        if (_socket == NULL || _sec == NULL || _usec == NULL) /* Let it cause a semgmentation fault. */
-                LOG_ERROR("NULL pointer arguments.");
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL, _sec != NULL, _usec != NULL);
+
         struct timeval timeout;
         socklen_t timout_len = sizeof(timeout);
         int return_value = getsockopt(_socket->sd, SOL_SOCKET, SO_RCVTIMEO, &timeout, &timout_len);
@@ -64,7 +63,7 @@ int get_recvfrom_timeout(microtcp_sock_t *_socket, time_t *_sec, time_t *_usec)
 
 void generate_initial_sequence_number(microtcp_sock_t *_socket)
 {
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL);
         uint32_t high = rand() & 0xFFFF;   /* Get only the 16 lower bits. */
         uint32_t low = rand() & 0xFFFF;    /* Get only the 16 lower bits. */
         uint32_t isn = (high << 16) | low; /* Combine 16-bit random of low and 16-bit random of high, to create a 32-bit random ISN. */
@@ -99,11 +98,7 @@ microtcp_sock_t initialize_microtcp_socket(void)
 
 void cleanup_microtcp_socket(microtcp_sock_t *_socket)
 {
-        if (_socket == NULL)
-        {
-                LOG_ERROR("Invalid Argument: %s = NULL", STRINGIFY(_socket));
-                return;
-        }
+        SMART_ASSERT(_socket != NULL);
         if (_socket->recvbuf != NULL)
                 deallocate_receive_buffer(_socket);
         if (_socket->sd != POSIX_SOCKET_FAILURE_VALUE)
@@ -145,8 +140,7 @@ microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _
 
 void *serialize_microtcp_segment(microtcp_segment_t *_segment)
 {
-        if (_segment == NULL)
-                LOG_ERROR_RETURN(NULL, "Given pointer to _segment was NULL.");
+        SMART_ASSERT(_segment != NULL);
         if (_segment->header.checksum != 0)
         {
                 _segment->header.checksum = 0;
@@ -174,10 +168,7 @@ void *serialize_microtcp_segment(microtcp_segment_t *_segment)
 
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
-        if (_bytestream_buffer == NULL || _bytestream_buffer_length < sizeof(microtcp_header_t))
-                LOG_ERROR_RETURN(FALSE, "Invalid Arguments: %s = %x || %s = %d.",
-                                 STRINGIFY(_bytestream_buffer), _bytestream_buffer,
-                                 STRINGIFY(_bytestream_buffer_length), _bytestream_buffer_length);
+        SMART_ASSERT(_bytestream_buffer != NULL, _bytestream_buffer_length >= sizeof(microtcp_header_t));
 
         uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 
@@ -191,10 +182,7 @@ _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_
 
 microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
-        if (_bytestream_buffer == NULL || _bytestream_buffer_length < sizeof(microtcp_header_t))
-                LOG_ERROR_RETURN(FALSE, "Invalid Arguments: %s = %x || %s = %d.",
-                                 STRINGIFY(_bytestream_buffer), _bytestream_buffer,
-                                 STRINGIFY(_bytestream_buffer_length), _bytestream_buffer_length);
+        SMART_ASSERT(_bytestream_buffer != NULL, _bytestream_buffer_length >= sizeof(microtcp_header_t));
 
         size_t payload_size = _bytestream_buffer_length - sizeof(microtcp_header_t);
 
@@ -237,13 +225,13 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket)
 
 void deallocate_receive_buffer(microtcp_sock_t *_socket)
 {
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL);
         FREE_NULLIFY_LOG(_socket->recvbuf);
 }
 
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
 {
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL);
         if (_bytes_sent == 0)
         {
                 LOG_ERROR("Failed to update socket's sent counters; %s = 0", STRINGIFY(_bytes_sent));
@@ -260,7 +248,7 @@ void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
 
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received)
 {
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL);
         if (_bytes_received == 0)
         {
                 LOG_ERROR("Failed to update socket's received counters; %s = 0", STRINGIFY(_bytes_received));
@@ -277,7 +265,7 @@ void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_rec
 
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost)
 {
-        LOG_ASSERT(_socket);
+        SMART_ASSERT(_socket != NULL);
         if (_bytes_lost == 0)
         {
                 LOG_ERROR("Failed to update socket's lost counters; %s = 0", STRINGIFY(_bytes_lost));

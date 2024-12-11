@@ -2,10 +2,8 @@
 #include "fsm/microtcp_fsm.h"
 #include "fsm_common.h"
 #include "microtcp_core.h"
-#include "logging/logger.h"
+#include "logging/microtcp_logger.h"
 #include "sys/time.h"
-
-#include <assert.h>
 
 #define TCP_RETRIES2 15 /* TCP default value for `TCP_RETRIES2` variable.*/
 
@@ -246,7 +244,7 @@ void set_shutdown_time_wait_period(time_t _sec, time_t _usec)
 /* Helper function: Safely subtract _minuend from _subtrahend and store the result in t1 */
 static inline void subtract_and_normalize_timeval(struct timeval *_subtrahend, const struct timeval _minuend)
 {
-        LOG_ASSERT(_subtrahend);
+        SMART_ASSERT(_subtrahend != NULL);
         _subtrahend->tv_sec -= _minuend.tv_sec;
         _subtrahend->tv_usec -= _minuend.tv_usec;
 

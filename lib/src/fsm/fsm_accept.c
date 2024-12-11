@@ -1,7 +1,7 @@
 #include "fsm/microtcp_fsm.h"
 #include "fsm_common.h"
 #include "microtcp_core.h"
-#include "logging/logger.h"
+#include "logging/microtcp_logger.h"
 
 #define LINUX_DEFAULT_ACCEPT_TIMEOUTS 5
 static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS; /* Default. Can be changed from following "API". */

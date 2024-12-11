@@ -1,7 +1,7 @@
 #include "fsm/microtcp_fsm.h"
 #include "fsm_common.h"
 #include "microtcp_core.h"
-#include "logging/logger.h"
+#include "logging/microtcp_logger.h"
 
 /* Very ealy version, made just for connection termination. */
 typedef enum

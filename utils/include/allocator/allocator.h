@@ -2,7 +2,7 @@
 #define ALLOCATOR_H
 
 #include <stdlib.h>
-#include "logging/logger.h"
+#include "logging/microtcp_logger.h"
 #include "logging/logger_options.h"
 
 /**
