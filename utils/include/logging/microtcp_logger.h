@@ -1,5 +1,5 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef MICROTCP_LOGGER_H
+#define MICROTCP_LOGGER_H
 
 #include <stdio.h>
 #include <assert.h>
@@ -193,12 +193,13 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 		return _return_value;                         \
 	} while (0)
 
-#define LOG_ASSERT(_condition)                                                     \
+#define LOG_ASSERT(...)                                                \
 	do                                                                         \
 	{                                                                          \
+		_Bool conditions_to_assert[] {} 
 		if (!_condition)                                                   \
 			LOG_ERROR("Assertion failed. Condition: %s", #_condition); \
 		assert(_condition);                                                \
 	} while (0)
 
-#endif /* LOGGER_H */
+#endif /* MICROTCP_LOGGER_H */

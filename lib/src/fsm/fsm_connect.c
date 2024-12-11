@@ -44,7 +44,7 @@ static const char *convert_substate_to_string(connect_fsm_substates _substate)
 // clang-format on
 
 static connect_fsm_substates execute_closed_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                  socklen_t _address_len, fsm_context_t *_context)
+                                                     socklen_t _address_len, fsm_context_t *_context)
 {
         /* When ever we start, we reset socket's sequence number, as it might be a retry. */
         _socket->seq_number = _context->socket_init_seq_num;
@@ -64,7 +64,7 @@ static connect_fsm_substates execute_closed_substate(microtcp_sock_t *_socket, c
 }
 
 static connect_fsm_substates execute_syn_sent_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                    socklen_t _address_len, fsm_context_t *_context)
+                                                       socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_synack_ret_val = receive_synack_control_segment(_socket, (struct sockaddr *)_address, _address_len);
         if (_context->recv_synack_ret_val == RECV_SEGMENT_FATAL_ERROR)
@@ -80,7 +80,7 @@ static connect_fsm_substates execute_syn_sent_substate(microtcp_sock_t *_socket,
 }
 
 static connect_fsm_substates execute_synack_received_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                           socklen_t _address_len, fsm_context_t *_context)
+                                                              socklen_t _address_len, fsm_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
         if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
@@ -93,8 +93,9 @@ static connect_fsm_substates execute_synack_received_substate(microtcp_sock_t *_
 }
 
 static connect_fsm_substates execute_ack_sent_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
-                                                    socklen_t _address_len, fsm_context_t *_context)
+                                                       socklen_t _address_len, fsm_context_t *_context)
 {
+        _socket->peer_socket_address = (struct sockaddr *)_address;
         _socket->state = ESTABLISHED;
         // LOG (just like accept()'s FSM)
         return CONNESTION_ESTABLISHED_SUBSTATE;

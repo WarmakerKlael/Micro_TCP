@@ -36,8 +36,7 @@
 #define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                              \
         do                                                                                                                                    \
         {                                                                                                                                     \
-                if (_socket == NULL)                                                                                                          \
-                        LOG_ERROR_RETURN(_failure_return_value, "NULL pointer passed to variable '%s'.", STRINGIFY(_socket));                 \
+                LOG_ASSERT(_socket != NULL);                                                                                                  \
                                                                                                                                               \
                 if (!(_socket->state & _allowed_states))                                                                                      \
                 {                                                                                                                             \
@@ -51,11 +50,11 @@
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() */
-#define RETURN_ERROR_IF_SOCKADDR_INVALID(_failure_return_value, _address)                                                      \
-        do                                                                                                                     \
-        {                                                                                                                      \
-                if (_address == NULL)                                                                                          \
-                        LOG_ERROR_RETURN(_failure_return_value, "NULL pointer passed to variable '%s'.", STRINGIFY(_address)); \
+#define RETURN_ERROR_IF_SOCKADDR_INVALID(_failure_return_value, _address) \
+        do                                                                \
+        {                                                                 \
+                LOG_ASSERT(_address != NULL)                              \
+                A                                                         \
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() */

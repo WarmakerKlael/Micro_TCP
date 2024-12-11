@@ -187,7 +187,7 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
                 switch (current_substate)
                 {
                 case CONNECTION_ESTABLISHED_SUBSTATE:
-                        current_substate = execute_initial_substate(_socket, _address, _address_len, &context);
+                        current_substate = execute_connection_established_substate(_socket, _address, _address_len, &context);
                         break;
                 case FIN_WAIT_1_SUBSTATE:
                         current_substate = execute_fin_wait_1_substate(_socket, _address, _address_len, &context);

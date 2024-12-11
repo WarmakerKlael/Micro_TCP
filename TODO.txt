@@ -41,9 +41,6 @@ CHECK sequence number (in the specific check) of send_handshake_segment() and re
 
 12) What's up with RST_BIT flag?
 
-13) Let some NULL pointers cause a segmentation fault. for example INput argument pointers.
-
-
 14) What's up with the `how` argument on microtcp_shutdown, implements the shutdown modes.
 
 15) Thoughts on Phase B and receive buffer:

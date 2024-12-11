@@ -64,7 +64,6 @@ void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent);
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received);
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost);
 
-void set_workaround_shutdown_address(microtcp_sock_t *_socket, struct sockaddr *_address);
 void cleanup_microtcp_socket(microtcp_sock_t *_socket);
 
 #endif /* MICROTCP_CORE_UTILS_H */

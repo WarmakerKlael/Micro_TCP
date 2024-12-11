@@ -14,7 +14,7 @@
 const char *get_microtcp_state_to_string(mircotcp_state_t _state)
 {
         #define CASE_RETURN_STRING(_case) case _case: return #_case
-        switch (_state)
+        switch ((int)_state)
         {
         /* Single States */
         CASE_RETURN_STRING(INVALID);
@@ -97,7 +97,7 @@ const char *get_microtcp_state_to_string(mircotcp_state_t _state)
 
 const char *get_microtcp_control_to_string(uint16_t _control)
 {
-        switch (_control)
+        switch ((uint16_t)_control)
         {
         case SYN_BIT: return "SYN";
         case ACK_BIT: return "ACK";

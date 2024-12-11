@@ -122,6 +122,7 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
 static accept_fsm_substates execute_ack_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
                                                           socklen_t _address_len, fsm_context_t *_context)
 {
+        _socket->peer_socket_address = _address;
         _socket->state = ESTABLISHED;
         // TODO: LOG FSM's result (Like: "FSM succeded: Established connection.") or similar.
         return CONNECTION_ESTABLISHED_SUBSTATE;

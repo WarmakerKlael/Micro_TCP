@@ -53,8 +53,10 @@ int get_recvfrom_timeout(microtcp_sock_t *_socket, time_t *_sec, time_t *_usec)
 
         if (_socket == NULL || _sec == NULL || _usec == NULL) /* Let it cause a semgmentation fault. */
                 LOG_ERROR("NULL pointer arguments.");
+        LOG_ASSERT(_socket);
         struct timeval timeout;
-        int return_value = getsockopt(_socket->sd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        socklen_t timout_len = sizeof(timeout);
+        int return_value = getsockopt(_socket->sd, SOL_SOCKET, SO_RCVTIMEO, &timeout, &timout_len);
         *_sec = timeout.tv_sec;
         *_usec = timeout.tv_usec;
         return return_value;
@@ -62,7 +64,7 @@ int get_recvfrom_timeout(microtcp_sock_t *_socket, time_t *_sec, time_t *_usec)
 
 void generate_initial_sequence_number(microtcp_sock_t *_socket)
 {
-        /* We let it cause a segmentation fault if '_socket' == NULL. */
+        LOG_ASSERT(_socket);
         uint32_t high = rand() & 0xFFFF;   /* Get only the 16 lower bits. */
         uint32_t low = rand() & 0xFFFF;    /* Get only the 16 lower bits. */
         uint32_t isn = (high << 16) | low; /* Combine 16-bit random of low and 16-bit random of high, to create a 32-bit random ISN. */
@@ -91,7 +93,7 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .bytes_sent = 0,
             .bytes_received = 0,
             .bytes_lost = 0,
-            ._workaround_shutdown_address_ = NULL};
+            .peer_socket_address = NULL};
         return new_socket;
 }
 
@@ -109,7 +111,7 @@ void cleanup_microtcp_socket(microtcp_sock_t *_socket)
         _socket->sd = POSIX_SOCKET_FAILURE_VALUE;
         _socket->buf_fill_level = 0;
         _socket->state = INVALID;
-        _socket->_workaround_shutdown_address_ = NULL;
+        _socket->peer_socket_address = NULL;
 }
 
 microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload)
@@ -235,15 +237,13 @@ void *allocate_receive_buffer(microtcp_sock_t *_socket)
 
 void deallocate_receive_buffer(microtcp_sock_t *_socket)
 {
-        if (_socket == NULL)
-                LOG_ERROR("Invalid argument: %s = NULL.", STRINGIFY(_socket));
-        /* Let it cause a segmentation fault.*/
+        LOG_ASSERT(_socket);
         FREE_NULLIFY_LOG(_socket->recvbuf);
 }
 
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
 {
-        /* Let it cause a segmentation fault if '_socket' == NULL. */
+        LOG_ASSERT(_socket);
         if (_bytes_sent == 0)
         {
                 LOG_ERROR("Failed to update socket's sent counters; %s = 0", STRINGIFY(_bytes_sent));
@@ -260,7 +260,7 @@ void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
 
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received)
 {
-        /* Let it cause a segmentation fault if '_socket' == NULL. */
+        LOG_ASSERT(_socket);
         if (_bytes_received == 0)
         {
                 LOG_ERROR("Failed to update socket's received counters; %s = 0", STRINGIFY(_bytes_received));
@@ -277,7 +277,7 @@ void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_rec
 
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost)
 {
-        /* Let it cause a segmentation fault if '_socket' == NULL. */
+        LOG_ASSERT(_socket);
         if (_bytes_lost == 0)
         {
                 LOG_ERROR("Failed to update socket's lost counters; %s = 0", STRINGIFY(_bytes_lost));
@@ -421,61 +421,52 @@ ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct so
         return receive_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
-void set_workaround_shutdown_address(microtcp_sock_t *const _socket, struct sockaddr *const _address)
-{
-        if (_socket == NULL)
-                LOG_ERROR("Invalid argument: %s == NULL", STRINGIFY(_socket));
-        if (_address == NULL)
-                LOG_ERROR("Invalid argument: %s == NULL", STRINGIFY(_address));
-        _socket->_workaround_shutdown_address_ = _address;
-}
-
 /* TODO: */
 /* SEND SEGMENT */
 /* RECEIVE SEGMENT */
 
-/**
- * @returns the number of bytes, it validly received.
- * This also implies that a packet was correctly received.
- */
-static ssize_t receive_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                               socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
-{
-        /* Quick argument check. */
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, _required_state);
-        RETURN_ERROR_IF_SOCKADDR_INVALID(RECV_SEGMENT_FATAL_ERROR, _address);
-        RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(RECV_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
+// /**
+//  * @returns the number of bytes, it validly received.
+//  * This also implies that a packet was correctly received.
+//  */
+// static ssize_t receive_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+//                                socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
+// {
+//         /* Quick argument check. */
+//         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, _required_state);
+//         RETURN_ERROR_IF_SOCKADDR_INVALID(RECV_SEGMENT_FATAL_ERROR, _address);
+//         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(RECV_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
 
-        const size_t minimum_segment_size = sizeof(microtcp_header_t);
-        size_t maximum_segment_size = MICROTCP_MSS;
-        size_t available_space_on_buffer = MICROTCP_RECVBUF_LEN - _socket->buf_fill_level;
-        static
+//         const size_t minimum_segment_size = sizeof(microtcp_header_t);
+//         size_t maximum_segment_size = MICROTCP_MSS;
+//         size_t available_space_on_buffer = MICROTCP_RECVBUF_LEN - _socket->buf_fill_level;
+//         static
 
-            ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, expected_segment_size, NO_RECVFROM_FLAGS, _address, &_address_len);
-        if (recvfrom_ret_val == RECVFROM_ERROR && (errno == EAGAIN || errno == EWOULDBLOCK))
-                LOG_WARNING_RETURN(RECV_SEGMENT_TIMEOUT, "recvfrom timeout.");
-        if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned 0, which points a closed connection; but underlying protocol is UDP, so this should not happen.");
-        if (recvfrom_ret_val == RECVFROM_ERROR)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
-        if (recvfrom_ret_val < expected_segment_size)
-                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received bytestream size is less than %s.", STRINGIFY(expected_segment_size));
-        if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
-                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
+//             ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, expected_segment_size, NO_RECVFROM_FLAGS, _address, &_address_len);
+//         if (recvfrom_ret_val == RECVFROM_ERROR && (errno == EAGAIN || errno == EWOULDBLOCK))
+//                 LOG_WARNING_RETURN(RECV_SEGMENT_TIMEOUT, "recvfrom timeout.");
+//         if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
+//                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned 0, which points a closed connection; but underlying protocol is UDP, so this should not happen.");
+//         if (recvfrom_ret_val == RECVFROM_ERROR)
+//                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
+//         if (recvfrom_ret_val < expected_segment_size)
+//                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received bytestream size is less than %s.", STRINGIFY(expected_segment_size));
+//         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
+//                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
 
-        microtcp_segment_t *control_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
-        if (control_segment == NULL)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting %s segment resulted to a NULL pointer.", get_microtcp_control_to_string(_required_control));
-        if (control_segment->header.control != _required_control)
-                LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control: Received = `%s`; Expected = `%s`.",
-                                 get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
+//         microtcp_segment_t *control_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
+//         if (control_segment == NULL)
+//                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting %s segment resulted to a NULL pointer.", get_microtcp_control_to_string(_required_control));
+//         if (control_segment->header.control != _required_control)
+//                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control: Received = `%s`; Expected = `%s`.",
+//                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
 
-        /* Ignore check if waiting to receive SYN (server side). */
-        if (_required_control != SYN_BIT && control_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
-                LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Received segment %s and ACK number mismatch occured. (Got = %d)|(Expected = %d)",
-                                 get_microtcp_control_to_string(_required_control), control_segment->header.ack_number, _socket->seq_number + 1);
+//         /* Ignore check if waiting to receive SYN (server side). */
+//         if (_required_control != SYN_BIT && control_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
+//                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Received segment %s and ACK number mismatch occured. (Got = %d)|(Expected = %d)",
+//                                  get_microtcp_control_to_string(_required_control), control_segment->header.ack_number, _socket->seq_number + 1);
 
-        _socket->ack_number = control_segment->header.seq_number + 1;
-        _socket->peer_win_size = control_segment->header.window;
-        LOG_INFO_RETURN(recvfrom_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
-}
+//         _socket->ack_number = control_segment->header.seq_number + 1;
+//         _socket->peer_win_size = control_segment->header.window;
+//         LOG_INFO_RETURN(recvfrom_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
+// }

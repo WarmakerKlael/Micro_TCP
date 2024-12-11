@@ -41,7 +41,6 @@
 #define POSIX_SETSOCKOPT_SUCCESS 0
 #define POSIX_SETSOCKOPT_FAILURE -1
 
-
 /* PROJECT_TOP_LEVEL_DIRECTORY is defined by Top Level CMakeLists.txt
    I inlclude the following macro to make Intellisense stop showing error.*/
 #ifdef __INTELLISENSE__

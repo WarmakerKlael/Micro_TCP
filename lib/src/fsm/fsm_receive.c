@@ -34,7 +34,7 @@ static receive_internal_states execute_receiving_state(microtcp_sock_t *const _s
                                                      socklen_t _address_len, fsm_context_t *_context)
 {
         // TBI
-        ;
+        return EXIT_FAILURE_STATE;
 
 }
 
@@ -44,7 +44,7 @@ int receive_fsm(microtcp_sock_t *const _socket, struct sockaddr *_address, sockl
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address_len, sizeof(*_address));
 
-        fsm_context_t context = {0};
+        fsm_context_t context;
         receive_internal_states current_state = SEND_SYN_STATE;
         while (TRUE)
         {

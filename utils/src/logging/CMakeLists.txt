@@ -1,3 +1,3 @@
-add_library(Logger STATIC logger.c logger_options.c)
+add_library(microtcp_logger STATIC microtcp_logger.c microtcp_logger_options.c)
 
-target_include_directories(Logger PUBLIC ${CMAKE_SOURCE_DIR}/utils/include)
+target_include_directories(microtcp_logger PUBLIC ${CMAKE_SOURCE_DIR}/utils/include)

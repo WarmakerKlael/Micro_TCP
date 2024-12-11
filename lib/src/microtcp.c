@@ -80,7 +80,6 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
                 LOG_ERROR_RETURN(connect_state_machine_result, "Connect operation failed.");
         }
 
-        set_workaround_shutdown_address(_socket, (struct sockaddr *)_address); /* Hack to pass sockaddr to shutdown. */
         LOG_INFO_RETURN(connect_state_machine_result, "Connect operation succeeded.");
 }
 
@@ -107,7 +106,6 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
                 LOG_ERROR_RETURN(accept_state_machine_result, "Accept operation failed.");
         }
 
-        set_workaround_shutdown_address(_socket, (struct sockaddr *)_address); /* Hack to pass sockaddr to shutdown. */
         LOG_INFO_RETURN(accept_state_machine_result, "Accept operation succeeded.");
 }
 
@@ -117,8 +115,8 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         /* Validate input parameters. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
 
-        struct sockaddr *address = _socket->_workaround_shutdown_address_;
-        socklen_t address_len = sizeof(*(_socket->_workaround_shutdown_address_));
+        struct sockaddr *address = _socket->peer_socket_address;
+        socklen_t address_len = sizeof(*(_socket->peer_socket_address));
 
         /* Run the `shutdown's` state machine. */
         int shutdown_state_machine_result = microtcp_shutdown_fsm(_socket, address, address_len);
@@ -132,21 +130,21 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
 }
 
 ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length,
-              int flags)
+                      int flags)
 {
         /* Your code here */
+        return 0;
 }
 
 ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags)
 {
-        ssize_t rfa_ret_val  = receive_finack_control_segment(, )
+        // ssize_t rfa_ret_val  = receive_finack_control_segment( )
+        return 0;
 }
 
 void microtcp_close_socket(microtcp_sock_t *_socket)
 {
-        if (_socket == NULL)
-                LOG_ERROR("Invalid argument: %s = NULL", STRINGIFY (_socket));
-        /* Let it cause a segmentation fault. */
+        LOG_ASSERT(_socket);
 
         if (_socket->state == ESTABLISHED)
                 microtcp_shutdown(_socket, SHUT_RDWR);
