@@ -108,9 +108,9 @@ const char *get_microtcp_control_to_string(uint16_t _control)
         case SYN_BIT | ACK_BIT: return "SYN|ACK";
         case SYN_BIT | RST_BIT: return "SYN|RST";
         case SYN_BIT | FIN_BIT: return "SYN|FIN";
-        case ACK_BIT | RST_BIT: return "ACK|RST";
-        case ACK_BIT | FIN_BIT: return "ACK|FIN";
-        case RST_BIT | FIN_BIT: return "RST|FIN";
+        case ACK_BIT | RST_BIT: return "RST|ACK";
+        case ACK_BIT | FIN_BIT: return "FIN|ACK";
+        case RST_BIT | FIN_BIT: return "FIN|RST";
 
         case SYN_BIT | ACK_BIT | RST_BIT: return "SYN|ACK|RST";
         case SYN_BIT | ACK_BIT | FIN_BIT: return "SYN|ACK|FIN";

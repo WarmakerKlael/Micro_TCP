@@ -96,8 +96,9 @@ static shutdown_fsm_substates execute_fin_wait_1_substate(microtcp_sock_t *const
                 _context->finack_retries_counter--;
                 return CONNECTION_ESTABLISHED_SUBSTATE;
         case RECV_SEGMENT_RST_BIT:
-                SMART_ASSERT(0, "NOT IMPLEMENTED YET."); // TODO: Well implement it..
-                /* DO we return success on shutdown? or shutdown failed... Peer told us to close forcibly... */
+                /* You expected peer's ack, as you (host) sent a FIN. But... RST came instead. */
+                LOG_WARNING("Peer send an RST segment, Expected peer's ACK. Finishing connection fast-forward to closing connection.");
+                return CLOSED_1_SUBSTATE;
 
         default:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
@@ -125,9 +126,11 @@ static shutdown_fsm_substates execute_fin_wait_2_recv_substate(microtcp_sock_t *
                 _context->finack_wait_time_timer = get_shutdown_time_wait_period(); /* Reset timer. */
                 return CLOSED_1_SUBSTATE;
 
-        case RECV_SEGMENT_RST_BIT:
-                SMART_ASSERT(0, "NOT IMPLEMENTED YET."); // TODO: Well implement it..
-                /* DO we return success on shutdown? or shutdown failed... Peer told us to close forcibly... */
+        case RECV_SEGMENT_RST_BIT: 
+                /* You expected  peer's FIN, as after peer's ACK. But... RST came instead. */
+                LOG_WARNING("Peer send an RST segment, Expected peer's FIN. Finishing connection fast-forward to closing connection.");
+                return CLOSED_1_SUBSTATE;
+
 
         default:
                 update_socket_received_counters(_socket, _context->recv_finack_ret_val);
@@ -170,12 +173,13 @@ static shutdown_fsm_substates execute_time_wait_substate(microtcp_sock_t *const 
         case RECV_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
 
-        /* Actions on the following two cases are the same. */
+        /* All three cases result to going to `CLOSED_1_SUBSTATE`. If RST received you also log a warning message. */
+        case RECV_SEGMENT_RST_BIT:
+                LOG_WARNING("Received a RST segment in TIME_WAIT substate. Closing connection");        
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
                 return CLOSED_1_SUBSTATE;
                 /* We want timeout to occur... Means peer sent its FIN-ACK and stopped sending (should receive our ACK though). */
-
         default:
                 update_socket_lost_counters(_socket, _context->send_ack_ret_val);
                 update_socket_received_counters(_socket, _context->recv_finack_ret_val);

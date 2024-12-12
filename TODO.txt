@@ -90,3 +90,40 @@ SHORT #INCLUDE ROWS, in first < > second " "order grouped
 
 
 24) Create explicit loggers (One for settings, one for allocator, on microtcpGeneral) Or mehh idea?
+
+
+
+
+
+
+        case RECV_SEGMENT_RST_BIT: /* Let it fall to CLOSED_1_SUBSTATE*/
+
+                LOG_WARNING("Received a RST segment in TIME_WAIT substate. Closing connection");
+
+        
+
+        case RECV_SEGMENT_ERROR:
+
+        case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
+
+                return CLOSED_1_SUBSTATE;
+
+
+vs
+
+
+        /* Actions on the following two cases are the same. */
+
+        case RECV_SEGMENT_RST_BIT:
+
+                LOG_WARNING("Received a RST segment in TIME_WAIT substate. Closing connection");        
+
+                return CLOSED_1_SUBSTATE;
+
+        
+
+        case RECV_SEGMENT_ERROR:
+
+        case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
+
+                return CLOSED_1_SUBSTATE;
