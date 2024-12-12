@@ -132,3 +132,8 @@ vs
 
 25) To optimize performance, remove redundant assertions and check. After you assure code runs without errors (laughing..) put #ifdef guards. 
 Let then on only ON only when  DEBUG_MODE is defined.
+
+26) Allocator macro, can be advance (with the help of a function) to keep track of allocated memory (and its size (maybe for logging)),
+and you should be able to do 
+        1: print currently allocated segment.
+        2: SMART_ASSERT, all memory regions are free()ed and NULLIFyied.

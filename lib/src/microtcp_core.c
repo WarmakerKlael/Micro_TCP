@@ -29,9 +29,11 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
                                        socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
 static microtcp_segment_t *allocate_segment_build_buffer(microtcp_sock_t *_socket);
 static void *allocate_bytestream_build_buffer(microtcp_sock_t *_socket);
+static microtcp_segment_t *allocate_segment_extraction_buffer(microtcp_sock_t *_socket);
 static void *allocate_bytestream_receive_buffer(microtcp_sock_t *_socket);
 static void deallocate_segment_build_buffer(microtcp_sock_t *_socket);
 static void deallocate_bytestream_build_buffer(microtcp_sock_t *_socket);
+static void deallocate_segment_extraction_buffer(microtcp_sock_t *_socket);
 static void deallocate_bytestream_receive_buffer(microtcp_sock_t *_socket);
 
 __attribute__((constructor(RNG_CONSTRUCTOR_PRIORITY))) static void seed_random_number_generator(void)
@@ -193,26 +195,23 @@ _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_
         return calculated_checksum == extracted_checksum;
 }
 
-microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _bytestream_buffer_length)
+microtcp_segment_t *extract_microtcp_segment(microtcp_sock_t *_socket, void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
-        SMART_ASSERT(_bytestream_buffer != NULL, _bytestream_buffer_length >= sizeof(microtcp_header_t));
 
-        size_t payload_size = _bytestream_buffer_length - sizeof(microtcp_header_t);
-        printf("Payload size ??? USE STATIC BUFFERS == %lu\n", payload_size);
+        const size_t header_size = sizeof(microtcp_header_t);
 
-        microtcp_segment_t *new_segment = CALLOC_LOG(new_segment, sizeof(microtcp_segment_t));
-        if (new_segment == NULL)
-                return NULL;
+        SMART_ASSERT(_socket != NULL);
+        SMART_ASSERT(_socket->segment_extraction_buffer != NULL,
+                     _bytestream_buffer != NULL,
+                     _bytestream_buffer_length >= header_size);
 
-        new_segment->raw_payload_bytes = CALLOC_LOG(new_segment->raw_payload_bytes, payload_size);
-        if (new_segment->raw_payload_bytes == NULL)
-        {
-                FREE_NULLIFY_LOG(new_segment); /* Free partial allocated memory */
-                return NULL;
-        }
+        const size_t payload_size = _bytestream_buffer_length - header_size;
+
+        microtcp_segment_t *new_segment = _socket->segment_extraction_buffer;
+
+        new_segment->raw_payload_bytes = (payload_size > 0 ? _bytestream_buffer + header_size : NULL);
 
         memcpy(&(new_segment->header), _bytestream_buffer, sizeof(microtcp_header_t));
-        memcpy(new_segment->raw_payload_bytes, _bytestream_buffer + sizeof(microtcp_header_t), payload_size);
 
         return new_segment;
 }
@@ -248,11 +247,17 @@ status_t allocate_handshake_required_buffers(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
+        
+        /* Buffers meant for making ack sending packets. */
         if (allocate_segment_build_buffer(_socket) == NULL)
                 goto failure_cleanup;
         if (allocate_bytestream_build_buffer(_socket) == NULL)
                 goto failure_cleanup;
+
+        /* Buffers meant for receiving and extracting segments. */
         if (allocate_bytestream_receive_buffer(_socket) == NULL)
+                goto failure_cleanup;
+        if(allocate_segment_extraction_buffer(_socket) == NULL)
                 goto failure_cleanup;
 
         return SUCCESS;
@@ -268,6 +273,7 @@ void deallocate_handshake_required_buffers(microtcp_sock_t *_socket)
         deallocate_segment_build_buffer(_socket);
         deallocate_bytestream_build_buffer(_socket);
         deallocate_bytestream_receive_buffer(_socket);
+        deallocate_segment_extraction_buffer(_socket);
 }
 
 void release_and_reset_handshake_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state)
@@ -449,7 +455,7 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
 
-        microtcp_segment_t *control_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
+        microtcp_segment_t *control_segment = extract_microtcp_segment(_socket, bytestream_buffer, recvfrom_ret_val);
         if (control_segment == NULL)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting %s segment resulted to a NULL pointer.", get_microtcp_control_to_string(_required_control));
         if ((control_segment->header.control & RST_BIT) == RST_BIT) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
@@ -479,6 +485,7 @@ static microtcp_segment_t *allocate_segment_build_buffer(microtcp_sock_t *_socke
                 LOG_ERROR_RETURN(_socket->segment_build_buffer, "Failed to allocate socket's `segment_build_buffer`.");
         LOG_INFO_RETURN(_socket->segment_build_buffer, "Succesful allocation of `segment_build_buffer`.");
 }
+
 /**
  * @returns pointer to the newly allocated `bytestream_build_buffer`. If allocation fails returns `NULL`;
  * @brief There are two states where `bytestream_build_buffer` memory allocation is possible.
@@ -513,6 +520,17 @@ static void *allocate_bytestream_receive_buffer(microtcp_sock_t *_socket)
         LOG_INFO_RETURN(_socket->bytestream_receive_buffer, "Succesful allocation of `bytestream_receive_buffer`.");
 }
 
+static microtcp_segment_t *allocate_segment_extraction_buffer(microtcp_sock_t *_socket)
+{
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, (CLOSED | LISTEN));
+        SMART_ASSERT(_socket->segment_extraction_buffer == NULL);
+
+        _socket->segment_extraction_buffer = CALLOC_LOG(_socket->segment_extraction_buffer, sizeof(microtcp_segment_t));
+        if (_socket->segment_extraction_buffer == NULL)
+                LOG_ERROR_RETURN(_socket->segment_extraction_buffer, "Failed to allocate socket's `segment_extraction_buffer`.");
+        LOG_INFO_RETURN(_socket->segment_extraction_buffer, "Succesful allocation of `segment_extraction_buffer`.");
+}
+
 static void deallocate_segment_build_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
@@ -534,7 +552,12 @@ static void deallocate_bytestream_receive_buffer(microtcp_sock_t *_socket)
         FREE_NULLIFY_LOG(_socket->bytestream_receive_buffer);
 }
 
-
+static void deallocate_segment_extraction_buffer(microtcp_sock_t *_socket)
+{
+        SMART_ASSERT(_socket != NULL);
+        SMART_ASSERT(_socket->state != ESTABLISHED);
+        FREE_NULLIFY_LOG(_socket->segment_extraction_buffer);
+}
 
 /* TODO: */
 /* SEND SEGMENT */

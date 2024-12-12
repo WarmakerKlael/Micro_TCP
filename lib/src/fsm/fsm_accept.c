@@ -14,6 +14,8 @@ typedef enum
         EXIT_FAILURE_SUBSTATE = -1,                    /* Terminal substate (failure). FSM exit point. */
 } accept_fsm_substates;
 
+/* NO errno for accept()'s FSM, Very little that can go wrong (host-side fat errors). */
+
 typedef struct
 {
         ssize_t recv_syn_ret_val;

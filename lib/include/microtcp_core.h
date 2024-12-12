@@ -31,7 +31,7 @@ microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_
 void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_segment);
 void release_and_reset_handshake_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state);
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length);
-microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _bytestream_buffer_length);
+microtcp_segment_t *extract_microtcp_segment(microtcp_sock_t *_socket, void *_bytestream_buffer, size_t _bytestream_buffer_length);
 /**
  * @returns pointer to the newly allocated bytestream_assembly_buffer. If allocation fails returns NULL;
  * @brief There are two states where bytestream_assembly_buffer memory allocation is possible.
