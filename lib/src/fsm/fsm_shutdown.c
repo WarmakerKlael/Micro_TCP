@@ -21,13 +21,13 @@ typedef enum
 typedef enum
 {
         NO_ERROR,
-        PEER_ACK_TIMEOUT,     /* Sent FIN to peer, ack never received. */
-        PEER_FIN_TIMEOUT,     /* Peer sent ACK, never sent FIN. */
-        RST_EXPECTED_ACK,     /* RST received during termination process. */
-        RST_EXPECTED_FINACK,  /* RST received during termination process. */
-        RST_EXPECTED_TIMEOUT, /* RST received during termination process. */
-        HOST_FATAL_ERROR,
-        SOCKET_TIMEOUT_SETUP_ERROR
+        PEER_ACK_TIMEOUT,          /* Sent FIN to peer, ack never received. */
+        PEER_FIN_TIMEOUT,          /* Peer sent ACK, never sent FIN. */
+        RST_EXPECTED_ACK,          /* RST after host sent FIN|ACK and expected peer's ACK. */
+        RST_EXPECTED_FINACK,       /* RST after host received peer's ACK and expected peer's FIN|ACK. */
+        RST_EXPECTED_TIMEOUT,      /* RST after host send ACK, and expected TIME_WAIT timer to run off . */
+        HOST_FATAL_ERROR,          /* Set when fatal errors occur on host's side. */
+        SOCKET_TIMEOUT_SETUP_ERROR /* Set when host is unable to set socket's timer for the TIME_WAIT period. */
 } shutdown_fsm_errno_t;
 
 typedef struct
@@ -71,7 +71,7 @@ static shutdown_fsm_substates_t execute_connection_established_substate(microtcp
         }
 }
 
-static shutdown_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address, // CHECK
+static shutdown_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                             socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
@@ -102,7 +102,7 @@ static shutdown_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *con
         }
 }
 
-static shutdown_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address, // CHECK
+static shutdown_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                  socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
@@ -133,7 +133,7 @@ static shutdown_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t
         }
 }
 
-static shutdown_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address, // CHECK
+static shutdown_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                  socklen_t _address_len, fsm_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
@@ -151,7 +151,7 @@ static shutdown_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t
         }
 }
 
-static shutdown_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address, // CHECK
+static shutdown_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                            socklen_t _address_len, fsm_context_t *_context)
 {
         /* In TIME_WAIT state, we set our timer to expire after 2*MSL (per TCP protocol). */
@@ -318,13 +318,13 @@ static void log_errno_status(shutdown_fsm_errno_t _errno)
                 LOG_WARNING("Shutdown()'s FSM: received `RST` while expecting connection to timeout.");
                 break;
         case HOST_FATAL_ERROR:
-                LOG_ERROR("Shutdown()'s FSM: encountered a `host-failure`.");
+                LOG_ERROR("Shutdown()'s FSM: encountered a fatal error on the host's side.");
                 break;
         case SOCKET_TIMEOUT_SETUP_ERROR:
                 LOG_WARNING("Shutdown()'s FSM: failed to set socket's timeout for `recvfrom()`.");
                 break;
         default:
-                LOG_ERROR("Shutdown()'s FSM: encountered an `unknown` error."); /* Log unknown errors for debugging purposes. */
+                LOG_ERROR("Shutdown()'s FSM: encountered an `unknown` error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
                 break;
         }
 }

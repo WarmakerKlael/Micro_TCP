@@ -426,6 +426,9 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         RETURN_ERROR_IF_SOCKADDR_INVALID(RECV_SEGMENT_FATAL_ERROR, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(RECV_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
 
+        if ((_required_control & SYN_BIT) == SYN_BIT && _socket->buf_fill_level != 0)
+                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Receive buffer contains registered bytes before establishing a connection.");
+
         /* All handshake segments contain no data. */
         size_t expected_segment_size = sizeof(microtcp_header_t);
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
