@@ -119,7 +119,7 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
                 return LISTEN_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
-                /* So far same action with cases above... Maybe you want to print a specific log? (Here and let it fall through..)*/
+                LOG_WARNING("Handshake failed, received RST");
                 return LISTEN_SUBSTATE;
 
         default:
