@@ -87,3 +87,6 @@ COMPLETE YOUR TODOs... You have a lot of them...
 SHORT #INCLUDE ROWS, in first < > second " "order grouped
 
 23) RENAME RECVBUF, and the functions that init it and destroy it...
+
+
+24) Create explicit loggers (One for settings, one for allocator, on microtcpGeneral) Or mehh idea?

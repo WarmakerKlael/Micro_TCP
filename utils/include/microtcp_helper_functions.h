@@ -26,4 +26,6 @@ const char *get_microtcp_state_to_string(mircotcp_state_t _state);
  */
 const char *get_microtcp_control_to_string(uint16_t _control);
 
+void normalize_timeval(struct timeval *_tv);
+
 #endif /* MICROTCP_HELPER_FUNCTIONS_H */

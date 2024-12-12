@@ -4,10 +4,15 @@
 #include "microtcp_settings.h"
 #include "logging/microtcp_logger.h"
 #include "microtcp_common_macros.h"
+#include "microtcp_helper_functions.h"
+
+/* Constants used in this file. */
+static const time_t default_microtcp_ack_timeout_sec = 0;
+static const time_t default_microtcp_ack_timeout_usec = MICROTCP_ACK_TIMEOUT_US;
 
 /* ----------------------------------------- MicroTCP general configuration variables ----------------------------------------- */
-static size_t microtcp_recvbuf_len = MICROTCP_RECVBUF_LEN;
-static size_t microtcp_ack_timeout_usec = MICROTCP_ACK_TIMEOUT_US;
+static size_t microtcp_bytestream_assembly_buffer_len = MICROTCP_RECVBUF_LEN;
+static struct timeval microtcp_ack_timeout = {.tv_sec = default_microtcp_ack_timeout_sec, .tv_usec = default_microtcp_ack_timeout_usec};
 
 /* ----------------------------------------- Connect()'s FSM configuration variables ------------------------------------------ */
 #define DEFAULT_RETRIES_AFTER_RST 3
@@ -26,38 +31,37 @@ static size_t shutdown_finack_retries = TCP_RETRIES2; /* Default. Can be changed
 /* ___________________________________________________________________________________________________________________________ */
 /* ___________________________________________________________________________________________________________________________ */
 
-/* ----------------------------------------- MicroTCP general configurators ------------------------------------------ */
-size_t get_microtcp_ack_timeout_us(void)
+/* ----------------------------------------- MicroTCP socket configurators ------------------------------------------ */
+struct timeval get_microtcp_ack_timeout(void)
 {
-        return microtcp_ack_timeout_usec;
+        return microtcp_ack_timeout;
 }
 
-void set_microtcp_ack_timeout_usec(size_t _usec)
+void set_microtcp_ack_timeout(struct timeval _tv)
 {
-        if (_usec >= 1000000)
-        {
-                LOG_ERROR("ACK timeout value range = [0,999999]; You enter = %lu. ACK timeout value remains.", _usec);
-                return;
-        }
-        if (_usec != MICROTCP_ACK_TIMEOUT_US)
-                LOG_WARNING("Setting ACK timeout value to %lu μseconds. Default: %s = %lu",
-                            _usec, STRINGIFY(MICROTCP_ACK_TIMEOUT_US), MICROTCP_ACK_TIMEOUT_US);
-        microtcp_ack_timeout_usec = _usec;
+        SMART_ASSERT(_tv.tv_sec >= 0, _tv.tv_usec >= 0);
+        normalize_timeval(&_tv);
+
+        if (_tv.tv_sec != default_microtcp_ack_timeout_sec || _tv.tv_usec != default_microtcp_ack_timeout_usec)
+                LOG_WARNING("Settings: Required ACK timeout value to [%lu sec, %lu μsec]; Default: [%lu sec, %lu μsec].",
+                            _tv.tv_sec, _tv.tv_usec, default_microtcp_ack_timeout_sec, default_microtcp_ack_timeout_usec);
+
+        microtcp_ack_timeout = _tv;
 }
 
-size_t get_microtcp_recvbuf_len(void)
+size_t get_bytestream_assembly_buffer_len(void)
 {
-        return microtcp_recvbuf_len;
+        return microtcp_bytestream_assembly_buffer_len;
 }
 
-void set_microtcp_recvbuf_len(size_t _length)
+void set_bytestream_assembly_buffer_len(size_t _length)
 {
         if (_length < MICROTCP_RECVBUF_LEN)
-                LOG_WARNING("Setting `recvbuf` length to %dbytes; Less than default: %s = %d bytes",
+                LOG_WARNING("Setting `bytestream_assembly_buffer` length to %dbytes; Less than default: %s = %d bytes",
                             _length, STRINGIFY(MICROTCP_RECVBUF_LEN), MICROTCP_RECVBUF_LEN);
         else
-                LOG_INFO("Setting `recvbuf` length to %d bytes", _length);
-        microtcp_recvbuf_len = _length;
+                LOG_INFO("Setting `bytestream_assembly_buffer` length to %d bytes", _length);
+        microtcp_bytestream_assembly_buffer_len = _length;
 }
 
 /* ----------------------------------------- Connect()'s FSM configurators ------------------------------------------ */
@@ -93,20 +97,14 @@ void set_shutdown_finack_retries(size_t _retries_count)
         shutdown_finack_retries = _retries_count;
 }
 
-size_t get_shutdown_time_wait_period_sec(void)
+struct timeval get_shutdown_time_wait_period(void)
 {
-        return shutdown_time_wait_period.tv_sec;
+        return shutdown_time_wait_period;
 }
 
-size_t get_shutdown_time_wait_period_usec(void)
+void set_shutdown_time_wait_period(struct timeval _tv)
 {
-        return shutdown_time_wait_period.tv_usec;
-}
-
-void set_shutdown_time_wait_period(time_t _sec, time_t _usec)
-{
-        SMART_ASSERT(_sec >= 0, _usec >= 0);
-        const time_t usec_per_sec = 1000000;
-        shutdown_time_wait_period.tv_sec = _sec + (_usec / usec_per_sec);
-        shutdown_time_wait_period.tv_usec = _usec % usec_per_sec;
+        SMART_ASSERT(_tv.tv_sec >= 0, _tv.tv_usec >= 0);
+        normalize_timeval(&_tv);
+        shutdown_time_wait_period = _tv;
 }

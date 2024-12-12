@@ -1,5 +1,6 @@
-#include "microtcp_helper_functions.h"
 #include <sys/time.h>
+#include "microtcp_helper_functions.h"
+#include "smart_assert.h"
 
 /**
  * @note Procomputed strings why? Cant you automate it you dumbo? Well ...
@@ -121,3 +122,12 @@ const char *get_microtcp_control_to_string(uint16_t _control)
         }
 }
 // clang-format on
+
+void normalize_timeval(struct timeval *_tv)
+{
+        SMART_ASSERT(_tv != NULL);
+        SMART_ASSERT(_tv->tv_sec >= 0, _tv->tv_usec >= 0);
+        const time_t usec_per_sec = 1000000;
+        _tv->tv_sec += (_tv->tv_usec / usec_per_sec);
+        _tv->tv_usec %= usec_per_sec;
+}

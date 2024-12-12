@@ -5,10 +5,11 @@
 #include "microtcp_settings.h"
 #include "logging/microtcp_logger.h"
 #include "sys/time.h"
+#include "time.h"
 
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
 
-static inline void subtract_and_normalize_timeval(struct timeval *_subtrahend, const struct timeval _minuend);
+static inline void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend);
 static inline time_t timeval_to_us(const struct timeval _timeval);
 
 typedef enum
@@ -118,11 +119,10 @@ static shutdown_fsm_substates execute_fin_wait_2_recv_substate(microtcp_sock_t *
         case RECV_SEGMENT_TIMEOUT:
                 if (timeval_to_us(_context->finack_wait_time_timer) > 0)
                 {
-                        subtract_and_normalize_timeval(&(_context->finack_wait_time_timer), _context->recvfrom_timeout);
+                        subtract_timeval(&(_context->finack_wait_time_timer), _context->recvfrom_timeout);
                         return FIN_WAIT_2_RECV_SUBSTATE;
                 }
-                _context->finack_wait_time_timer.tv_sec = get_shutdown_time_wait_period_sec();   /* Reset counters. */
-                _context->finack_wait_time_timer.tv_usec = get_shutdown_time_wait_period_usec(); /* Reset counters. */
+                _context->finack_wait_time_timer = get_shutdown_time_wait_period(); /* Reset timer. */
                 return CLOSED_1_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
@@ -160,7 +160,7 @@ static shutdown_fsm_substates execute_time_wait_substate(microtcp_sock_t *const 
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
         /* In TIME_WAIT state, we set our timer to expire after 2*MSL (per TCP protocol). */
-        if (set_recvfrom_timeout(_socket, get_shutdown_time_wait_period_sec(), get_shutdown_time_wait_period_usec()) == POSIX_SETSOCKOPT_FAILURE)
+        if (set_socket_recvfrom_timeout(_socket, get_shutdown_time_wait_period()) == POSIX_SETSOCKOPT_FAILURE)
                 LOG_ERROR_RETURN(CLOSED_1_SUBSTATE, "Failed to set timeout on socket descriptor. Ignoring %s state.",
                                  convert_substate_to_string(TIME_WAIT_SUBSTATE));
 
@@ -189,7 +189,7 @@ static shutdown_fsm_substates execute_time_wait_substate(microtcp_sock_t *const 
 static shutdown_fsm_substates execute_closed_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                         socklen_t _address_len, fsm_context_t *_context)
 {
-        _socket->state = CLOSED;
+        release_and_reset_handshake_resources(_socket, CLOSED);
         // LOG // TODO:
         return CLOSED_2_SUBSTATE;
 }
@@ -201,14 +201,10 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address_len, sizeof(*_address));
 
         /* Initialize FSM's context. */
-        fsm_context_t context = {
-            .socket_shutdown_isn = _socket->seq_number,
-            .finack_retries_counter = get_shutdown_finack_retries(),
-            .finack_wait_time_timer = {
-                .tv_sec = get_shutdown_time_wait_period_sec(),
-                .tv_usec = get_shutdown_time_wait_period_usec()}};
-
-        get_recvfrom_timeout(_socket, &(context.recvfrom_timeout.tv_sec), &(context.recvfrom_timeout.tv_usec));
+        fsm_context_t context = {.socket_shutdown_isn = _socket->seq_number,
+                                 .finack_retries_counter = get_shutdown_finack_retries(),
+                                 .finack_wait_time_timer = get_shutdown_time_wait_period(),
+                                 .recvfrom_timeout = get_socket_recvfrom_timeout(_socket)};
 
         /* If we are in shutdown()'s FSM, that means that host (local) called shutdown not peer. */
         _socket->state = CLOSING_BY_HOST;
@@ -250,7 +246,7 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
 
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
 /* Helper function: Safely subtract _minuend from _subtrahend and store the result in t1 */
-static inline void subtract_and_normalize_timeval(struct timeval *_subtrahend, const struct timeval _minuend)
+static inline void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend)
 {
         SMART_ASSERT(_subtrahend != NULL);
         _subtrahend->tv_sec -= _minuend.tv_sec;
@@ -275,5 +271,6 @@ static inline void subtract_and_normalize_timeval(struct timeval *_subtrahend, c
 /* Helper function: Convert timeval to microseconds */
 static inline time_t timeval_to_us(const struct timeval _timeval)
 {
-        return (_timeval.tv_sec * 1000000) + _timeval.tv_usec;
+        const time_t usec_per_sec = 1000000;
+        return (_timeval.tv_sec * usec_per_sec) + _timeval.tv_usec;
 }

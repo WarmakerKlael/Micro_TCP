@@ -5,7 +5,7 @@
 
 #include "logging/microtcp_logger.h"
 #include "logging/logger_options.h"
-#include "allocator/allocator.h"
+#include "allocator/allocator_macros.h"
 #include "microtcp_defines.h"
 
 extern FILE *print_stream;

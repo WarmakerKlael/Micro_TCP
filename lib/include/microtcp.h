@@ -9,7 +9,7 @@
 /*
  * Several useful constants
  */
-#define MICROTCP_ACK_TIMEOUT_US 900000
+#define MICROTCP_ACK_TIMEOUT_US 200000
 #define MICROTCP_MSS 1400
 #define MICROTCP_RECVBUF_LEN 8192
 #define MICROTCP_WIN_SIZE MICROTCP_RECVBUF_LEN
@@ -58,7 +58,7 @@ typedef struct
         size_t curr_win_size;   /* The current window size. */
         size_t peer_win_size;
 
-        void *recvbuf; /* Used to assemble out of order packets (bytes). */
+        void *bytestream_assembly_buffer; /* a.k.a `recvbuf`, used to reassmble bytes of incoming packets. */
 
         size_t buf_fill_level; /* Amount of data in the buffer. */
 
@@ -73,8 +73,8 @@ typedef struct
         uint64_t bytes_sent;       /* Bytes that were sent from socket. */
         uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
         uint64_t bytes_received;   /* Bytes that were received from socket. */
-        void *bytestream_builder_buffer;
-        void *bytestream_extraction_buffer;
+        void *bytestream_build_buffer;
+        void *bytestream_receive_buffer;
 
         struct sockaddr *peer_socket_address;
 } microtcp_sock_t;

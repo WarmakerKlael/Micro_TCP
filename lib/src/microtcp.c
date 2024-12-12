@@ -2,6 +2,7 @@
 #include "microtcp.h"
 #include "microtcp_core.h"
 #include "microtcp_defines.h"
+#include "microtcp_settings.h"
 #include "microtcp_core_macros.h"
 #include "microtcp_common_macros.h"
 #include "logging/microtcp_logger.h"
@@ -19,7 +20,7 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
                                  STRINGIFY(_domain), _domain, STRINGIFY(_type), _type,
                                  STRINGIFY(_protocol), _protocol, errno, strerror(errno));
 
-        if (set_recvfrom_timeout(&new_socket, 0, MICROTCP_ACK_TIMEOUT_US) == POSIX_SETSOCKOPT_FAILURE)
+        if (set_socket_recvfrom_timeout(&new_socket, get_microtcp_ack_timeout()) == POSIX_SETSOCKOPT_FAILURE)
         {
                 microtcp_close_socket(&new_socket);
                 LOG_ERROR_RETURN(new_socket, "Failed to set timeout on socket descriptor.");
@@ -64,19 +65,16 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        /* Initialize socket resources for connection. Unline server, client
-         * is not in any danger for SYN-flood attacks. so client allocates
-         * all required buffers before initiating the handshake process.*/
+        /* Initialize socket handshake reuired resources for connection.*/
         generate_initial_sequence_number(_socket);
-        if (allocate_handshake_required_buffers(_socket) == FAILURE ||
-            allocate_receive_buffer(_socket) == FAILURE)
+        if (allocate_handshake_required_buffers(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
         /* Run the `connect's` state machine. */
         if (microtcp_connect_fsm(_socket, _address, _address_len) == MICROTCP_CONNECT_FAILURE)
                 goto connect_failure_cleanup;
 
-        if (allocate_receive_buffer(_socket) == FAILURE)
+        if (allocate_bytestream_assembly_buffer(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
         LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
@@ -103,7 +101,7 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
         if (microtcp_accept_fsm(_socket, _address, _address_len) == MICROTCP_ACCEPT_FAILURE)
                 goto accept_failure_cleanup;
 
-        if (allocate_receive_buffer(_socket) == FAILURE)
+        if (allocate_bytestream_assembly_buffer(_socket) == FAILURE)
                 goto accept_failure_cleanup;
 
         LOG_INFO_RETURN(MICROTCP_ACCEPT_SUCCESS, "Accept operation succeeded; Post handshake buffer allocated.");
@@ -122,15 +120,11 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         struct sockaddr *address = _socket->peer_socket_address;
         socklen_t address_len = sizeof(*(_socket->peer_socket_address));
 
-        /* Run the `shutdown's` state machine. */
-        int shutdown_state_machine_result = microtcp_shutdown_fsm(_socket, address, address_len);
-
-        /* Clean-up on failure. */
-        if (shutdown_state_machine_result == MICROTCP_SHUTDOWN_FAILURE)
-                LOG_ERROR_RETURN(shutdown_state_machine_result, "Shutdown operation failed.");
-
-        deallocate_receive_buffer(_socket); /* We can not cleanup sockets... As we dont know if they will be reused. */
-        LOG_INFO_RETURN(shutdown_state_machine_result, "Shutdown operation succeeded.");
+        if (microtcp_shutdown_fsm(_socket, address, address_len) == MICROTCP_SHUTDOWN_FAILURE)
+                LOG_ERROR_RETURN(MICROTCP_SHUTDOWN_FAILURE, "Shutdown operation failed.");
+        LOG_INFO_RETURN(MICROTCP_SHUTDOWN_SUCCESS, "Shutdown operation succeeded.");
+        
+        /* We dont clean socket... If shutdown fails... it's up to caller to use `microtcp_close_socket()` and recycle microtcp_sock_t. */
 }
 
 ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length,
