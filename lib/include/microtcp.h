@@ -21,6 +21,8 @@
 #define SYN_BIT (1 << 14)
 #define FIN_BIT (1 << 15)
 
+typedef struct microtcp_segment microtcp_segment_t;
+
 /**
  * Possible states of the microTCP socket
  *
@@ -73,6 +75,16 @@ typedef struct
         uint64_t bytes_sent;       /* Bytes that were sent from socket. */
         uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
         uint64_t bytes_received;   /* Bytes that were received from socket. */
+
+        /* Instead of allocating buffers all the time, constructing and receiving
+         * MicroTCP segments, we allocate 3 buffers that do all immediate receiving
+         * and sending. Although the buffers are dynamically allocated. This happens
+         * after the 3-way handshake is complete, and  they are deallocated, either
+         * with a successful call to microtcp_shutdown(), or with the (custom made)
+         * microtcp_close_socket(). Thus we avoid dynamic memory allocations during
+         * receiving and sending data, which hinder transmissions speeds.
+         */
+        microtcp_segment_t *segment_build_buffer;
         void *bytestream_build_buffer;
         void *bytestream_receive_buffer;
 

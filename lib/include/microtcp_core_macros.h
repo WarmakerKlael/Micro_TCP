@@ -34,7 +34,7 @@
                 return (_failure_return_value);                                                         \
         } while (0)
 
-/* Directly used in: microtcp_bind() & microtcp_connect() &  create_microtcp_segment() */
+/* Directly used in: microtcp_bind() & microtcp_connect() &  construct_microtcp_segment() */
 #define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                                \
         do                                                                                                                                      \
         {                                                                                                                                       \
@@ -66,7 +66,7 @@
                         LOG_ERROR_RETURN((_failure_return_value), "Address length mismatch: (got %d, expected %zu)", (_address_len), (_expected_address_len)); \
         } while (0)
 
-/* Directly used in: create_microtcp_segment() */
+/* Directly used in: construct_microtcp_segment() */
 #define RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(_failure_return_value, _microtcp_payload)                                               \
         do                                                                                                                               \
         {                                                                                                                                \

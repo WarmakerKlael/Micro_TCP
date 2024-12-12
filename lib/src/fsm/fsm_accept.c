@@ -26,6 +26,7 @@ typedef struct
          * subtractions, like seq_number -= 1, in order to match ISN.
          */
         ssize_t synack_retries_counter;
+
 } fsm_context_t;
 
 // clang-format off
@@ -55,8 +56,7 @@ static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, st
 
         /* Actions on the following three cases are the same. */
         case RECV_SEGMENT_ERROR:
-        case RECV_SEGMENT_RST_BIT:
-                /* So far same action with cases above... Maybe you want to print a specific log? (Here and let it fall through..)*/
+        case RECV_SEGMENT_RST_BIT: /* Some asshole sends you RST before connection, do you care? FUCK NO! */
         case RECV_SEGMENT_TIMEOUT:
                 /* If received SYN segment was corrupted, or for any other reason caused errors;
                  * We discard it. If client still wants to make a connection with the server

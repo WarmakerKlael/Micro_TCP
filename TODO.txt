@@ -127,3 +127,8 @@ vs
         case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
 
                 return CLOSED_1_SUBSTATE;
+
+
+
+25) To optimize performance, remove redundant assertions and check. After you assure code runs without errors (laughing..) put #ifdef guards. 
+Let then on only ON only when  DEBUG_MODE is defined.

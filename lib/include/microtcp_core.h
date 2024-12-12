@@ -6,6 +6,13 @@
 #include <sys/socket.h>
 
 #include "microtcp_core_macros.h"
+#include "microtcp.h"
+
+struct microtcp_segment
+{
+        microtcp_header_t header;
+        uint8_t *raw_payload_bytes;
+};
 
 typedef struct
 {
@@ -13,11 +20,6 @@ typedef struct
         uint16_t size;
 } microtcp_payload_t;
 
-typedef struct
-{
-        microtcp_header_t header;
-        uint8_t *raw_payload_bytes;
-} microtcp_segment_t;
 
 microtcp_sock_t initialize_microtcp_socket(void);
 void generate_initial_sequence_number(microtcp_sock_t *_socket);
@@ -25,8 +27,8 @@ void generate_initial_sequence_number(microtcp_sock_t *_socket);
 int set_socket_recvfrom_timeout(microtcp_sock_t *_socket, struct timeval _tv);
 struct timeval get_socket_recvfrom_timeout(microtcp_sock_t *_socket);
 
-microtcp_segment_t *create_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
-void *serialize_microtcp_segment(microtcp_segment_t *_segment);
+microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
+void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_segment);
 void release_and_reset_handshake_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state);
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length);
 microtcp_segment_t *extract_microtcp_segment(void *_bytestream_buffer, size_t _bytestream_buffer_length);
