@@ -247,7 +247,7 @@ status_t allocate_handshake_required_buffers(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
-        
+
         /* Buffers meant for making ack sending packets. */
         if (allocate_segment_build_buffer(_socket) == NULL)
                 goto failure_cleanup;
@@ -257,7 +257,7 @@ status_t allocate_handshake_required_buffers(microtcp_sock_t *_socket)
         /* Buffers meant for receiving and extracting segments. */
         if (allocate_bytestream_receive_buffer(_socket) == NULL)
                 goto failure_cleanup;
-        if(allocate_segment_extraction_buffer(_socket) == NULL)
+        if (allocate_segment_extraction_buffer(_socket) == NULL)
                 goto failure_cleanup;
 
         return SUCCESS;
@@ -364,10 +364,10 @@ ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct
         return send_control_segment(_socket, _address, _address_len, FIN_BIT | ACK_BIT, CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
-/* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
-/* Every receive function returns special code if RST was received. So that how you detect it... */
 ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
+        /* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
+        /* Every receive function returns special code if RST was received. So that's how you detect it... */
         return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
@@ -562,49 +562,3 @@ static void deallocate_segment_extraction_buffer(microtcp_sock_t *_socket)
 /* TODO: */
 /* SEND SEGMENT */
 /* RECEIVE SEGMENT */
-
-// /**
-//  * @returns the number of bytes, it validly received.
-//  * This also implies that a packet was correctly received.
-//  */
-// static ssize_t receive_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-//                                socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
-// {
-//         /* Quick argument check. */
-//         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, _required_state);
-//         RETURN_ERROR_IF_SOCKADDR_INVALID(RECV_SEGMENT_FATAL_ERROR, _address);
-//         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(RECV_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
-
-//         const size_t minimum_segment_size = sizeof(microtcp_header_t);
-//         size_t maximum_segment_size = MICROTCP_MSS;
-//         size_t available_space_on_buffer = MICROTCP_RECVBUF_LEN - _socket->buf_fill_level;
-//         static
-
-//             ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, expected_segment_size, NO_RECVFROM_FLAGS, _address, &_address_len);
-//         if (recvfrom_ret_val == RECVFROM_ERROR && (errno == EAGAIN || errno == EWOULDBLOCK))
-//                 LOG_WARNING_RETURN(RECV_SEGMENT_TIMEOUT, "recvfrom timeout.");
-//         if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
-//                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned 0, which points a closed connection; but underlying protocol is UDP, so this should not happen.");
-//         if (recvfrom_ret_val == RECVFROM_ERROR)
-//                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
-//         if (recvfrom_ret_val < expected_segment_size)
-//                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received bytestream size is less than %s.", STRINGIFY(expected_segment_size));
-//         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
-//                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
-
-//         microtcp_segment_t *control_segment = extract_microtcp_segment(bytestream_buffer, recvfrom_ret_val);
-//         if (control_segment == NULL)
-//                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting %s segment resulted to a NULL pointer.", get_microtcp_control_to_string(_required_control));
-//         if (control_segment->header.control != _required_control)
-//                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control: Received = `%s`; Expected = `%s`.",
-//                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
-
-//         /* Ignore check if waiting to receive SYN (server side). */
-//         if (_required_control != SYN_BIT && control_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
-//                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Received segment %s and ACK number mismatch occured. (Got = %d)|(Expected = %d)",
-//                                  get_microtcp_control_to_string(_required_control), control_segment->header.ack_number, _socket->seq_number + 1);
-
-//         _socket->ack_number = control_segment->header.seq_number + 1;
-//         _socket->peer_win_size = control_segment->header.window;
-//         LOG_INFO_RETURN(recvfrom_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
-// }

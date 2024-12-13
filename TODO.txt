@@ -84,7 +84,7 @@ COMPLETE YOUR TODOs... You have a lot of them...
 
 
 22)
-SHORT #INCLUDE ROWS, in first < > second " "order grouped
+SORT #INCLUDE ROWS, in first < > second " "order grouped
 
 23) RENAME RECVBUF, and the functions that init it and destroy it...
 
@@ -137,3 +137,7 @@ Let then on only ON only when  DEBUG_MODE is defined.
 and you should be able to do 
         1: print currently allocated segment.
         2: SMART_ASSERT, all memory regions are free()ed and NULLIFyied.
+
+27) Create accessor methods (getters) to take a socket stats (sent, lost, received packers (and bytes)).
+
+28) You can print lines to go up. not down. search it.

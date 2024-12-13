@@ -4,11 +4,11 @@
 # add_executable(test_microtcp_server test_microtcp_server.c)
 #add_executable(test_microtcp_client test_microtcp_client.c)
 
-add_executable(test_microtcp_client.old.out test_microtcp_client.old.c)
-add_executable(test_microtcp_server.old.out test_microtcp_server.old.c)
+add_executable(test_microtcp_client.out test_microtcp_client.old.c)
+add_executable(test_microtcp_server.out test_microtcp_server.old.c)
 
-target_include_directories(test_microtcp_server.old.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
-target_include_directories(test_microtcp_client.old.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
+target_include_directories(test_microtcp_server.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
+target_include_directories(test_microtcp_client.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
 
 # target_include_directories(test_microtcp_server PUBLIC ${CMAKE_SOURCE_DIR})
 # target_include_directories(test_microtcp_server PUBLIC ${CMAKE_SOURCE_DIR}/utils)
@@ -16,8 +16,8 @@ target_include_directories(test_microtcp_client.old.out PUBLIC ${CMAKE_SOURCE_DI
 
 #target_link_libraries(bandwidth_test microtcp)
 # target_link_libraries(test_microtcp_server microtcp)
-target_link_libraries(test_microtcp_client.old.out microtcp)
-target_link_libraries(test_microtcp_server.old.out microtcp)
+target_link_libraries(test_microtcp_client.out microtcp)
+target_link_libraries(test_microtcp_server.out microtcp)
 #target_link_libraries(test_microtcp_client microtcp)
 #target_link_libraries(traffic_generator microtcp)
 #target_link_libraries(traffic_generator_client microtcp)

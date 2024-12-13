@@ -147,6 +147,7 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         break;
                 case ACK_SENT_SUBSTATE:
                         current_substate = execute_ack_sent_substate(_socket, _address, _address_len, &context);
+                        break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
                         return MICROTCP_CONNECT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:

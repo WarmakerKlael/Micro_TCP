@@ -154,7 +154,7 @@ static shutdown_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t
 static shutdown_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                            socklen_t _address_len, fsm_context_t *_context)
 {
-        /* In TIME_WAIT state, we set our timer to expire after 2*MSL (per TCP protocol). */
+        /* In TIME_WAIT state, we set our timer to expire after 2*MSL (according TCP protocol). */
         if (set_socket_recvfrom_timeout(_socket, get_shutdown_time_wait_period()) == POSIX_SETSOCKOPT_FAILURE)
         {
                 _context->errno = SOCKET_TIMEOUT_SETUP_ERROR;
@@ -231,6 +231,7 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
                         break;
                 case CLOSED_1_SUBSTATE:
                         current_substate = execute_closed_1_substate(_socket, _address, _address_len, &context);
+                        break;
                 case CLOSED_2_SUBSTATE:
                         return MICROTCP_SHUTDOWN_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:

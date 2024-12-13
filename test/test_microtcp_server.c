@@ -1,20 +1,37 @@
-#include "microtcp.h"
-#include "logging/logger.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h> // For htons() and inet_pton()
 
-int main(int argc, char **argv)
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#include "microtcp.h"
+
+#define PORT 54321
+
+int
+main(int argc, char **argv)
 {
-        struct sockaddr_in addr_in;
-        memset(&addr_in, 0, sizeof(addr_in));               // Zero out the structure
-        addr_in.sin_family = AF_INET;                       // IPv4
-        addr_in.sin_port = htons(8080);                     // Port number in network byte order
-        inet_pton(AF_INET, "127.0.0.1", &addr_in.sin_addr); // Convert IP address to binary form
-        microtcp_sock_t new_micro_socket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    struct sockaddr_in servaddr;
+    struct sockaddr_in clientaddr;
 
-        // Cast to generic struct sockaddr
+    memset(&servaddr, 0, sizeof(servaddr));
+    memset(&clientaddr, 0, sizeof(clientaddr));
 
-        microtcp_bind(&new_micro_socket, (struct sockaddr *) &addr_in, sizeof(addr_in));
-        microtcp_accept(&new_micro_socket, (struct sockaddr*) &addr_in, sizeof(addr_in));
+    microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    servaddr.sin_port = htons(PORT);
+
+    microtcp_bind(&tcpsocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
+    printf("Bind successful\n");
+
+    printf("Waiting for connection request...\n");
+    microtcp_accept(&tcpsocket, (struct sockaddr*) &clientaddr, sizeof(clientaddr));
+    printf("Connected\n");
+
+    return EXIT_SUCCESS;
 }

@@ -2,7 +2,10 @@ add_library(microtcp STATIC
         microtcp.c
         microtcp_core.c)
 
-add_library(microtcp_settings STATIC microtcp_settings.c)
+add_library(microtcp_settings STATIC
+        microtcp_settings.c
+        #microtcp_settings_prompts
+)
 
 target_link_libraries(microtcp microtcp_logger)
 target_link_libraries(microtcp microtcp_helpers)

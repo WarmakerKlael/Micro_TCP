@@ -31,21 +31,8 @@ typedef struct
 
 } fsm_context_t;
 
-// clang-format off
-static const char *convert_substate_to_string(accept_fsm_substates _substate)
-{
-        switch (_substate)
-        {
-        case LISTEN_SUBSTATE:                   return STRINGIFY(LISTEN_SUBSTATE);
-        case SYN_RECEIVED_SUBSTATE:             return STRINGIFY(SYN_RECEIVED_SUBSTATE);
-        case SYNACK_SENT_SUBSTATE:              return STRINGIFY(SYNACK_SENT_SUBSTATE);
-        case ACK_RECEIVED_SUBSTATE:             return STRINGIFY(ACK_RECEIVED_SUBSTATE);
-        case CONNECTION_ESTABLISHED_SUBSTATE:   return STRINGIFY(CONNECTION_ESTABLISHED_SUBSTATE);
-        case EXIT_FAILURE_SUBSTATE:             return STRINGIFY(EXIT_FAILURE_SUBSTATE);
-        default:                                return "??ACCEPT_SUBSTATE??";
-        }
-}
-// clang-format on
+/* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
+static const char *convert_substate_to_string(accept_fsm_substates _substate);
 
 static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
                                                     socklen_t _address_len, fsm_context_t *_context)
@@ -179,3 +166,19 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
                 }
         }
 }
+
+// clang-format off
+static const char *convert_substate_to_string(accept_fsm_substates _substate)
+{
+        switch (_substate)
+        {
+        case LISTEN_SUBSTATE:                   return STRINGIFY(LISTEN_SUBSTATE);
+        case SYN_RECEIVED_SUBSTATE:             return STRINGIFY(SYN_RECEIVED_SUBSTATE);
+        case SYNACK_SENT_SUBSTATE:              return STRINGIFY(SYNACK_SENT_SUBSTATE);
+        case ACK_RECEIVED_SUBSTATE:             return STRINGIFY(ACK_RECEIVED_SUBSTATE);
+        case CONNECTION_ESTABLISHED_SUBSTATE:   return STRINGIFY(CONNECTION_ESTABLISHED_SUBSTATE);
+        case EXIT_FAILURE_SUBSTATE:             return STRINGIFY(EXIT_FAILURE_SUBSTATE);
+        default:                                return "??ACCEPT_SUBSTATE??";
+        }
+}
+// clang-format on

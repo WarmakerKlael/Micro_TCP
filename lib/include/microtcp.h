@@ -32,17 +32,17 @@ typedef struct microtcp_segment microtcp_segment_t;
 typedef enum
 {
         INVALID,
-#define INVALID 1 << INVALID
+#define INVALID (1 << INVALID)
         CLOSED, /* when there is no connection. Like when Creating the socket, or after ending a connection. */
-#define CLOSED 1 << CLOSED
+#define CLOSED (1 << CLOSED)
         LISTEN,
-#define LISTEN 1 << LISTEN
+#define LISTEN (1 << LISTEN)
         ESTABLISHED,
-#define ESTABLISHED 1 << ESTABLISHED
+#define ESTABLISHED (1 << ESTABLISHED)
         CLOSING_BY_PEER,
-#define CLOSING_BY_PEER 1 << CLOSING_BY_PEER
+#define CLOSING_BY_PEER (1 << CLOSING_BY_PEER)
         CLOSING_BY_HOST,
-#define CLOSING_BY_HOST 1 << CLOSING_BY_HOST
+#define CLOSING_BY_HOST (1 << CLOSING_BY_HOST)
         MICROTCP_TOTAL_STATES
 } mircotcp_state_t;
 
@@ -137,6 +137,6 @@ ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length
 
 ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags);
 
-void microtcp_close_socket(microtcp_sock_t *_socket);
+void microtcp_close_socket(microtcp_sock_t *socket);
 
 #endif /* LIB_MICROTCP_H_ */
