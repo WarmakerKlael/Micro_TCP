@@ -1,31 +1,24 @@
 #include <sys/time.h>
 #include "smart_assert.h"
 #include "microtcp.h"
-#include "microtcp_settings.h"
+#include "settings/microtcp_settings.h"
 #include "logging/microtcp_logger.h"
 #include "microtcp_common_macros.h"
 #include "microtcp_helper_functions.h"
-
-/* Constants used in this file. */
-static const time_t default_microtcp_ack_timeout_sec = 0;
-static const time_t default_microtcp_ack_timeout_usec = MICROTCP_ACK_TIMEOUT_US;
+#include "microtcp_settings_common.h"
 
 /* ----------------------------------------- MicroTCP general configuration variables ----------------------------------------- */
 static size_t microtcp_bytestream_assembly_buffer_len = MICROTCP_RECVBUF_LEN;
-static struct timeval microtcp_ack_timeout = {.tv_sec = default_microtcp_ack_timeout_sec, .tv_usec = default_microtcp_ack_timeout_usec};
+static struct timeval microtcp_ack_timeout = DEFAULT_MICROTCP_ACK_TIMEOUT;
 
 /* ----------------------------------------- Connect()'s FSM configuration variables ------------------------------------------ */
-#define DEFAULT_RETRIES_AFTER_RST 3
-static size_t connect_rst_retries = DEFAULT_RETRIES_AFTER_RST; /* Default. Can be changed from following "API". */
+static size_t connect_rst_retries = DEFAULT_CONNECT_RST_RETRIES; /* Default. Can be changed from following "API". */
 
 /* ------------------------------------------ Accept()'s FSM configuration variables ------------------------------------------ */
-#define LINUX_DEFAULT_ACCEPT_TIMEOUTS 5
 static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS; /* Default. Can be changed from following "API". */
 
 /* ----------------------------------------- Shutdown()'s FSM configuration variables ----------------------------------------- */
-#define MICROTCP_MSL_SECONDS 10 /* Maximum Segment Lifetime. Used for transitioning from TIME_WAIT -> CLOSED */
-#define TCP_RETRIES2 15         /* TCP default value for `TCP_RETRIES2` variable.*/
-static struct timeval shutdown_time_wait_period = {.tv_sec = 2 * MICROTCP_MSL_SECONDS, .tv_usec = 0};
+static struct timeval shutdown_time_wait_period = {.tv_sec = DEFAULT_SHUTDOWN_TIME_WAIT_SEC, .tv_usec = DEFAULT_SHUTDOWN_TIME_WAIT_USEC};
 static size_t shutdown_finack_retries = TCP_RETRIES2; /* Default. Can be changed from following "API". */
 
 /* ___________________________________________________________________________________________________________________________ */
@@ -37,16 +30,19 @@ struct timeval get_microtcp_ack_timeout(void)
         return microtcp_ack_timeout;
 }
 
-void set_microtcp_ack_timeout(struct timeval _tv)
+void set_microtcp_ack_timeout(struct timeval _ack_timeout_tv)
 {
-        SMART_ASSERT(_tv.tv_sec >= 0, _tv.tv_usec >= 0);
-        normalize_timeval(&_tv);
+        SMART_ASSERT(_ack_timeout_tv.tv_sec >= 0, _ack_timeout_tv.tv_usec >= 0);
+        normalize_timeval(&_ack_timeout_tv);
 
-        if (_tv.tv_sec != default_microtcp_ack_timeout_sec || _tv.tv_usec != default_microtcp_ack_timeout_usec)
-                LOG_WARNING("Settings: Required ACK timeout value to [%lu sec, %lu μsec]; Default: [%lu sec, %lu μsec].",
-                            _tv.tv_sec, _tv.tv_usec, default_microtcp_ack_timeout_sec, default_microtcp_ack_timeout_usec);
+        if (_ack_timeout_tv.tv_sec != DEFAULT_MICROTCP_ACK_TIMEOUT_SEC || _ack_timeout_tv.tv_usec != DEFAULT_MICROTCP_ACK_TIMEOUT_USEC)
+                LOG_WARNING("Setting `microtcp_ack_timeout` value to [%lu sec, %lu μsec]; Default: [%lu sec, %lu μsec].",
+                            _ack_timeout_tv.tv_sec, _ack_timeout_tv.tv_usec, DEFAULT_MICROTCP_ACK_TIMEOUT_SEC, DEFAULT_MICROTCP_ACK_TIMEOUT_USEC);
+        else
+                LOG_INFO("Setting `microtcp_ack_timeout` value to [%lu sec, %lu μsec].",
+                         _ack_timeout_tv.tv_sec, _ack_timeout_tv.tv_usec);
 
-        microtcp_ack_timeout = _tv;
+        microtcp_ack_timeout = _ack_timeout_tv;
 }
 
 size_t get_bytestream_assembly_buffer_len(void)
@@ -54,14 +50,15 @@ size_t get_bytestream_assembly_buffer_len(void)
         return microtcp_bytestream_assembly_buffer_len;
 }
 
-void set_bytestream_assembly_buffer_len(size_t _length)
+void set_bytestream_assembly_buffer_len(size_t _bytstream_assembly_bufferlength)
 {
-        if (_length < MICROTCP_RECVBUF_LEN)
+        SMART_ASSERT(_bytstream_assembly_bufferlength != 0);
+        if (_bytstream_assembly_bufferlength != MICROTCP_RECVBUF_LEN)
                 LOG_WARNING("Setting `bytestream_assembly_buffer` length to %dbytes; Less than default: %s = %d bytes",
-                            _length, STRINGIFY(MICROTCP_RECVBUF_LEN), MICROTCP_RECVBUF_LEN);
+                            _bytstream_assembly_bufferlength, STRINGIFY(MICROTCP_RECVBUF_LEN), MICROTCP_RECVBUF_LEN);
         else
-                LOG_INFO("Setting `bytestream_assembly_buffer` length to %d bytes", _length);
-        microtcp_bytestream_assembly_buffer_len = _length;
+                LOG_INFO("Setting `bytestream_assembly_buffer` length to %d bytes", _bytstream_assembly_bufferlength);
+        microtcp_bytestream_assembly_buffer_len = _bytstream_assembly_bufferlength;
 }
 
 /* ----------------------------------------- Connect()'s FSM configurators ------------------------------------------ */

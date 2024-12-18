@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 
 #include "microtcp.h"
+#include "microtcp_settings.h"
 
 #define PORT 54321
 

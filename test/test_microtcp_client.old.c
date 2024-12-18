@@ -41,12 +41,20 @@
 #include <arpa/inet.h>
 
 #include "microtcp.h"
+#include "settings/microtcp_settings_prompts.h"
 
 #define PORT 54321
 
 int
 main(int argc, char **argv)
 {
+    prompt_set_assembly_buffer_length();
+    prompt_set_ack_timeout();
+    prompt_set_connect_retries();
+    prompt_set_accept_retries();
+    prompt_set_shutdown_retries();
+    prompt_set_shutdown_time_wait_period();
+    
     struct sockaddr_in servaddr;
 
     microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);

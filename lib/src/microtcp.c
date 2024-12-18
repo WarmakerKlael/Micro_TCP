@@ -2,7 +2,7 @@
 #include "microtcp.h"
 #include "microtcp_core.h"
 #include "microtcp_defines.h"
-#include "microtcp_settings.h"
+#include "settings/microtcp_settings.h"
 #include "microtcp_core_macros.h"
 #include "microtcp_common_macros.h"
 #include "logging/microtcp_logger.h"

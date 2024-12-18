@@ -5,7 +5,7 @@
 /**
  * @brief A stream to which the logger outputs its messages.
  */
-FILE *print_stream;
+FILE *microtcp_log_stream;
 
 _Bool logger_enabled = FALSE;
 _Bool logger_info_enabled = FALSE;

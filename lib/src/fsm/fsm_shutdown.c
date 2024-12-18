@@ -1,7 +1,7 @@
 #include "fsm/microtcp_fsm.h"
 #include "fsm_common.h"
 #include "microtcp_core.h"
-#include "microtcp_settings.h"
+#include "settings/microtcp_settings.h"
 #include "logging/microtcp_logger.h"
 #include "sys/time.h"
 #include "time.h"

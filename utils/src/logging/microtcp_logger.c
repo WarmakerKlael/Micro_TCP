@@ -8,7 +8,7 @@
 #include "allocator/allocator_macros.h"
 #include "microtcp_defines.h"
 
-extern FILE *print_stream;
+extern FILE *microtcp_log_stream;
 
 /* Global Variables */
 pthread_mutex_t *mutex_logger = NULL;
@@ -21,7 +21,7 @@ pthread_mutex_t *mutex_logger = NULL;
  *
  * This function sets up the logger, enabling logging for info, warning,
  * and error levels. By default, log messages are output to `stdout`
- * via `print_stream`. Thread safety is ensured with a dynamically
+ * via `microtcp_log_stream`. Thread safety is ensured with a dynamically
  * allocated mutex.
  *
  * In debug mode (`DEBUG_MODE`), logging of allocated and deallocated
@@ -80,7 +80,7 @@ static void logger_initialize(void)
 	logger_set_error_enabled(TRUE);
 
 #define PTHREAD_MUTEX_INIT_SUCCESS 0 /* Specified in man pages. */
-	print_stream = stdout;
+	microtcp_log_stream = stdout;
 	mutex_logger = CALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
@@ -123,6 +123,10 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 
 static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list)
 {
+#include <sys/time.h>
+	static struct timeval tv;
+	gettimeofday(&tv, NULL);
+	long milliseconds = tv.tv_sec * 100000 + tv.tv_usec / 10;
 	if (!logger_is_enabled())
 		return;
 	if (!logger_is_info_enabled() && _log_tag == LOG_INFO)
@@ -133,9 +137,10 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 		return;
 
 	const char *colored_string_log_tag = get_colored_log_tag_string(_log_tag);
-	fprintf(print_stream, "[%s][%s:%d][%s()]: %s", colored_string_log_tag, _file, _line, _func, LOG_MESSAGE_COLOR);
-	vfprintf(print_stream, _format_message, arg_list);
-	fprintf(print_stream, "%s\n", RESET_COLOR);
+	fprintf(microtcp_log_stream, "[%s][%s:%d][%s()][%lddu]: %s", colored_string_log_tag, _file, _line, _func,milliseconds, LOG_MESSAGE_COLOR);
+	vfprintf(microtcp_log_stream, _format_message, arg_list);
+	fprintf(microtcp_log_stream, "%s\n", RESET_COLOR);
+	fflush(microtcp_log_stream); /* We flush even though fprintf ends with '\n', in case stdout is fully-buffered. (file, pipe). */
 }
 
 // clang-format off

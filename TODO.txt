@@ -141,3 +141,13 @@ and you should be able to do
 27) Create accessor methods (getters) to take a socket stats (sent, lost, received packers (and bytes)).
 
 28) You can print lines to go up. not down. search it.
+
+
+29)
+
+TODO: @Note: IMPORTANT.. INTERFACE.. should ask for IP AND PORT number.
+maybe different interface for Client, different for Server.
+
+
+handle endianess for header. network endianess is bigendian. (your machine is litle, you phone is big), se host to network htons and 
+htons and htonl (shor and long) and their opposites ntohs and ntohl. network to host

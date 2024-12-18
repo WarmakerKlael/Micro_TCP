@@ -2,7 +2,7 @@
 #include "fsm_common.h"
 #include "microtcp_core.h"
 #include "logging/microtcp_logger.h"
-#include "microtcp_settings.h"
+#include "settings/microtcp_settings.h"
 
 typedef enum
 {
