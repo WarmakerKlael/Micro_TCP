@@ -1,13 +1,61 @@
 #ifndef CLI_COLOR_H
 #define CLI_COLOR_H
 
-#define RESET_COLOR "\033[0m"
-#define RED_COLOR "\033[91m"
-#define GREEN_COLOR "\033[92m"
-#define YELLOW_COLOR "\033[93m"
-#define BLUE_COLOR "\033[94m"
-#define MAGENTA_COLOR "\033[95m"
-#define CYAN_COLOR "\033[96m"
-#define WHITE_COLOR "\033[97m"
+#define SGR_RESET "\033[0m"
+
+#define COLOR_ASCII_FG_BLACK "\033[90m"
+#define COLOR_ASCII_FG_RED "\033[91m"
+#define COLOR_ASCII_FG_GREEN "\033[92m"
+#define COLOR_ASCII_FG_YELLOW "\033[93m"
+#define COLOR_ASCII_FG_BLUE "\033[94m"
+#define COLOR_ASCII_FG_MAGENTA "\033[95m"
+#define COLOR_ASCII_FG_CYAN "\033[96m"
+#define COLOR_ASCII_FG_WHITE "\033[97m"
+
+/* Macros for foreground and background true color */
+#define TRUE_COLOR_FG(r, g, b) "\033[38;2;" #r ";" #g ";" #b "m"
+#define TRUE_COLOR_BG(r, g, b) "\033[48;2;" #r ";" #g ";" #b "m"
+
+// Reds and Pinks
+#define COLOR_FG_RED TRUE_COLOR_FG(255, 0, 0)
+#define COLOR_FG_PINK TRUE_COLOR_FG(255, 192, 203)
+#define COLOR_FG_CRIMSON TRUE_COLOR_FG(220, 20, 60)
+
+// Oranges and Yellows
+#define COLOR_FG_ORANGE TRUE_COLOR_FG(255, 165, 0)
+#define COLOR_FG_YELLOW TRUE_COLOR_FG(255, 255, 0)
+#define COLOR_FG_GOLD TRUE_COLOR_FG(255, 215, 0)
+
+// Greens
+#define COLOR_FG_GREEN TRUE_COLOR_FG(0, 255, 0)
+#define COLOR_FG_LIME TRUE_COLOR_FG(191, 255, 0)
+#define COLOR_FG_MINT TRUE_COLOR_FG(152, 255, 152)
+
+// Blues
+#define COLOR_FG_BLUE TRUE_COLOR_FG(0, 0, 255)
+#define COLOR_FG_SKY TRUE_COLOR_FG(135, 206, 235)
+#define COLOR_FG_NAVY TRUE_COLOR_FG(0, 0, 128)
+
+// Purples
+#define COLOR_FG_PURPLE TRUE_COLOR_FG(128, 0, 128)
+#define COLOR_FG_VIOLET TRUE_COLOR_FG(148, 0, 211)
+#define COLOR_FG_LAVENDER TRUE_COLOR_FG(230, 230, 250)
+
+// Grays
+#define COLOR_FG_DARK_GRAY TRUE_COLOR_FG(50, 50, 50)
+#define COLOR_FG_GRAY TRUE_COLOR_FG(128, 128, 128)
+#define COLOR_FG_LIGHT_GRAY TRUE_COLOR_FG(200, 200, 200)
+
+// Neutrals
+#define COLOR_FG_BLACK TRUE_COLOR_FG(0, 0, 0)
+#define COLOR_FG_WHITE TRUE_COLOR_FG(255, 255, 255)
+#define COLOR_FG_SILVER TRUE_COLOR_FG(192, 192, 192)
+
+// Special Colors
+#define COLOR_FG_CYAN TRUE_COLOR_FG(0, 255, 255)
+#define COLOR_FG_TEAL TRUE_COLOR_FG(0, 128, 128)
+#define COLOR_FG_PEACH TRUE_COLOR_FG(255, 229, 180)
+#define COLOR_FG_TURQUOISE TRUE_COLOR_FG(64, 224, 208)
+#define COLOR_FG_MATRIX TRUE_COLOR_FG(0, 255, 0)
 
 #endif /* CLI_COLOR_H */

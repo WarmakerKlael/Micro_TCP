@@ -7,11 +7,6 @@
 #include "cli_color.h"
 #include "microtcp_defines.h"
 
-#define LOG_INFO_COLOR BLUE_COLOR
-#define LOG_WARNING_COLOR YELLOW_COLOR
-#define LOG_ERROR_COLOR RED_COLOR
-#define LOG_MESSAGE_COLOR GREEN_COLOR
-
 /**
  * @brief Resolves the file name relative to the project directory.
  *

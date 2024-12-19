@@ -7,12 +7,12 @@
 #include "logging/logger_options.h"
 #include "allocator/allocator_macros.h"
 #include "microtcp_defines.h"
+#include "microtcp_common_macros.h"
+
+#include "microtcp_logging_colors.h"
 
 extern FILE *microtcp_log_stream;
-
-/* Global Variables */
-pthread_mutex_t *mutex_logger = NULL;
-/* ---------------- */
+extern pthread_mutex_t *mutex_logger;
 
 /* Declarations of static functions implemented in this file: */
 
@@ -31,14 +31,14 @@ pthread_mutex_t *mutex_logger = NULL;
  * @note Thread safety relies on a mutex, and failure to initialize
  *       the mutex results in termination.
  */
-__attribute__((constructor(LOGGER_CONSTRUCTOR_PRIORITY))) static void logger_initialize();
+__attribute__((constructor(LOGGER_CONSTRUCTOR_PRIORITY))) static void logger_constructor();
 
 /**
  * @brief Deinitializes the logging system.
  *
  * Releases resources allocated for logging. Logs a warning if cleanup is incomplete.
  */
-__attribute__((destructor(LOGGER_DESTRUCTOR_PRIORITY))) static void logger_shutdown();
+__attribute__((destructor(LOGGER_DESTRUCTOR_PRIORITY))) static void logger_destructor();
 
 /**
  * @brief Outputs a formatted log message to the log stream. Includes file,
@@ -66,7 +66,7 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
  */
 static const char *get_colored_log_tag_string(enum log_tag _log_tag);
 
-static void logger_initialize(void)
+static void logger_constructor(void)
 {
 #ifdef DEBUG_MODE
 	logger_set_allocator_enabled(TRUE);
@@ -90,7 +90,7 @@ static void logger_initialize(void)
 	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, "Logger initialized.");
 }
 
-static void logger_shutdown(void)
+static void logger_destructor(void)
 {
 #define PTHREAD_MUTEX_DESTROY_SUCCESS 0 /* Specified in man pages. */
 	if (mutex_logger != NULL || pthread_mutex_destroy(mutex_logger) == PTHREAD_MUTEX_DESTROY_SUCCESS)
@@ -101,6 +101,7 @@ static void logger_shutdown(void)
 	}
 	else
 		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING, "Logger could not be destroyed.");
+	fprintf(microtcp_log_stream, SGR_RESET); /* Reset print style to system's default. */
 }
 
 void log_message_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, ...)
@@ -126,7 +127,7 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 #include <sys/time.h>
 	static struct timeval tv;
 	gettimeofday(&tv, NULL);
-	long milliseconds = tv.tv_sec * 100000 + tv.tv_usec / 10;
+	long milliseconds = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 	if (!logger_is_enabled())
 		return;
 	if (!logger_is_info_enabled() && _log_tag == LOG_INFO)
@@ -137,10 +138,12 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 		return;
 
 	const char *colored_string_log_tag = get_colored_log_tag_string(_log_tag);
-	fprintf(microtcp_log_stream, "[%s][%s:%d][%s()][%lddu]: %s", colored_string_log_tag, _file, _line, _func,milliseconds, LOG_MESSAGE_COLOR);
+	fprintf(microtcp_log_stream, LOG_DEFAULT_COLOR); /* Set DEFAULT logging color. */
+	fprintf(microtcp_log_stream, "[%s][%s:%d][%s()][%lddu]: ", colored_string_log_tag, _file, _line, _func, milliseconds);
+	fprintf(microtcp_log_stream, LOG_MESSAGE_COLOR); /* Set logging message color. */
 	vfprintf(microtcp_log_stream, _format_message, arg_list);
-	fprintf(microtcp_log_stream, "%s\n", RESET_COLOR);
-	fflush(microtcp_log_stream); /* We flush even though fprintf ends with '\n', in case stdout is fully-buffered. (file, pipe). */
+	fprintf(microtcp_log_stream, "%s\n", LOG_DEFAULT_COLOR); /* Reset to DEFAULT logging color. */
+	fflush(microtcp_log_stream);				 /* We flush even though fprintf ends with '\n', in case stdout is fully-buffered. (file, pipe). */
 }
 
 // clang-format off
@@ -148,10 +151,10 @@ static const char *get_colored_log_tag_string(enum log_tag _log_tag)
 {
 	switch (_log_tag)
 	{
-	case LOG_INFO:		return LOG_INFO_COLOR	        PROJECT_NAME " " "INFO"		RESET_COLOR;
-	case LOG_WARNING:	return LOG_WARNING_COLOR        PROJECT_NAME " " "WARNING"	RESET_COLOR;
-	case LOG_ERROR:		return LOG_ERROR_COLOR 	        PROJECT_NAME " " "ERROR" 	RESET_COLOR;
-	default:		return RESET_COLOR 	        PROJECT_NAME " " "??LOG??"	RESET_COLOR;
+	case LOG_INFO:		return LOG_INFO_COLOR	        PROJECT_NAME " " "INFO"		LOG_DEFAULT_COLOR;
+	case LOG_WARNING:	return LOG_WARNING_COLOR        PROJECT_NAME " " "WARNING"	LOG_DEFAULT_COLOR;
+	case LOG_ERROR:		return LOG_ERROR_COLOR 	        PROJECT_NAME " " "ERROR" 	LOG_DEFAULT_COLOR;
+	default:		return LOG_DEFAULT_COLOR	PROJECT_NAME " " "??LOG??"	LOG_DEFAULT_COLOR;
 	}
 }
 // clang-format on

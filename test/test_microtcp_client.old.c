@@ -48,12 +48,7 @@
 int
 main(int argc, char **argv)
 {
-    prompt_set_assembly_buffer_length();
-    prompt_set_ack_timeout();
-    prompt_set_connect_retries();
-    prompt_set_accept_retries();
-    prompt_set_shutdown_retries();
-    prompt_set_shutdown_time_wait_period();
+    configure_microtcp_settings();
     
     struct sockaddr_in servaddr;
 

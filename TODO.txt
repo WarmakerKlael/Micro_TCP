@@ -37,9 +37,9 @@ Include function that can set the print stream.
 10)
 CHECK sequence number (in the specific check) of send_handshake_segment() and receive_handshake_segment().
 
-11) Define different macros (or variables) for chaning TIMEOUT timer and RECVBUF of a socket. in order to increate μTCP performance.
+11) >>>CHECK<<< Define different macros (or variables) for chaning TIMEOUT timer and RECVBUF of a socket. in order to increate μTCP performance.
 
-12) What's up with RST_BIT flag?
+12) >>>CHECK<<< What's up with RST_BIT flag?
 
 14) What's up with the `how` argument on microtcp_shutdown, implements the shutdown modes.
 
@@ -57,13 +57,13 @@ If you dont have enough space in recvbuf (rwnd) to keep the whole packet.  You k
 You have to keep track of the regions containing valid bytes. If a region is continuous the recv() forward to caller bytes from the recvbuf, instead of calling recvfrom().
 
 
-16) In send_control_segment(). you can you static buffers, for microtcp_segments (you just have to initialize them). 
+16) >>>CHECK<<< In send_control_segment(). you can you static buffers, for microtcp_segments (you just have to initialize them). 
 
 And a static buffer for bytestream, after you assemble segment to bytestream, you send the bytestream using sendto() (UDP) and "reset" the static buffers.
 That way you avoid real time memory allocation (faster solution).
 
 
-17)
+17) >>>CHECK<<<
 
 
         // TODO: Either use static buffer.. But this will limit you to a single socket.. Or used dynamic allocated buffer bound to each socket,
@@ -71,7 +71,7 @@ That way you avoid real time memory allocation (faster solution).
 
 18) Extensively log FSMs
 
-19)
+19) >>>CHECK<<<
 
 DO YOU WANT TO SEE CLEAN FUCKING CODE IN FSMS??? AND STOP REPEATING YOUR SELF??? THEN FUCKING CONVERT IF statements to SWITCH you NOOB!!
 
@@ -86,7 +86,7 @@ COMPLETE YOUR TODOs... You have a lot of them...
 22)
 SORT #INCLUDE ROWS, in first < > second " "order grouped
 
-23) RENAME RECVBUF, and the functions that init it and destroy it...
+23) >>>CHECK<<< RENAME RECVBUF, and the functions that init it and destroy it...
 
 
 24) Create explicit loggers (One for settings, one for allocator, on microtcpGeneral) Or mehh idea?
@@ -140,7 +140,7 @@ and you should be able to do
 
 27) Create accessor methods (getters) to take a socket stats (sent, lost, received packers (and bytes)).
 
-28) You can print lines to go up. not down. search it.
+28) CHECK You can print lines to go up. not down. search it.
 
 
 29)

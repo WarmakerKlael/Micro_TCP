@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include "microtcp_defines.h"
 #include "logging/logger_options.h"
+#include <pthread.h>
 
 /**
  * @brief A stream to which the logger outputs its messages.
  */
 FILE *microtcp_log_stream;
+
+pthread_mutex_t *mutex_logger = NULL;
+/* ---------------- */
 
 _Bool logger_enabled = FALSE;
 _Bool logger_info_enabled = FALSE;
