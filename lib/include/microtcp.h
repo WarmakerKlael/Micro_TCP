@@ -86,7 +86,7 @@ typedef struct
          */
         microtcp_segment_t *segment_build_buffer;
         void *bytestream_build_buffer;
-        microtcp_segment_t *segment_extraction_buffer;
+        microtcp_segment_t *segment_receive_buffer;
         void *bytestream_receive_buffer;
 
         struct sockaddr *peer_socket_address;

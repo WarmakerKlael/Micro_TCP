@@ -123,12 +123,11 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         if (microtcp_shutdown_fsm(_socket, address, address_len) == MICROTCP_SHUTDOWN_FAILURE)
                 LOG_ERROR_RETURN(MICROTCP_SHUTDOWN_FAILURE, "Shutdown operation failed.");
         LOG_INFO_RETURN(MICROTCP_SHUTDOWN_SUCCESS, "Shutdown operation succeeded.");
-        
+
         /* We dont clean socket... If shutdown fails... it's up to caller to use `microtcp_close_socket()` and recycle microtcp_sock_t. */
 }
 
-ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length,
-                      int flags)
+ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length, int flags)
 {
         /* Your code here */
         return 0;

@@ -6,18 +6,6 @@
 #include "microtcp_helper_functions.h"
 #include "smart_assert.h"
 
-/* Internal MACRO defines. */
-#define NO_SENDTO_FLAGS 0
-#define NO_RECVFROM_FLAGS 0
-
-#define SEND_SEGMENT_ERROR -1
-#define SEND_SEGMENT_FATAL_ERROR -2
-
-#define RECV_SEGMENT_TIMEOUT 0
-#define RECV_SEGMENT_ERROR -1
-#define RECV_SEGMENT_FATAL_ERROR -2
-#define RECV_SEGMENT_RST_BIT -3
-
 /* Directly used in: microtcp_socket() */
 #define RETURN_ERROR_IF_FUNCTION_PARAMETER_MICROTCP_SOCKET_INVALID(_failure_return_value,               \
                                                                    _given_parameter,                    \

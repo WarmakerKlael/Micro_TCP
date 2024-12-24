@@ -6,8 +6,12 @@
 /* Very ealy version, made just for connection termination. */
 typedef enum
 {
-        SEND_SYN_STATE, /* Start state. */
-        RECEIVED_FINACK_STATE,
+        RECEIVING_SUBSTATE, /* Start state. */
+        RECEIVED_FINACK_SUBSTATE,
+        RECEIVING_REMAINING_PACKETS_SUBSTATE, /* Until not gap in received data. */
+        RECEIVED_REMAINING_PACKETS_SUBSTATE,
+
+
         /* RECEIVED_RST, */
         /* RECEIVED_SYN, */
         EXIT_FAILURE_STATE

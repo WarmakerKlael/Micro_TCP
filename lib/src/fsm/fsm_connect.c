@@ -19,7 +19,7 @@ typedef enum
 {
         NO_ERROR,
         RST_RETRIES_EXHAUSTED,
-        HOST_FATAL_ERROR, /* Set when fatal errors occur on host's side. */
+        PEER_FATAL_ERROR, /* Set when fatal errors occur on host's side. */
 } connect_fsm_errno_t;
 
 typedef struct
@@ -31,7 +31,7 @@ typedef struct
         /* By adding the socket's initial sequence number in the
          * FSM's context, we avoid having to do errorneous
          * subtractions, like seq_number -= 1, in order to match ISN. */
-        ssize_t socket_init_seq_num;
+        size_t socket_init_seq_num;
         ssize_t rst_retries_counter;
         connect_fsm_errno_t errno;
 
@@ -80,6 +80,7 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                 return CLOSED_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
+                update_socket_received_counters(_socket, _context->recv_synack_ret_val);
                 if (_context->rst_retries_counter == 0)
                 {
                         _context->errno = RST_RETRIES_EXHAUSTED;
@@ -189,7 +190,7 @@ static void log_errno_status(connect_fsm_errno_t _errno)
         case RST_RETRIES_EXHAUSTED:
                 LOG_ERROR("Connec()'s FSM: exhausted connection attempts while handling RST segments.");
                 break;
-        case HOST_FATAL_ERROR:
+        case PEER_FATAL_ERROR:
                 LOG_ERROR("Connect()'s FSM: encountered a fatal error on the host's side.");
                 break;
                 LOG_ERROR("Connect()'s FSM: encountered an unknown error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
@@ -199,6 +200,6 @@ static void log_errno_status(connect_fsm_errno_t _errno)
 
 static inline connect_fsm_substates_t handle_fatal_error(fsm_context_t *_context)
 {
-        _context->errno = HOST_FATAL_ERROR;
+        _context->errno = PEER_FATAL_ERROR;
         return EXIT_FAILURE_SUBSTATE;
 }

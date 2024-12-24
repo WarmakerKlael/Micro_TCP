@@ -22,7 +22,7 @@ typedef struct
         ssize_t send_synack_ret_val;
         ssize_t recv_ack_ret_val;
 
-        ssize_t socket_init_seq_num;
+        size_t socket_init_seq_num;
         /* By adding the socket's initial sequence number in the
          * FSM's context, we avoid having to do errorneous
          * subtractions, like seq_number -= 1, in order to match ISN.
@@ -43,7 +43,9 @@ static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, st
         case RECV_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
 
-        /* Actions on the following three cases are the same. */
+        /* Actions on the following 4 cases end up to same current substate. */
+        case RECV_SEGMENT_NOT_SYN_BIT:
+                send_rstack_control_segment(_socket, _address, _address_len);
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_RST_BIT: /* Some asshole sends you RST before connection, do you care? FUCK NO! */
         case RECV_SEGMENT_TIMEOUT:
@@ -108,6 +110,7 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
                 return LISTEN_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
+                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 LOG_WARNING("Handshake failed, received RST");
                 return LISTEN_SUBSTATE;
 

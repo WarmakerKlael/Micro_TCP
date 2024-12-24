@@ -141,7 +141,7 @@ microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_
         new_segment->header.future_use0 = 0; /* TBD in Phase B */
         new_segment->header.future_use1 = 0; /* TBD in Phase B */
         new_segment->header.future_use2 = 0; /* TBD in Phase B */
-        new_segment->header.checksum = 0;    /* CRC32 checksum is calculated after streamlining this packet. */
+        new_segment->header.checksum = 0;    /* CRC32 checksum is calculated after linearizing this packet. */
 
         /* Set the payload pointer. We do not do deep copy, to avoid wasting memory.
          * MicroTCP will have to create a bitstream, where header and payload will have
@@ -201,13 +201,13 @@ microtcp_segment_t *extract_microtcp_segment(microtcp_sock_t *_socket, void *_by
         const size_t header_size = sizeof(microtcp_header_t);
 
         SMART_ASSERT(_socket != NULL);
-        SMART_ASSERT(_socket->segment_extraction_buffer != NULL,
+        SMART_ASSERT(_socket->segment_receive_buffer != NULL,
                      _bytestream_buffer != NULL,
                      _bytestream_buffer_length >= header_size);
 
         const size_t payload_size = _bytestream_buffer_length - header_size;
 
-        microtcp_segment_t *new_segment = _socket->segment_extraction_buffer;
+        microtcp_segment_t *new_segment = _socket->segment_receive_buffer;
 
         new_segment->raw_payload_bytes = (payload_size > 0 ? _bytestream_buffer + header_size : NULL);
 
@@ -290,7 +290,9 @@ void release_and_reset_handshake_resources(microtcp_sock_t *_socket, mircotcp_st
         _socket->peer_socket_address = NULL;
         deallocate_bytestream_assembly_buffer(_socket);
         deallocate_handshake_required_buffers(_socket);
-        LOG_INFO("Socket's handshake resources, released and reset.");
+        if (set_socket_recvfrom_timeout(_socket, get_microtcp_ack_timeout()) == POSIX_SETSOCKOPT_FAILURE)
+                LOG_ERROR("Failed resetting socket's timeout period.");
+        LOG_INFO("Socket's handshake resources, released.");
 }
 
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent)
@@ -432,7 +434,7 @@ static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct
  * This also implies that a packet was correctly received.
  */
 static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                       socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
+                                       socklen_t _address_len, uint16_t _required_control, const mircotcp_state_t _required_state)
 {
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, _required_state);
@@ -461,6 +463,13 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         if ((control_segment->header.control & RST_BIT) == RST_BIT) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
                 LOG_WARNING_RETURN(RECV_SEGMENT_RST_BIT, "Control-field: Received = `%s`; Expected = `%s`.",
                                    get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
+        if ((_required_state & SYN_BIT) && !(control_segment->header.control & SYN_BIT))
+                LOG_WARNING_RETURN(RECV_SEGMENT_NOT_SYN_BIT, "Control-field: Received = `%s`; Expected = `%s`.",
+                                   get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
+
+        if ((control_segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT))
+                LOG_ERROR_RETURN(RECV_SEGMENT_UNEXPECTED_FINACK, "Control-field: Received = `%s`; Expected = `%s`.",
+                                 get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
         if (control_segment->header.control != _required_control)
                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control-field: Received = `%s`; Expected = `%s`.",
                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
@@ -523,12 +532,12 @@ static void *allocate_bytestream_receive_buffer(microtcp_sock_t *_socket)
 static microtcp_segment_t *allocate_segment_extraction_buffer(microtcp_sock_t *_socket)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, (CLOSED | LISTEN));
-        SMART_ASSERT(_socket->segment_extraction_buffer == NULL);
+        SMART_ASSERT(_socket->segment_receive_buffer == NULL);
 
-        _socket->segment_extraction_buffer = CALLOC_LOG(_socket->segment_extraction_buffer, sizeof(microtcp_segment_t));
-        if (_socket->segment_extraction_buffer == NULL)
-                LOG_ERROR_RETURN(_socket->segment_extraction_buffer, "Failed to allocate socket's `segment_extraction_buffer`.");
-        LOG_INFO_RETURN(_socket->segment_extraction_buffer, "Succesful allocation of `segment_extraction_buffer`.");
+        _socket->segment_receive_buffer = CALLOC_LOG(_socket->segment_receive_buffer, sizeof(microtcp_segment_t));
+        if (_socket->segment_receive_buffer == NULL)
+                LOG_ERROR_RETURN(_socket->segment_receive_buffer, "Failed to allocate socket's `segment_receive_buffer`.");
+        LOG_INFO_RETURN(_socket->segment_receive_buffer, "Succesful allocation of `segment_receive_buffer`.");
 }
 
 static void deallocate_segment_build_buffer(microtcp_sock_t *_socket)
@@ -556,7 +565,7 @@ static void deallocate_segment_extraction_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
-        FREE_NULLIFY_LOG(_socket->segment_extraction_buffer);
+        FREE_NULLIFY_LOG(_socket->segment_receive_buffer);
 }
 
 /* TODO: */

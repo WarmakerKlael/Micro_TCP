@@ -8,6 +8,20 @@
 #include "microtcp_core_macros.h"
 #include "microtcp.h"
 
+/* Internal MACRO defines. */
+#define NO_SENDTO_FLAGS 0
+#define NO_RECVFROM_FLAGS 0
+
+#define SEND_SEGMENT_ERROR -1
+#define SEND_SEGMENT_FATAL_ERROR -2
+
+#define RECV_SEGMENT_TIMEOUT 0
+#define RECV_SEGMENT_ERROR -1
+#define RECV_SEGMENT_FATAL_ERROR -2
+#define RECV_SEGMENT_RST_BIT -3
+#define RECV_SEGMENT_NOT_SYN_BIT -4
+#define RECV_SEGMENT_UNEXPECTED_FINACK -5
+
 struct microtcp_segment
 {
         microtcp_header_t header;
@@ -19,7 +33,6 @@ typedef struct
         uint8_t *raw_bytes;
         uint16_t size;
 } microtcp_payload_t;
-
 
 microtcp_sock_t initialize_microtcp_socket(void);
 void generate_initial_sequence_number(microtcp_sock_t *_socket);
@@ -71,7 +84,6 @@ ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct so
 void update_socket_sent_counters(microtcp_sock_t *_socket, size_t _bytes_sent);
 void update_socket_received_counters(microtcp_sock_t *_socket, size_t _bytes_received);
 void update_socket_lost_counters(microtcp_sock_t *_socket, size_t _bytes_lost);
-
 
 /**
  * @brief Allocates buffers required for MicroTCP's handshake.

@@ -6,4 +6,10 @@
 
 /* TODO: inline actions of states of state machine. See what happens. */
 
+#include <sys/time.h>
+#include <time.h>
+
+void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend);
+time_t timeval_to_us(const struct timeval _timeval);
+
 #endif /* STATE_MACHINES_COMMON_H */
