@@ -3,6 +3,7 @@
 #include "microtcp_core.h"
 #include "settings/microtcp_settings.h"
 #include "logging/microtcp_logger.h"
+#include "logging/microtcp_fsm_logger.h"
 #include "sys/time.h"
 #include "time.h"
 
@@ -16,7 +17,7 @@ typedef enum
         CLOSED_1_SUBSTATE,
         CLOSED_2_SUBSTATE = CLOSED, /* Terminal substate(success). FSM exit point. */
         EXIT_FAILURE_SUBSTATE = -1  /* Terminal substate (failure). FSM exit point. */
-} shutdown_fsm_substates_t;
+} shutdown_active_fsm_substates_t;
 
 typedef enum
 {
@@ -28,7 +29,7 @@ typedef enum
         RST_EXPECTED_TIMEOUT,      /* RST after host send ACK, and expected TIME_WAIT timer to run off . */
         PEER_FATAL_ERROR,          /* Set when fatal errors occur on host's side. */
         SOCKET_TIMEOUT_SETUP_ERROR /* Set when host is unable to set socket's timer for the TIME_WAIT period. */
-} shutdown_fsm_errno_t;
+} shutdown_active_fsm_errno_t;
 
 typedef struct
 {
@@ -41,16 +42,16 @@ typedef struct
         ssize_t finack_retries_counter;
         struct timeval finack_wait_time_timer;
         struct timeval recvfrom_timeout;
-        shutdown_fsm_errno_t errno;
+        shutdown_active_fsm_errno_t errno;
 } fsm_context_t;
 
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
-static inline shutdown_fsm_substates_t handle_fatal_error(fsm_context_t *_context);
-static const char *convert_substate_to_string(shutdown_fsm_substates_t _state);
-static void log_errno_status(shutdown_fsm_errno_t _errno);
+static inline shutdown_active_fsm_substates_t handle_fatal_error(fsm_context_t *_context);
+static const char *convert_substate_to_string(shutdown_active_fsm_substates_t _state);
+static void log_errno_status(shutdown_active_fsm_errno_t _errno);
 
-static shutdown_fsm_substates_t execute_connection_established_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                                        socklen_t _address_len, fsm_context_t *_context)
+static shutdown_active_fsm_substates_t execute_connection_established_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                               socklen_t _address_len, fsm_context_t *_context)
 {
         _socket->seq_number = _context->socket_shutdown_isn;
         _context->send_finack_ret_val = send_finack_control_segment(_socket, _address, _address_len);
@@ -69,8 +70,8 @@ static shutdown_fsm_substates_t execute_connection_established_substate(microtcp
         }
 }
 
-static shutdown_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                            socklen_t _address_len, fsm_context_t *_context)
+static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                   socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
         switch (_context->recv_ack_ret_val)
@@ -80,6 +81,7 @@ static shutdown_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *con
 
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_UNEXPECTED_FINACK: /* Probably out of order, we ignore it, let it cause a timeout. */
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
                 if (_context->finack_retries_counter == 0) /* Exhausted attempts to resend FIN|ACK. */
@@ -101,8 +103,8 @@ static shutdown_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *con
         }
 }
 
-static shutdown_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                                 socklen_t _address_len, fsm_context_t *_context)
+static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                        socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
         switch (_context->recv_finack_ret_val)
@@ -133,8 +135,8 @@ static shutdown_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t
         }
 }
 
-static shutdown_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                                 socklen_t _address_len, fsm_context_t *_context)
+static shutdown_active_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                        socklen_t _address_len, fsm_context_t *_context)
 {
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
         switch (_context->send_ack_ret_val)
@@ -151,8 +153,8 @@ static shutdown_fsm_substates_t execute_fin_wait_2_send_substate(microtcp_sock_t
         }
 }
 
-static shutdown_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                           socklen_t _address_len, fsm_context_t *_context)
+static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                  socklen_t _address_len, fsm_context_t *_context)
 {
         /* In TIME_WAIT state, we set our timer to expire after 2*MSL (according TCP protocol). */
         if (set_socket_recvfrom_timeout(_socket, get_shutdown_time_wait_period()) == POSIX_SETSOCKOPT_FAILURE)
@@ -171,7 +173,7 @@ static shutdown_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *cons
         case RECV_SEGMENT_RST_BIT:
                 update_socket_received_counters(_socket, _context->recv_finack_ret_val);
                 _context->errno = RST_EXPECTED_TIMEOUT;
-        case RECV_SEGMENT_TIMEOUT: /* Timeout: Peer has likely completed shutdown. Transition to CLOSED_1_SUBSTATE. */
+        case RECV_SEGMENT_TIMEOUT: /* Timeout: Peer has likely completed shutdown_active. Transition to CLOSED_1_SUBSTATE. */
                 return CLOSED_1_SUBSTATE;
 
         case RECV_SEGMENT_ERROR: /* We want to fall-through, as in case of error we resend final ACK. */
@@ -185,14 +187,14 @@ static shutdown_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *cons
          * closed, as for the host there is no away to identify such scenario. */
 }
 
-static shutdown_fsm_substates_t execute_closed_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
-                                                          socklen_t _address_len, fsm_context_t *_context)
+static shutdown_active_fsm_substates_t execute_closed_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                 socklen_t _address_len, fsm_context_t *_context)
 {
         release_and_reset_handshake_resources(_socket, CLOSED);
         return CLOSED_2_SUBSTATE;
 }
 
-int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_address, socklen_t _address_len)
+int microtcp_shutdown_active_fsm(microtcp_sock_t *const _socket, struct sockaddr *_address, socklen_t _address_len)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, ESTABLISHED);                  /* Validate socket state. */
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address);                                     /* Validate address structure. */
@@ -205,12 +207,13 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
                                  .recvfrom_timeout = get_socket_recvfrom_timeout(_socket),
                                  .errno = NO_ERROR};
 
-        /* If we are in shutdown()'s FSM, that means that host (local) called shutdown not peer. */
+        /* If we are in shutdown_active()'s FSM, that means that host (local) called shutdown not peer. */
         _socket->state = CLOSING_BY_HOST;
 
-        shutdown_fsm_substates_t current_substate = CONNECTION_ESTABLISHED_SUBSTATE; /* Initial state in shutdown. */
+        shutdown_active_fsm_substates_t current_substate = CONNECTION_ESTABLISHED_SUBSTATE; /* Initial state in shutdown_active. */
         while (TRUE)
         {
+                LOG_FSM_SHUTDOWN("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)
                 {
                 case CONNECTION_ESTABLISHED_SUBSTATE:
@@ -232,23 +235,24 @@ int microtcp_shutdown_fsm(microtcp_sock_t *const _socket, struct sockaddr *_addr
                         current_substate = execute_closed_1_substate(_socket, _address, _address_len, &context);
                         break;
                 case CLOSED_2_SUBSTATE:
+                        log_errno_status(context.errno);
                         return MICROTCP_SHUTDOWN_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
-                        _socket->state = ESTABLISHED; /* Shutdown failed, thus connection remains ESTABLISHED. */
+                        _socket->state = ESTABLISHED; /* shutdown_active failed, thus connection remains ESTABLISHED. */
+                        log_errno_status(context.errno);
                         return MICROTCP_SHUTDOWN_FAILURE;
                 default:
-                        LOG_ERROR("Shutdown()'s FSM entered an `undefined` substate. Prior substate = %s",
+                        LOG_ERROR("shutdown_active() FSM entered an `undefined` substate. Prior substate = %s",
                                   convert_substate_to_string(current_substate));
                         current_substate = EXIT_FAILURE_SUBSTATE;
                         break;
                 }
         }
-        log_errno_status(context.errno);
 }
 
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
 // clang-format off
-static const char *convert_substate_to_string(shutdown_fsm_substates_t _state)
+static const char *convert_substate_to_string(shutdown_active_fsm_substates_t _state)
 {
         switch (_state)
         {
@@ -260,46 +264,46 @@ static const char *convert_substate_to_string(shutdown_fsm_substates_t _state)
         case CLOSED_1_SUBSTATE:                 return STRINGIFY(CLOSED_1_SUBSTATE);
         case CLOSED_2_SUBSTATE:                 return STRINGIFY(CLOSED_2_SUBSTATE);
         case EXIT_FAILURE_SUBSTATE:             return STRINGIFY(EXIT_FAILURE_SUBSTATE);
-        default:                                return "??SHUTDOWN_SUBSTATE??";
+        default:                                return "??SHUTDOWN_ACTIVE_SUBSTATE??";
         }
 }
 // clang-format on
 
-static void log_errno_status(shutdown_fsm_errno_t _errno)
+static void log_errno_status(shutdown_active_fsm_errno_t _errno)
 {
         switch (_errno)
         {
         case NO_ERROR:
-                LOG_INFO("Shutdown()'s FSM: closed connection gracefully.");
+                LOG_INFO("shutdown_active() FSM: closed connection gracefully.");
                 break;
         case PEER_ACK_TIMEOUT:
-                LOG_ERROR("Shutdown()'s FSM: timed out waiting for `ACK` from peer.");
+                LOG_ERROR("shutdown_active() FSM: timed out waiting for `ACK` from peer.");
                 break;
         case PEER_FIN_TIMEOUT:
-                LOG_WARNING("Shutdown()'s FSM: timed out waiting for `FIN` from peer.");
+                LOG_WARNING("shutdown_active() FSM: timed out waiting for `FIN` from peer.");
                 break;
         case RST_EXPECTED_ACK:
-                LOG_WARNING("Shutdown()'s FSM: received `RST` while expecting `ACK` from peer.");
+                LOG_WARNING("shutdown_active() FSM: received `RST` while expecting `ACK` from peer.");
                 break;
         case RST_EXPECTED_FINACK:
-                LOG_WARNING("Shutdown()'s FSM: received `RST` while expecting `FIN|ACK` from peer.");
+                LOG_WARNING("shutdown_active() FSM: received `RST` while expecting `FIN|ACK` from peer.");
                 break;
         case RST_EXPECTED_TIMEOUT:
-                LOG_WARNING("Shutdown()'s FSM: received `RST` while expecting connection to timeout.");
+                LOG_WARNING("shutdown_active() FSM: received `RST` while expecting connection to timeout.");
                 break;
         case PEER_FATAL_ERROR:
-                LOG_ERROR("Shutdown()'s FSM: encountered a fatal error on the host's side.");
+                LOG_ERROR("shutdown_active() FSM: encountered a fatal error on the host's side.");
                 break;
         case SOCKET_TIMEOUT_SETUP_ERROR:
-                LOG_WARNING("Shutdown()'s FSM: failed to set socket's timeout for `recvfrom()`.");
+                LOG_WARNING("shutdown_active() FSM: failed to set socket's timeout for `recvfrom()`.");
                 break;
         default:
-                LOG_ERROR("Shutdown()'s FSM: encountered an `unknown` error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
+                LOG_ERROR("shutdown_active() FSM: encountered an `unknown` error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
                 break;
         }
 }
 
-static inline shutdown_fsm_substates_t handle_fatal_error(fsm_context_t *_context)
+static inline shutdown_active_fsm_substates_t handle_fatal_error(fsm_context_t *_context)
 {
         _context->errno = PEER_FATAL_ERROR;
         return EXIT_FAILURE_SUBSTATE;

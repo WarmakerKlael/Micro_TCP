@@ -25,11 +25,11 @@
 
 /**
  * CS335 - Project Phase A
- * 
+ *
  * Ioannis Spyropoulos - csd5072
  * Georgios Evangelinos - csd4624
  * Niki Psoma - csd5038
-*/
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,8 +44,7 @@
 
 #define PORT 54321
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     struct sockaddr_in servaddr;
     struct sockaddr_in clientaddr;
@@ -60,11 +59,11 @@ main(int argc, char **argv)
     servaddr.sin_port = htons(PORT);
 
     printf("Binding...\n");
-    microtcp_bind(&tcpsocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
+    microtcp_bind(&tcpsocket, (const struct sockaddr *)&servaddr, sizeof(servaddr));
     printf("Bind successful\n");
 
     printf("Waiting for connection request...\n");
-    microtcp_accept(&tcpsocket, (struct sockaddr*) &clientaddr, sizeof(clientaddr));
+    microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Connected\n");
 
     // const char* rmsg = "Message received";
@@ -82,5 +81,10 @@ main(int argc, char **argv)
 
     // printf("Connection closed by peer\n");
 
+    char ff[2000];
+    ssize_t bytes = microtcp_recv(&tcpsocket, ff, 2000, 0);
+    printf("recv finished, bytes read = %zd\n", bytes);
+    if (bytes == 0)
+        microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     return EXIT_SUCCESS;
 }

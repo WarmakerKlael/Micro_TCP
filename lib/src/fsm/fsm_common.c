@@ -1,6 +1,8 @@
 #include "fsm_common.h"
+#include "smart_assert.h"
 
 /* Helper function: Safely subtract _minuend from _subtrahend and store the result in t1 */
+const time_t usec_per_sec = 1000000;
 void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend)
 {
         SMART_ASSERT(_subtrahend != NULL);
@@ -10,9 +12,9 @@ void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend
         /* Normalize if microseconds are out of range */
         if (_subtrahend->tv_usec < 0)
         {
-                time_t borrow = (-_subtrahend->tv_usec / 1000000) + 1; /* Calculate how many seconds to borrow */
+                time_t borrow = (-_subtrahend->tv_usec / usec_per_sec) + 1; /* Calculate how many seconds to borrow */
                 _subtrahend->tv_sec -= borrow;
-                _subtrahend->tv_usec += borrow * 1000000;
+                _subtrahend->tv_usec += borrow * usec_per_sec;
         }
 
         /* Ensure the result is non-negative */

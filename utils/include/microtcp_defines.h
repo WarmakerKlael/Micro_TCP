@@ -38,6 +38,10 @@ typedef _Bool status_t;
 #define MICROTCP_SHUTDOWN_SUCCESS 0
 #define MICROTCP_SHUTDOWN_FAILURE -1
 
+/* microtcp_recv() possible return values. (and its FSM) */
+#define MICROTCP_RECV_SHUTDOWN 0
+#define MICROTCP_RECV_FAILURE -1
+
 /* POSIX's bind() possible return values. */
 #define POSIX_BIND_SUCCESS 0
 #define POSIX_BIND_FAILURE -1

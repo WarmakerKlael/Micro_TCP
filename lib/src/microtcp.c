@@ -115,14 +115,25 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
 {
         LOG_INFO("Shutdown operation initiated.");
         /* Validate input parameters. */
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED | CLOSING_BY_PEER);
 
         struct sockaddr *address = _socket->peer_socket_address;
         socklen_t address_len = sizeof(*(_socket->peer_socket_address));
 
-        if (microtcp_shutdown_fsm(_socket, address, address_len) == MICROTCP_SHUTDOWN_FAILURE)
-                LOG_ERROR_RETURN(MICROTCP_SHUTDOWN_FAILURE, "Shutdown operation failed.");
-        LOG_INFO_RETURN(MICROTCP_SHUTDOWN_SUCCESS, "Shutdown operation succeeded.");
+        switch (_socket->state)
+        {
+        case ESTABLISHED:
+                if (microtcp_shutdown_active_fsm(_socket, address, address_len) == MICROTCP_SHUTDOWN_FAILURE)
+                        LOG_ERROR_RETURN(MICROTCP_SHUTDOWN_FAILURE, "Shutdown operation failed.");
+                LOG_INFO_RETURN(MICROTCP_SHUTDOWN_SUCCESS, "Shutdown operation succeeded.");
+        case CLOSING_BY_PEER:
+                if (microtcp_shutdown_passive_fsm(_socket, address, address_len) == MICROTCP_SHUTDOWN_FAILURE)
+                        LOG_ERROR_RETURN(MICROTCP_SHUTDOWN_FAILURE, "Shutdown operation failed.");
+                LOG_INFO_RETURN(MICROTCP_SHUTDOWN_SUCCESS, "Shutdown operation succeeded.");
+        default:
+                LOG_ERROR_RETURN(MICROTCP_SHUTDOWN_FAILURE, "Socket state = %s; Shutdown operation NOT allowed.",
+                                 get_microtcp_state_to_string(_socket->state));
+        }
 
         /* We dont clean socket... If shutdown fails... it's up to caller to use `microtcp_close_socket()` and recycle microtcp_sock_t. */
 }
@@ -133,9 +144,33 @@ ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length
         return 0;
 }
 
-ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags)
+ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_length, int _flags)
 {
-        // ssize_t rfa_ret_val  = receive_finack_control_segment( )
+        /* Validate input parameters. */
+        SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
+
+        struct sockaddr *address = _socket->peer_socket_address;
+        socklen_t address_len = sizeof(*(_socket->peer_socket_address));
+        while (TRUE)
+        {
+                ssize_t ret_val = recvfrom(_socket->sd, _buffer, _buffer_length, NO_RECVFROM_FLAGS, address, &address_len);
+                if (ret_val == -1)
+                {
+                        printf("microtcp_recv hears nothing...\n");
+                        continue;
+                }
+
+                if (ret_val == sizeof(microtcp_header_t) && ((microtcp_header_t *)_buffer)->control == (FIN_BIT | ACK_BIT))
+                {
+                        printf("???r\n");
+                        _socket->state = CLOSING_BY_PEER;
+                        return MICROTCP_RECV_SHUTDOWN;
+                }
+                else
+                        printf("RECV: RETVAL == %zd\n", ret_val);
+        }
+
         return 0;
 }
 

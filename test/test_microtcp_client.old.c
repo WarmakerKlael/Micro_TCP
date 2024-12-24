@@ -48,7 +48,7 @@
 int
 main(int argc, char **argv)
 {
-    configure_microtcp_settings();
+    // configure_microtcp_settings();
     
     struct sockaddr_in servaddr;
 

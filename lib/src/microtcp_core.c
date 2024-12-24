@@ -445,15 +445,16 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         size_t expected_segment_size = sizeof(microtcp_header_t);
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
 
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, expected_segment_size, NO_RECVFROM_FLAGS, _address, &_address_len);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MSS, NO_RECVFROM_FLAGS, _address, &_address_len);
         if (recvfrom_ret_val == RECVFROM_ERROR && (errno == EAGAIN || errno == EWOULDBLOCK))
-                LOG_WARNING_RETURN(RECV_SEGMENT_TIMEOUT, "recvfrom timeout.");
+                return RECV_SEGMENT_TIMEOUT;
         if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned 0, which points a closed connection; but underlying protocol is UDP, so this should not happen.");
         if (recvfrom_ret_val == RECVFROM_ERROR)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
-        if (recvfrom_ret_val < expected_segment_size)
-                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received bytestream size is less than %s.", STRINGIFY(expected_segment_size));
+        if (recvfrom_ret_val != expected_segment_size)
+                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received bytestream size is (%zd bytes) different than %s (%zu bytes).",
+                                   recvfrom_ret_val, STRINGIFY(expected_segment_size), expected_segment_size);
         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
 
@@ -463,10 +464,9 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         if ((control_segment->header.control & RST_BIT) == RST_BIT) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
                 LOG_WARNING_RETURN(RECV_SEGMENT_RST_BIT, "Control-field: Received = `%s`; Expected = `%s`.",
                                    get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
-        if ((_required_state & SYN_BIT) && !(control_segment->header.control & SYN_BIT))
+        if ((_required_control & SYN_BIT) && !(control_segment->header.control & SYN_BIT))
                 LOG_WARNING_RETURN(RECV_SEGMENT_NOT_SYN_BIT, "Control-field: Received = `%s`; Expected = `%s`.",
                                    get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
-
         if ((control_segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT))
                 LOG_ERROR_RETURN(RECV_SEGMENT_UNEXPECTED_FINACK, "Control-field: Received = `%s`; Expected = `%s`.",
                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));

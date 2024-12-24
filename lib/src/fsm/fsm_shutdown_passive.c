@@ -1,5 +1,8 @@
 #include "microtcp_core.h"
 #include "fsm_common.h"
+#include "settings/microtcp_settings.h"
+#include "logging/microtcp_logger.h"
+#include "logging/microtcp_fsm_logger.h"
 
 typedef enum
 {
@@ -114,7 +117,7 @@ static shutdown_passive_fsm_substates_t execute_closed_1_substate(microtcp_sock_
 
 int microtcp_shutdown_passive_fsm(microtcp_sock_t *const _socket, struct sockaddr *_address, socklen_t _address_len)
 {
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, ESTABLISHED);                  /* Validate socket state. */
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, CLOSING_BY_PEER);                  /* Validate socket state. */
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address);                                     /* Validate address structure. */
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address_len, sizeof(*_address)); /* Validate address length. */
 
@@ -125,26 +128,34 @@ int microtcp_shutdown_passive_fsm(microtcp_sock_t *const _socket, struct sockadd
                                  .errno = NO_ERROR};
 
         /* If we are in shutdown()'s passive FSM, that means that microtcp intercepted a FIN-ACK packet. */
-        _socket->state = CLOSING_BY_PEER;
-
         shutdown_passive_fsm_substates_t current_substate = FINACK_RECEIVED_SUBSTATE; /* Initial state in shutdown. */
         while (TRUE)
         {
+                LOG_FSM_SHUTDOWN("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)
                 {
                 case FINACK_RECEIVED_SUBSTATE:
+                        current_substate = execute_finack_received_substate(_socket, _address, _address_len, &context);
                         break;
                 case CLOSE_WAIT_SUBTATE:
+                        current_substate = execute_close_wait_substate(_socket, _address, _address_len, &context);
                         break;
                 case LAST_ACK_SUBSTATE:
+                        current_substate = execute_last_ack_substate(_socket, _address, _address_len, &context);
                         break;
                 case CLOSED_1_SUBSTATE:
+                        current_substate = execute_closed_1_substate(_socket, _address, _address_len, &context);
                         break;
                 case CLOSED_2_SUBSTATE:
-                        break;
+                        log_errno_status(context.errno);
+                        return MICROTCP_SHUTDOWN_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
-                        break;
+                        log_errno_status(context.errno);
+                        return MICROTCP_SHUTDOWN_FAILURE;
                 default:
+                        LOG_ERROR("shutdown_passive() FSM entered an `undefined` substate. Prior substate = %s",
+                                  convert_substate_to_string(current_substate));
+                        current_substate = EXIT_FAILURE_SUBSTATE;
                         break;
                 }
         }
@@ -172,19 +183,19 @@ static void log_errno_status(shutdown_fsm_errno_t _errno)
         switch (_errno)
         {
         case NO_ERROR:
-                LOG_INFO("Shutdown()'s FSM: closed connection gracefully.");
+                LOG_INFO("shutdown_passive() FSM: closed connection gracefully.");
                 break;
         case RST_EXPECTED_ACK:
-                LOG_WARNING("Shutdown()'s FSM: received `RST` while expecting `ACK` from peer.");
+                LOG_WARNING("shutdown_passive() FSM: received `RST` while expecting `ACK` from peer.");
                 break;
         case LAST_ACK_TIMEOUT:
-                LOG_WARNING("Shutdown()'s FSM: timed out waiting for `ACK` from peer.");
+                LOG_WARNING("shutdown_passive() FSM: timed out waiting for `ACK` from peer.");
                 break;
         case HOST_FATAL_ERROR:
-                LOG_ERROR("Shutdown()'s FSM: encountered a fatal error on the host's side.");
+                LOG_ERROR("shutdown_passive() FSM: encountered a fatal error on the host's side.");
                 break;
         default:
-                LOG_ERROR("Shutdown()'s FSM: encountered an `unknown` error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
+                LOG_ERROR("shutdown_passive() FSM: encountered an `unknown` error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
                 break;
         }
 }

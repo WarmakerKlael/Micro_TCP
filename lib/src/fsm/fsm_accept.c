@@ -2,6 +2,7 @@
 #include "fsm_common.h"
 #include "microtcp_core.h"
 #include "logging/microtcp_logger.h"
+#include "logging/microtcp_fsm_logger.h"
 #include "settings/microtcp_settings.h"
 
 typedef enum
@@ -43,12 +44,13 @@ static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, st
         case RECV_SEGMENT_FATAL_ERROR:
                 return EXIT_FAILURE_SUBSTATE;
 
-        /* Actions on the following 4 cases end up to same current substate. */
+        /* Actions on the following 5 cases end up to same current substate. */
         case RECV_SEGMENT_NOT_SYN_BIT:
                 send_rstack_control_segment(_socket, _address, _address_len);
-        case RECV_SEGMENT_ERROR:
-        case RECV_SEGMENT_RST_BIT: /* Some asshole sends you RST before connection, do you care? FUCK NO! */
         case RECV_SEGMENT_TIMEOUT:
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_UNEXPECTED_FINACK:
+        case RECV_SEGMENT_RST_BIT: /* Some asshole sends you RST before connection, do you care? FUCK NO! */
                 /* If received SYN segment was corrupted, or for any other reason caused errors;
                  * We discard it. If client still wants to make a connection with the server
                  * it will resend a SYN packet after a timeout occurs on its side. */
@@ -97,21 +99,21 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
 
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_UNEXPECTED_FINACK:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_synack_ret_val);
                 if (_context->synack_retries_counter > 0)
                 {
-                        LOG_WARNING("Waiting for FINAL `ACK`.\n");
                         _context->synack_retries_counter--;
                         return SYN_RECEIVED_SUBSTATE; /* go resend SYN|ACK as it was might lost */
                 }
-                LOG_WARNING("Synack retries exhausted; Going back in waiting for `SYN`.\n");
+                LOG_FSM_ACCEPT("Synack retries exhausted; Going back to `%s`.\n", STRINGIFY(LISTEN_SUBSTATE));
                 _context->synack_retries_counter = get_accept_synack_retries(); /* Reset contex's counter. */
                 return LISTEN_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
-                LOG_WARNING("Handshake failed, received RST");
+                LOG_FSM_ACCEPT("Handshake failed, received RST");
                 return LISTEN_SUBSTATE;
 
         default:
@@ -143,6 +145,7 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
         accept_fsm_substates current_substate = LISTEN_SUBSTATE;
         while (TRUE)
         {
+                LOG_FSM_ACCEPT("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)
                 {
                 case LISTEN_SUBSTATE:
@@ -162,7 +165,7 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
                 case EXIT_FAILURE_SUBSTATE:
                         return MICROTCP_ACCEPT_FAILURE;
                 default:
-                        LOG_ERROR("Accept()'s FSM entered an `undefined` substate. Prior substate = %s",
+                        LOG_ERROR("Accept() FSM entered an `undefined` substate = %s",
                                   convert_substate_to_string(current_substate));
                         current_substate = EXIT_FAILURE_SUBSTATE;
                         break;

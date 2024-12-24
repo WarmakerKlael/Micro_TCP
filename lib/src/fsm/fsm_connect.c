@@ -4,6 +4,7 @@
 #include "microtcp_defines.h"
 #include "microtcp_core.h"
 #include "logging/microtcp_logger.h"
+#include "logging/microtcp_fsm_logger.h"
 
 typedef enum
 {
@@ -73,7 +74,8 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
 
-        /* Actions on the following two cases are the same. */
+        /* Actions on the following three cases are the same. */
+        case RECV_SEGMENT_UNEXPECTED_FINACK:
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
@@ -135,6 +137,7 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
         connect_fsm_substates_t current_substate = CLOSED_SUBSTATE;
         while (TRUE)
         {
+                LOG_FSM_CONNECT("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)
                 {
                 case CLOSED_SUBSTATE:
@@ -150,17 +153,18 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         current_substate = execute_ack_sent_substate(_socket, _address, _address_len, &context);
                         break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
+                        log_errno_status(context.errno);
                         return MICROTCP_CONNECT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
+                        log_errno_status(context.errno);
                         return MICROTCP_CONNECT_FAILURE;
                 default:
-                        LOG_ERROR("Connect()'s FSM entered an `undefined` substate. Prior substate = %s",
+                        LOG_ERROR("connect() FSM entered an `undefined` substate = %s",
                                   convert_substate_to_string(current_substate));
                         current_substate = EXIT_FAILURE_SUBSTATE;
                         break;
                 }
         }
-        log_errno_status(context.errno);
 }
 
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
@@ -185,15 +189,16 @@ static void log_errno_status(connect_fsm_errno_t _errno)
         switch (_errno)
         {
         case NO_ERROR:
-                LOG_INFO("Connect()'s FSM: completed handshake successfully; No errors.");
+                LOG_INFO("connect() FSM: completed handshake successfully; No errors.");
                 break;
         case RST_RETRIES_EXHAUSTED:
-                LOG_ERROR("Connec()'s FSM: exhausted connection attempts while handling RST segments.");
+                LOG_ERROR("connect() FSM: exhausted connection attempts while handling RST segments.");
                 break;
         case PEER_FATAL_ERROR:
-                LOG_ERROR("Connect()'s FSM: encountered a fatal error on the host's side.");
+                LOG_ERROR("connect() FSM: encountered a fatal error on the host's side.");
                 break;
-                LOG_ERROR("Connect()'s FSM: encountered an unknown error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
+        default:
+                LOG_ERROR("connect() FSM: encountered an `unknown` error code: %d.", _errno); /* Log unknown errors for debugging purposes. */
                 break;
         }
 }

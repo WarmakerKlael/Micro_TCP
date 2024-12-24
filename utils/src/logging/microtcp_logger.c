@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <stdarg.h>
 #include <pthread.h>
 
@@ -125,9 +126,10 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list)
 {
 #include <sys/time.h>
-	static struct timeval tv;
-	gettimeofday(&tv, NULL);
-	long milliseconds = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+	static struct timespec tv;
+	clock_gettime(CLOCK_REALTIME, &tv);
+
+	long milliseconds = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
 	if (!logger_is_enabled())
 		return;
 	if (!logger_is_info_enabled() && _log_tag == LOG_INFO)

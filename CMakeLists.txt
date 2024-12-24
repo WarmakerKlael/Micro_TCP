@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(microTCP VERSION 0.1.0 LANGUAGES C)
+project(microTCP VERSION 0.2.0 LANGUAGES C)
 
 get_filename_component(PROJECT_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
 

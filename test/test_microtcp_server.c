@@ -11,8 +11,7 @@
 
 #define PORT 54321
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     struct sockaddr_in servaddr;
     struct sockaddr_in clientaddr;
@@ -26,12 +25,15 @@ main(int argc, char **argv)
     servaddr.sin_addr.s_addr = INADDR_ANY;
     servaddr.sin_port = htons(PORT);
 
-    microtcp_bind(&tcpsocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
+    microtcp_bind(&tcpsocket, (const struct sockaddr *)&servaddr, sizeof(servaddr));
     printf("Bind successful\n");
 
     printf("Waiting for connection request...\n");
-    microtcp_accept(&tcpsocket, (struct sockaddr*) &clientaddr, sizeof(clientaddr));
+    microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Connected\n");
+    char ff[2000];
+    ssize_t bytes = microtcp_recv(tcpsocket, ff, 2000, 0);
+    printf("recv finished");
 
     return EXIT_SUCCESS;
 }
