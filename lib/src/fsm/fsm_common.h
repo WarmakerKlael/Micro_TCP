@@ -1,7 +1,7 @@
 #ifndef STATE_MACHINES_COMMON_H
 #define STATE_MACHINES_COMMON_H
 
-#include <time.h>
+#include <time.h>  // for time_t
 struct timeval;
 
 #define SENT_SYN_SEQUENCE_NUMBER_INCREMENT 1
