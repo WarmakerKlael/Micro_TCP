@@ -1,5 +1,5 @@
 #include "logging/microtcp_fsm_logger.h"
-#include <__stdarg_va_arg.h> // REMOVE IWYU REPLACE WITH #include <stdarg.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include "microtcp_defines.h"
 #include "microtcp_helper_macros.h"

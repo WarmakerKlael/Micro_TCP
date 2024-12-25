@@ -1,5 +1,5 @@
 #include "logging/microtcp_logger.h"
-#include <__stdarg_va_arg.h> // REMOVE IWYU REPLACE WITH #include <stdarg.h>
+#include <stdarg.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>

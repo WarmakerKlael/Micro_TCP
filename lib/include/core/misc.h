@@ -3,7 +3,7 @@
 
 #include <sys/time.h>
 #include "microtcp.h"
-struct timeval; // REMOVE IWYU 
+struct timeval; 
 
 microtcp_sock_t initialize_microtcp_socket(void);
 void generate_initial_sequence_number(microtcp_sock_t *_socket);
