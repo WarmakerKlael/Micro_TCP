@@ -3,15 +3,20 @@ project(microTCP VERSION 0.2.0 LANGUAGES C)
 
 get_filename_component(PROJECT_DIR_NAME ${CMAKE_SOURCE_DIR} NAME)
 
-add_compile_options(-Wall ) #-Wextra #Strive for pedantic
+add_compile_options(-Wall) #-Wextra #Strive for pedantic
 add_compile_definitions(PROJECT_TOP_LEVEL_DIRECTORY= "${PROJECT_DIR_NAME}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_COMPILER clang)
 
-# Existing IWYU setup
-set(CMAKE_C_INCLUDE_WHAT_YOU_USE include-what-you-use --no-fwd-decls)
+option(ENABLE_IWYU "Enable Include-What-You-Use parser" OFF)
 
-
+if(ENABLE_IWYU)
+    # Set the IWYU command to be used for analyzing include directives
+    set(CMAKE_C_INCLUDE_WHAT_YOU_USE include-what-you-use --no-fwd-decls)
+    message(STATUS "Include-What-You-Use enabled.")
+else()
+    message(STATUS "Include-What-You-Use disabled.")
+endif()
 
 # Add the mapping file
 # set(IWYU_MAPPING_FILE ${CMAKE_SOURCE_DIR}/iwyu_mapping.imp)

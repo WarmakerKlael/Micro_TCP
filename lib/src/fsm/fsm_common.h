@@ -1,8 +1,8 @@
 #ifndef STATE_MACHINES_COMMON_H
 #define STATE_MACHINES_COMMON_H
 
-#include <time.h>  // for time_t
-struct timeval; // REPLACE IWYU
+#include <time.h>
+struct timeval;
 
 #define SENT_SYN_SEQUENCE_NUMBER_INCREMENT 1
 #define SENT_FIN_SEQUENCE_NUMBER_INCREMENT 1

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <sys/time.h>
-struct timeval; // REMOVE IWYU 
+struct timeval;
 
 /* MicroTCP socket configurators. */
 struct timeval get_microtcp_ack_timeout(void);
