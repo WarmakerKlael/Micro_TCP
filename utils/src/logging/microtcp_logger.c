@@ -1,15 +1,13 @@
+#include "logging/microtcp_logger.h"
+#include <__stdarg_va_arg.h> // REMOVE IWYU REPLACE WITH #include <stdarg.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <stdarg.h>
-#include <pthread.h>
-
-#include "logging/microtcp_logger.h"
-#include "logging/logger_options.h"
 #include "allocator/allocator_macros.h"
+#include "cli_color.h"
+#include "logging/logger_options.h"
 #include "microtcp_defines.h"
-#include "microtcp_common_macros.h"
-
 #include "microtcp_logging_colors.h"
 
 extern FILE *microtcp_log_stream;
@@ -125,7 +123,6 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 
 static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list)
 {
-#include <sys/time.h>
 	static struct timespec tv;
 	clock_gettime(CLOCK_REALTIME, &tv);
 

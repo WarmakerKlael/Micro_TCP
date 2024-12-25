@@ -1,4 +1,5 @@
 #include "fsm_common.h"
+#include <sys/time.h>
 #include "smart_assert.h"
 
 /* Helper function: Safely subtract _minuend from _subtrahend and store the result in t1 */

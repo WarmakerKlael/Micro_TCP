@@ -1,7 +1,9 @@
 #ifndef MICROTCP_HELPER_FUNCTIONS_H
 #define MICROTCP_HELPER_FUNCTIONS_H
 
+#include <stdint.h>
 #include "microtcp.h"
+struct timeval;
 
 /**
  * @brief  Maps a `microtcp_state_t` value to its corresponding string.

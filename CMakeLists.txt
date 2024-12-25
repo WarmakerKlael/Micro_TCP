@@ -8,6 +8,17 @@ add_compile_definitions(PROJECT_TOP_LEVEL_DIRECTORY= "${PROJECT_DIR_NAME}")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_COMPILER clang)
 
+# Existing IWYU setup
+set(CMAKE_C_INCLUDE_WHAT_YOU_USE include-what-you-use --no-fwd-decls)
+
+
+
+# Add the mapping file
+# set(IWYU_MAPPING_FILE ${CMAKE_SOURCE_DIR}/iwyu_mapping.imp)
+
+# # Pass the mapping file to IWYU
+# set(CMAKE_C_INCLUDE_WHAT_YOU_USE ${CMAKE_C_INCLUDE_WHAT_YOU_USE} -Xiwyu --mapping_file=${IWYU_MAPPING_FILE})
+
 # Add defintions for debug and verbose mode.
 if(DEBUG_MODE)
         message("CMAKE: set project in DEBUG_MODE.")

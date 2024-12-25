@@ -8,6 +8,7 @@ add_library(microtcp_fsm STATIC
 )
 target_link_libraries(microtcp_fsm microtcp_settings)
 target_link_libraries(microtcp_fsm microtcp_logger)
+target_link_libraries(microtcp_fsm microtcp_core)
 
 
 target_include_directories(microtcp_fsm PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)

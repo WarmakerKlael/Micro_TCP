@@ -2,9 +2,8 @@
 #define MICROTCP_SETTINGS_H
 
 #include <stddef.h>
-#include <time.h>
 #include <sys/time.h>
-
+struct timeval; // REMOVE IWYU 
 
 /* MicroTCP socket configurators. */
 struct timeval get_microtcp_ack_timeout(void);

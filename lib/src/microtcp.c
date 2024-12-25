@@ -1,12 +1,17 @@
-#include <errno.h>
 #include "microtcp.h"
-#include "microtcp_core.h"
-#include "microtcp_defines.h"
-#include "settings/microtcp_settings.h"
-#include "microtcp_core_macros.h"
-#include "microtcp_common_macros.h"
-#include "logging/microtcp_logger.h"
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include "core/misc.h"
+#include "core/resource_allocation.h"
 #include "fsm/microtcp_fsm.h"
+#include "logging/microtcp_logger.h"
+#include "microtcp_core_macros.h"
+#include "microtcp_defines.h"
+#include "microtcp_helper_functions.h"
+#include "microtcp_helper_macros.h"
+#include "settings/microtcp_settings.h"
+#include "smart_assert.h"
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
 {
@@ -154,6 +159,7 @@ ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_le
         socklen_t address_len = sizeof(*(_socket->peer_socket_address));
         while (TRUE)
         {
+#define NO_RECVFROM_FLAGS 0
                 ssize_t ret_val = recvfrom(_socket->sd, _buffer, _buffer_length, NO_RECVFROM_FLAGS, address, &address_len);
                 if (ret_val == -1)
                 {

@@ -2,7 +2,7 @@
 #define MICROTCP_CORE_MACROS_H
 
 #include "logging/microtcp_logger.h"
-#include "microtcp_common_macros.h"
+#include "microtcp_helper_macros.h"
 #include "microtcp_helper_functions.h"
 #include "smart_assert.h"
 

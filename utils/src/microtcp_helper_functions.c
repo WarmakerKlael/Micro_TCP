@@ -1,5 +1,6 @@
-#include <sys/time.h>
 #include "microtcp_helper_functions.h"
+#include <sys/time.h>
+#include <time.h>
 #include "smart_assert.h"
 
 /**

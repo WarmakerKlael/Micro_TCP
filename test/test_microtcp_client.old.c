@@ -31,17 +31,13 @@
  * Niki Psoma - csd5038
 */
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-
 #include "microtcp.h"
-#include "settings/microtcp_settings_prompts.h"
 
 #define PORT 54321
 

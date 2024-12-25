@@ -1,11 +1,7 @@
 #ifndef MICROTCP_LOGGER_H
 #define MICROTCP_LOGGER_H
 
-#include <stdio.h>
-#include <stdarg.h>
 #include <string.h>
-#include "cli_color.h"
-#include "microtcp_defines.h"
 
 /**
  * @brief Resolves the file name relative to the project directory.

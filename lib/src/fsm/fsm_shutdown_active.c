@@ -1,11 +1,20 @@
 #include "fsm/microtcp_fsm.h"
+#include <stddef.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include "core/control_segments_io.h"
+#include "core/misc.h"
+#include "core/resource_allocation.h"
+#include "core/socket_stats_updater.h"
 #include "fsm_common.h"
-#include "microtcp_core.h"
-#include "settings/microtcp_settings.h"
-#include "logging/microtcp_logger.h"
 #include "logging/microtcp_fsm_logger.h"
-#include "sys/time.h"
-#include "time.h"
+#include "logging/microtcp_logger.h"
+#include "microtcp.h"
+#include "microtcp_core_macros.h"
+#include "microtcp_defines.h"
+#include "microtcp_helper_macros.h"
+#include "settings/microtcp_settings.h"
 
 typedef enum
 {

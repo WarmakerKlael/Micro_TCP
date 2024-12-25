@@ -1,9 +1,8 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include "microtcp_defines.h"
-#include "microtcp_common_macros.h"
 #include "logging/microtcp_fsm_logger.h"
-#include "cli_color.h"
+#include <__stdarg_va_arg.h> // REMOVE IWYU REPLACE WITH #include <stdarg.h>
+#include <stdio.h>
+#include "microtcp_defines.h"
+#include "microtcp_helper_macros.h"
 #include "microtcp_logging_colors.h"
 
 extern FILE *microtcp_log_stream;

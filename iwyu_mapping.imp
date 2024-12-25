@@ -1,0 +1,4 @@
+[
+  ["stdarg.h", "public", null, "public"],
+  ["__stdarg_va_arg.h", "public", null, "public"]
+]

@@ -1,10 +1,11 @@
 #ifndef LIB_MICROTCP_H_
 #define LIB_MICROTCP_H_
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <netinet/in.h> // IWYU pragma: keep
 
 /*
  * Several useful constants
