@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h> // IWYU pragma: keep
+#include <pthread.h>
 
 /*
  * Several useful constants
@@ -32,12 +33,12 @@ typedef struct microtcp_segment microtcp_segment_t;
  */
 typedef enum
 {
-        INVALID = 1 << 0,
-        CLOSED = 1 << 1, /* when there is no connection. Like when Creating the socket, or after ending a connection. */
-        LISTEN = 1 << 2,
-        ESTABLISHED = 1 << 3,
-        CLOSING_BY_PEER = 1 << 4,
-        CLOSING_BY_HOST = 1 << 5,
+        INVALID = (1 << 0),
+        CLOSED = (1 << 1), /* when there is no connection. Like when Creating the socket, or after ending a connection. */
+        LISTEN = (1 << 2),
+        ESTABLISHED = (1 << 3),
+        CLOSING_BY_PEER = (1 << 4),
+        CLOSING_BY_HOST = (1 << 5),
 } mircotcp_state_t;
 
 /**
@@ -55,6 +56,7 @@ typedef struct
         size_t peer_win_size;
 
         void *bytestream_assembly_buffer; /* a.k.a `recvbuf`, used to reassmble bytes of incoming packets. */
+        pthread_mutex_t assembly_buffer_mutex;
 
         size_t buf_fill_level; /* Amount of data in the buffer. */
 

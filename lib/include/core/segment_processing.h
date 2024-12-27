@@ -20,6 +20,6 @@ typedef struct
 microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
 void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_segment);
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length);
-microtcp_segment_t *extract_microtcp_segment(microtcp_sock_t *_socket, void *_bytestream_buffer, size_t _bytestream_buffer_length);
+void extract_microtcp_segment(microtcp_segment_t **_segment_buffer, void *_bytestream_buffer, size_t _bytestream_buffer_length);
 
 #endif /* CORE_SEGMENT_PROCESSING_H */

@@ -43,10 +43,10 @@ static inline void clean_line(void)
         printf("\033[1G\033[2K");
 }
 
-static inline size_t count_format_specifiers(const char *_format)
+static inline int count_format_specifiers(const char *_format)
 {
         SMART_ASSERT(_format != NULL);
-        size_t count = 0;
+        int count = 0;
         while (*_format != '\0')
         {
                 if (*(_format) == '%' && *(_format + 1) != '%' && *(_format + 1) != '\0' && *(_format + 1) != ' ')

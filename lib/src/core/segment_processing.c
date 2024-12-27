@@ -67,7 +67,9 @@ void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_
 
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
+#ifdef DEBUG_MODE
         SMART_ASSERT(_bytestream_buffer != NULL, _bytestream_buffer_length >= sizeof(microtcp_header_t));
+#endif /* DEBUG_MODE */
 
         uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 
@@ -79,23 +81,19 @@ _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_
         return calculated_checksum == extracted_checksum;
 }
 
-microtcp_segment_t *extract_microtcp_segment(microtcp_sock_t *_socket, void *_bytestream_buffer, size_t _bytestream_buffer_length)
+void extract_microtcp_segment(microtcp_segment_t **_segment_buffer, void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
-
         const size_t header_size = sizeof(microtcp_header_t);
-
-        SMART_ASSERT(_socket != NULL);
-        SMART_ASSERT(_socket->segment_receive_buffer != NULL,
+#ifdef DEBUG_MODE
+        SMART_ASSERT(_segment_buffer != NULL);
+        SMART_ASSERT(*_segment_buffer != NULL,
                      _bytestream_buffer != NULL,
                      _bytestream_buffer_length >= header_size);
+#endif /* DEBUG_MODE */
 
         const size_t payload_size = _bytestream_buffer_length - header_size;
 
-        microtcp_segment_t *new_segment = _socket->segment_receive_buffer;
+        memcpy(&((*_segment_buffer)->header), _bytestream_buffer, sizeof(microtcp_header_t));
 
-        new_segment->raw_payload_bytes = (payload_size > 0 ? _bytestream_buffer + header_size : NULL);
-
-        memcpy(&(new_segment->header), _bytestream_buffer, sizeof(microtcp_header_t));
-
-        return new_segment;
+        (*_segment_buffer)->raw_payload_bytes = (payload_size > 0 ? _bytestream_buffer + header_size : NULL);
 }

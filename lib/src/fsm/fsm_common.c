@@ -32,3 +32,12 @@ time_t timeval_to_us(const struct timeval _timeval)
         const time_t usec_per_sec = 1000000;
         return (_timeval.tv_sec * usec_per_sec) + _timeval.tv_usec;
 }
+
+time_t elapsed_time_us(struct timeval _start_time)
+{
+        SMART_ASSERT(_start_time.tv_sec >= 0, _start_time.tv_usec >= 0, _start_time.tv_usec < usec_per_sec);
+        struct timeval current_time;
+        gettimeofday(&current_time, NULL);
+                     
+        return timeval_to_us(current_time) - timeval_to_us(_start_time);
+}

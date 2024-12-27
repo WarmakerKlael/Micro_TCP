@@ -87,6 +87,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 #define LOG_MESSAGE(_log_tag, _format_message, ...) \
 	log_message_thread_safe(_log_tag, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
 
+#if defined(DEBUG_MODE) || defined(VERBOSE_MODE)
 /**
  * @brief Logs an informational message.
  *
@@ -99,6 +100,9 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_INFO(_format_message, ...) LOG_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__);
+#else
+#define LOG_INFO(_format_message, ...) /* Logging disabled in release */
+#endif /* DEBUG_MODE || VERBOSE_MODE */
 
 /**
  * @brief Logs a warning message.

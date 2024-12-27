@@ -9,5 +9,6 @@ struct timeval;
 
 void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend);
 time_t timeval_to_us(const struct timeval _timeval);
+time_t elapsed_time_us(struct timeval _start_time);
 
 #endif /* STATE_MACHINES_COMMON_H */

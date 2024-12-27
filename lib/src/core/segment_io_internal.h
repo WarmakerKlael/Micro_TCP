@@ -1,0 +1,13 @@
+#ifndef CORE_IO_SEGMENT_INTERNAL_H
+#define CORE_IO_SEGMENT_INTERNAL_H
+
+
+/* Internal MACRO defines. */
+#define NO_SENDTO_FLAGS 0
+#define NO_RECVFROM_FLAGS 0
+
+#define RECVFROM_SHUTDOWN 0
+#define RECVFROM_ERROR -1
+#define SENDTO_ERROR -1
+
+#endif /* CORE_IO_SEGMENT_INTERNAL_H */

@@ -1,9 +1,9 @@
 #ifndef CORE_CONTROL_SEGMENTS_IO_H
 #define CORE_CONTROL_SEGMENTS_IO_H
 
-#include <sys/socket.h>  // for socklen_t
-#include <sys/types.h>   // for ssize_t
-#include "microtcp.h"    // for microtcp_sock_t
+#include <sys/socket.h>
+#include <sys/types.h>
+#include "microtcp.h"
 
 #define SEND_SEGMENT_ERROR -1
 #define SEND_SEGMENT_FATAL_ERROR -2

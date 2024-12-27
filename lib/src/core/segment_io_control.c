@@ -1,21 +1,16 @@
-#include "core/control_segments_io.h"
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include "core/segment_io.h"
 #include "core/segment_processing.h"
 #include "logging/microtcp_logger.h"
 #include "microtcp.h"
 #include "microtcp_core_macros.h"
 #include "microtcp_helper_functions.h"
 #include "microtcp_helper_macros.h"
-
-/* Internal MACRO defines. */
-#define NO_SENDTO_FLAGS 0
-#define NO_RECVFROM_FLAGS 0
-
-#define RECVFROM_SHUTDOWN 0
-#define RECVFROM_ERROR -1
-#define SENDTO_ERROR -1
+#include "segment_io_internal.h"
 
 /* Declarations of static functions implemented in this file: */
 /**
@@ -97,7 +92,7 @@ static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct
                 LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Failed to serialize %s segment", get_microtcp_control_to_string(_required_control));
 
         /* Send handshake segment to server with UDP's sendto(). */
-        size_t segment_length = ((sizeof(control_segment->header)) + control_segment->header.data_len);
+        ssize_t segment_length = ((sizeof(control_segment->header)) + control_segment->header.data_len);
         ssize_t sendto_ret_val = sendto(_socket->sd, bytestream_buffer, segment_length, NO_SENDTO_FLAGS, _address, _address_len);
 
         /* Log operation's outcome. */
@@ -123,7 +118,7 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(RECV_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
 
         /* All handshake segments contain no data. */
-        size_t expected_segment_size = sizeof(microtcp_header_t);
+        ssize_t expected_segment_size = sizeof(microtcp_header_t);
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
 
         ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MSS, NO_RECVFROM_FLAGS, _address, &_address_len);
@@ -139,7 +134,8 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
 
-        microtcp_segment_t *control_segment = extract_microtcp_segment(_socket, bytestream_buffer, recvfrom_ret_val);
+        extract_microtcp_segment(&(_socket->segment_receive_buffer), bytestream_buffer, recvfrom_ret_val);
+        microtcp_segment_t *control_segment = _socket->segment_receive_buffer;
         if (control_segment == NULL)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting %s segment resulted to a NULL pointer.", get_microtcp_control_to_string(_required_control));
         if ((control_segment->header.control & RST_BIT) == RST_BIT) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
@@ -149,10 +145,10 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
                 LOG_WARNING_RETURN(RECV_SEGMENT_NOT_SYN_BIT, "Control-field: Received = `%s`; Expected = `%s`.",
                                    get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
         if ((control_segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT))
-                LOG_ERROR_RETURN(RECV_SEGMENT_UNEXPECTED_FINACK, "Control-field: Received = `%s`; Expected = `%s`.",
+                LOG_WARNING_RETURN(RECV_SEGMENT_UNEXPECTED_FINACK, "Control-field: Received = `%s`; Expected = `%s`.",
                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
         if (control_segment->header.control != _required_control)
-                LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Control-field: Received = `%s`; Expected = `%s`.",
+                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Control-field: Received = `%s`; Expected = `%s`.",
                                  get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
 
         /* Ignore check if waiting to receive SYN (server side). */

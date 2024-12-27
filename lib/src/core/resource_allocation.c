@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <sys/socket.h>
 #include "allocator/allocator_macros.h"
-#include "core/control_segments_io.h"
+#include "core/segment_io.h"
 #include "core/misc.h"
 #include "core/segment_processing.h"
 #include "logging/microtcp_logger.h"

@@ -2,7 +2,8 @@
 #include <stddef.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include "core/control_segments_io.h"
+#include "core/segment_io.h"
+#include "core/segment_processing.h"
 #include "core/socket_stats_updater.h"
 #include "fsm_common.h"
 #include "logging/microtcp_fsm_logger.h"
@@ -12,6 +13,7 @@
 #include "microtcp_defines.h"
 #include "microtcp_helper_macros.h"
 #include "settings/microtcp_settings.h"
+#include <pthread.h>
 
 typedef enum
 {
@@ -27,7 +29,7 @@ typedef enum
 {
         NO_ERROR,
         RST_RETRIES_EXHAUSTED,
-        PEER_FATAL_ERROR, /* Set when fatal errors occur on host's side. */
+        FATAL_ERROR, /* Set when fatal errors occur on host's side. */
 } connect_fsm_errno_t;
 
 typedef struct
@@ -201,7 +203,7 @@ static void log_errno_status(connect_fsm_errno_t _errno)
         case RST_RETRIES_EXHAUSTED:
                 LOG_ERROR("connect() FSM: exhausted connection attempts while handling RST segments.");
                 break;
-        case PEER_FATAL_ERROR:
+        case FATAL_ERROR:
                 LOG_ERROR("connect() FSM: encountered a fatal error on the host's side.");
                 break;
         default:
@@ -212,6 +214,6 @@ static void log_errno_status(connect_fsm_errno_t _errno)
 
 static inline connect_fsm_substates_t handle_fatal_error(fsm_context_t *_context)
 {
-        _context->errno = PEER_FATAL_ERROR;
+        _context->errno = FATAL_ERROR;
         return EXIT_FAILURE_SUBSTATE;
 }

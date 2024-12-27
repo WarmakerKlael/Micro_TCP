@@ -9,6 +9,7 @@ microtcp_sock_t initialize_microtcp_socket(void);
 void generate_initial_sequence_number(microtcp_sock_t *_socket);
 
 int set_socket_recvfrom_timeout(microtcp_sock_t *_socket, struct timeval _tv);
+int set_socket_recvfrom_to_block(microtcp_sock_t *_socket);
 struct timeval get_socket_recvfrom_timeout(microtcp_sock_t *_socket);
 
 void cleanup_microtcp_socket(microtcp_sock_t *_socket);
