@@ -38,6 +38,11 @@ int set_socket_recvfrom_timeout(microtcp_sock_t *_socket, struct timeval _tv)
         return setsockopt(_socket->sd, SOL_SOCKET, SO_RCVTIMEO, &_tv, sizeof(_tv));
 }
 
+int set_socket_recvfrom_to_block(microtcp_sock_t *_socket)
+{
+        return set_socket_recvfrom_timeout(_socket, (struct timeval){0, 0});
+}
+
 struct timeval get_socket_recvfrom_timeout(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);

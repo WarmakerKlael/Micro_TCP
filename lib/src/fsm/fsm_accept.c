@@ -2,7 +2,8 @@
 #include <stddef.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include "core/control_segments_io.h"
+#include "core/segment_io.h"
+#include "core/segment_processing.h"
 #include "core/socket_stats_updater.h"
 #include "fsm_common.h"
 #include "logging/microtcp_fsm_logger.h"
@@ -99,7 +100,6 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
-
         switch (_context->recv_ack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:

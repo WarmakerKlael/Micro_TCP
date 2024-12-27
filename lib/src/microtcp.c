@@ -4,6 +4,7 @@
 #include <string.h>
 #include "core/misc.h"
 #include "core/resource_allocation.h"
+#include "core/receiver_thread.h"
 #include "fsm/microtcp_fsm.h"
 #include "logging/microtcp_logger.h"
 #include "microtcp_core_macros.h"
@@ -81,6 +82,7 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
 
         if (allocate_bytestream_assembly_buffer(_socket) == FAILURE)
                 goto connect_failure_cleanup;
+                #include "cli_color.h"
 
         LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
 
@@ -118,7 +120,6 @@ accept_failure_cleanup:
 
 int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
 {
-        LOG_INFO("Shutdown operation initiated.");
         /* Validate input parameters. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED | CLOSING_BY_PEER);
 
@@ -151,6 +152,16 @@ ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length
 
 ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_length, int _flags)
 {
+        // struct microtcp_receiver_thread_args args = {._socket = _socket};
+
+        // pthread_t rtid;
+        // pthread_create(&rtid, NULL, &microtcp_receiver_thread, &args);
+        /* Validate input parameters. */
+        // SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
+        // RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
+
+        // struct sockaddr *address = _socket->peer_socket_address;
+        // socklen_t address_len = sizeof(*(_socket->peer_socket_address));
         /* Validate input parameters. */
         SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
@@ -177,6 +188,7 @@ ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_le
                         printf("RECV: RETVAL == %zd\n", ret_val);
         }
 
+        return 0;
         return 0;
 }
 

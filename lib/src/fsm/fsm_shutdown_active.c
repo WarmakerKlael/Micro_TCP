@@ -3,10 +3,11 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include "core/control_segments_io.h"
+#include "core/segment_io.h"
 #include "core/misc.h"
 #include "core/resource_allocation.h"
 #include "core/socket_stats_updater.h"
+#include "core/segment_processing.h"
 #include "fsm_common.h"
 #include "logging/microtcp_fsm_logger.h"
 #include "logging/microtcp_logger.h"
@@ -20,6 +21,7 @@ typedef enum
 {
         CONNECTION_ESTABLISHED_SUBSTATE = ESTABLISHED, /* Initial substate. FSM entry point. */
         FIN_WAIT_1_SUBSTATE,
+        FIN_DOUBLE_SUBSTATE,
         FIN_WAIT_2_RECV_SUBSTATE, /* Sub state. */
         FIN_WAIT_2_SEND_SUBSTATE, /* Sub state. */
         TIME_WAIT_SUBSTATE,
@@ -31,12 +33,13 @@ typedef enum
 typedef enum
 {
         NO_ERROR,
-        PEER_ACK_TIMEOUT,          /* Sent FIN to peer, ack never received. */
-        PEER_FIN_TIMEOUT,          /* Peer sent ACK, never sent FIN. */
+        PEER_ACK_TIMEOUT, /* Sent FIN to peer, ack never received. */
+        PEER_FIN_TIMEOUT, /* Peer sent ACK, never sent FIN. */
+        DOUBLE_FIN,
         RST_EXPECTED_ACK,          /* RST after host sent FIN|ACK and expected peer's ACK. */
         RST_EXPECTED_FINACK,       /* RST after host received peer's ACK and expected peer's FIN|ACK. */
         RST_EXPECTED_TIMEOUT,      /* RST after host send ACK, and expected TIME_WAIT timer to run off . */
-        PEER_FATAL_ERROR,          /* Set when fatal errors occur on host's side. */
+        FATAL_ERROR,               /* Set when fatal errors occur on host's side. */
         SOCKET_TIMEOUT_SETUP_ERROR /* Set when host is unable to set socket's timer for the TIME_WAIT period. */
 } shutdown_active_fsm_errno_t;
 
@@ -89,8 +92,10 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 return handle_fatal_error(_context);
 
         /* Actions on the following two cases are the same. */
+        case RECV_SEGMENT_UNEXPECTED_FINACK:
+                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
+                return FIN_DOUBLE_SUBSTATE;
         case RECV_SEGMENT_ERROR:
-        case RECV_SEGMENT_UNEXPECTED_FINACK: /* Probably out of order, we ignore it, let it cause a timeout. */
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
                 if (_context->finack_retries_counter == 0) /* Exhausted attempts to resend FIN|ACK. */
@@ -111,6 +116,61 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 return FIN_WAIT_2_RECV_SUBSTATE;
         }
 }
+
+#define TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, _cntrl_type)                                                                                                                                                       \
+        do                                                                                                                                                                                                                                                 \
+        {                                                                                                                                                                                                                                                  \
+                _Static_assert(                                                                                                                                                                                                                            \
+                    (sizeof(#_cntrl_type) == sizeof("ack") && #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') ||                                                                                    \
+                        (sizeof(#_cntrl_type) == sizeof("finack") && #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' && #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'), \
+                    "Invalid _cntrl_type: must be 'ack' or 'finack'");                                                                                                                                                                                     \
+                                                                                                                                                                                                                                                           \
+                (_context)->send_##_cntrl_type##_ret_val = send_##_cntrl_type##_control_segment((_socket), (_address), (_address_len));                                                                                                                    \
+                                                                                                                                                                                                                                                           \
+                if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_FATAL_ERROR)                                                                                                                                                                  \
+                        return handle_fatal_error(_context);                                                                                                                                                                                               \
+                if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_ERROR)                                                                                                                                                                        \
+                        return FIN_DOUBLE_SUBSTATE;                                                                                                                                                                                                        \
+                                                                                                                                                                                                                                                           \
+                update_socket_sent_counters((_socket), (_context)->send_##_cntrl_type##_ret_val);                                                                                                                                                          \
+        } while (0)
+
+static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
+                                                                   socklen_t _address_len, fsm_context_t *_context)
+{
+        _context->errno = DOUBLE_FIN;
+        _socket->ack_number = _socket->segment_receive_buffer->header.seq_number + 1;
+        _socket->peer_win_size = _socket->segment_build_buffer->header.window;
+
+        TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, ack);
+
+        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
+        switch (_context->recv_ack_ret_val)
+        {
+        case RECV_SEGMENT_FATAL_ERROR:
+                return handle_fatal_error(_context);
+
+        case RECV_SEGMENT_UNEXPECTED_FINACK:
+                update_socket_lost_counters(_socket, _context->send_ack_ret_val);
+                TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, ack);
+                return FIN_DOUBLE_SUBSTATE;
+        case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_TIMEOUT:
+                update_socket_lost_counters(_socket, _context->send_finack_ret_val);
+                _socket->seq_number = _context->socket_shutdown_isn;
+                TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, finack);
+                _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
+                return FIN_DOUBLE_SUBSTATE;
+        case RECV_SEGMENT_RST_BIT:
+                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
+                _context->errno = RST_EXPECTED_ACK;
+                return CLOSED_1_SUBSTATE;
+        default: /* Received ACK for our FIN|ACK. */
+                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
+                return TIME_WAIT_SUBSTATE;
+        }
+}
+#undef TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE
 
 static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                         socklen_t _address_len, fsm_context_t *_context)
@@ -165,35 +225,39 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_send_substate(microtcp
 static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                   socklen_t _address_len, fsm_context_t *_context)
 {
-        /* In TIME_WAIT state, we set our timer to expire after 2*MSL (according TCP protocol). */
-        if (set_socket_recvfrom_timeout(_socket, get_shutdown_time_wait_period()) == POSIX_SETSOCKOPT_FAILURE)
+        time_t timewait_period_us = timeval_to_us(get_shutdown_time_wait_period());
+        struct timeval starting_time;
+        gettimeofday(&starting_time, NULL);
+
+        while (elapsed_time_us(starting_time) < timewait_period_us)
         {
-                _context->errno = SOCKET_TIMEOUT_SETUP_ERROR;
-                return CLOSED_1_SUBSTATE;
+                _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
+                switch (_context->recv_finack_ret_val)
+                {
+                case RECV_SEGMENT_FATAL_ERROR:
+                        return handle_fatal_error(_context);
+
+                case RECV_SEGMENT_RST_BIT:
+                        update_socket_received_counters(_socket, _context->recv_finack_ret_val);
+                        _context->errno = RST_EXPECTED_TIMEOUT;
+                        return CLOSED_1_SUBSTATE;
+
+                case RECV_SEGMENT_TIMEOUT: /* Timeout: Do nothing; wait for the next segment or timer expiration. */
+                case RECV_SEGMENT_ERROR:   /* Heard junk, ignore. If peer sent an ack and was corrupted, it will resend it, after its timeout. */
+                        break;
+
+                default: /* Heard FIN|ACK */
+                        update_socket_lost_counters(_socket, _context->send_ack_ret_val);
+                        update_socket_received_counters(_socket, _context->recv_finack_ret_val);
+                        _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
+                        if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
+                                return handle_fatal_error(_context);
+                        if (_context->send_ack_ret_val != SEND_SEGMENT_ERROR)
+                                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
+                        break;
+                }
         }
-
-        _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
-        switch (_context->recv_finack_ret_val)
-        {
-        case RECV_SEGMENT_FATAL_ERROR:
-                return handle_fatal_error(_context);
-
-        /* The following two cases result to going to `CLOSED_1_SUBSTATE`. If RST received you also log a warning message. */
-        case RECV_SEGMENT_RST_BIT:
-                update_socket_received_counters(_socket, _context->recv_finack_ret_val);
-                _context->errno = RST_EXPECTED_TIMEOUT;
-        case RECV_SEGMENT_TIMEOUT: /* Timeout: Peer has likely completed shutdown_active. Transition to CLOSED_1_SUBSTATE. */
-                return CLOSED_1_SUBSTATE;
-
-        case RECV_SEGMENT_ERROR: /* We want to fall-through, as in case of error we resend final ACK. */
-        default:
-                update_socket_lost_counters(_socket, _context->send_ack_ret_val);
-                update_socket_received_counters(_socket, _context->recv_finack_ret_val);
-                return FIN_WAIT_2_SEND_SUBSTATE;
-        }
-        /* In case host's LAST ACK gets lost, and peer's FIN-ACK gets lost.
-         * The connection from the perspective of the host is considered
-         * closed, as for the host there is no away to identify such scenario. */
+        return CLOSED_1_SUBSTATE;
 }
 
 static shutdown_active_fsm_substates_t execute_closed_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
@@ -231,6 +295,9 @@ int microtcp_shutdown_active_fsm(microtcp_sock_t *const _socket, struct sockaddr
                 case FIN_WAIT_1_SUBSTATE:
                         current_substate = execute_fin_wait_1_substate(_socket, _address, _address_len, &context);
                         break;
+                case FIN_DOUBLE_SUBSTATE:
+                        current_substate = execute_fin_double_substate(_socket, _address, _address_len, &context);
+                        break;
                 case FIN_WAIT_2_RECV_SUBSTATE:
                         current_substate = execute_fin_wait_2_recv_substate(_socket, _address, _address_len, &context);
                         break;
@@ -267,6 +334,7 @@ static const char *convert_substate_to_string(shutdown_active_fsm_substates_t _s
         {
         case CONNECTION_ESTABLISHED_SUBSTATE:   return STRINGIFY(CONNECTION_ESTABLISHED_SUBSTATE);
         case FIN_WAIT_1_SUBSTATE:               return STRINGIFY(FIN_WAIT_1_SUBSTATE);
+        case FIN_DOUBLE_SUBSTATE:               return STRINGIFY(FIN_DOUBLE_SUBSTATE);
         case FIN_WAIT_2_RECV_SUBSTATE:          return STRINGIFY(FIN_WAIT_2_RECV_SUBSTATE);
         case FIN_WAIT_2_SEND_SUBSTATE:          return STRINGIFY(FIN_WAIT_2_SEND_SUBSTATE);
         case TIME_WAIT_SUBSTATE:                return STRINGIFY(TIME_WAIT_SUBSTATE);
@@ -291,6 +359,9 @@ static void log_errno_status(shutdown_active_fsm_errno_t _errno)
         case PEER_FIN_TIMEOUT:
                 LOG_WARNING("shutdown_active() FSM: timed out waiting for `FIN` from peer.");
                 break;
+        case DOUBLE_FIN:
+                LOG_WARNING("shutdown_active() FSM: received `FIN` instread of `ACK`; Simultaneous shutdown_active().");
+                break;
         case RST_EXPECTED_ACK:
                 LOG_WARNING("shutdown_active() FSM: received `RST` while expecting `ACK` from peer.");
                 break;
@@ -300,7 +371,7 @@ static void log_errno_status(shutdown_active_fsm_errno_t _errno)
         case RST_EXPECTED_TIMEOUT:
                 LOG_WARNING("shutdown_active() FSM: received `RST` while expecting connection to timeout.");
                 break;
-        case PEER_FATAL_ERROR:
+        case FATAL_ERROR:
                 LOG_ERROR("shutdown_active() FSM: encountered a fatal error on the host's side.");
                 break;
         case SOCKET_TIMEOUT_SETUP_ERROR:
@@ -314,6 +385,6 @@ static void log_errno_status(shutdown_active_fsm_errno_t _errno)
 
 static inline shutdown_active_fsm_substates_t handle_fatal_error(fsm_context_t *_context)
 {
-        _context->errno = PEER_FATAL_ERROR;
+        _context->errno = FATAL_ERROR;
         return EXIT_FAILURE_SUBSTATE;
 }

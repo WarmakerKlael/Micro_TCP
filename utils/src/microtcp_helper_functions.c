@@ -5,11 +5,11 @@
 
 /**
  * @note Procomputed strings why? Cant you automate it you dumbo? Well ...
- * There were more automatedand modular ways to assemble
+ * There were more automated and modular ways to assemble
  * the following strings, it was problematic, when this function
  * was called twice or more on the same line. E.g. inside of
  * printf() placeholders for example). So `static string IT IS`.
- * (NO dynamic allocation wasn't worth it, create deallocating memory headches).
+ * (NO dynamic allocation wasn't worth it; created deallocating memory headches).
  */
 
 // clang-format off

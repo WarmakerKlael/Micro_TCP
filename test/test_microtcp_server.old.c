@@ -81,10 +81,11 @@ int main(int argc, char **argv)
 
     // printf("Connection closed by peer\n");
 
-    char ff[2000];
-    ssize_t bytes = microtcp_recv(&tcpsocket, ff, 2000, 0);
-    printf("recv finished, bytes read = %zd\n", bytes);
-    if (bytes == 0)
-        microtcp_shutdown(&tcpsocket, SHUT_RDWR);
+    // char ff[2000];
+    // ssize_t bytes = microtcp_recv(&tcpsocket, ff, 2000, 0);
+    // printf("recv finished, bytes read = %zd\n", bytes);
+    // if (bytes == 0)
+    microtcp_shutdown(&tcpsocket, SHUT_RDWR);
+    // printf("ANOTHER HERE\n");
     return EXIT_SUCCESS;
 }

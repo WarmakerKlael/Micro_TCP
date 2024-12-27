@@ -151,3 +151,19 @@ maybe different interface for Client, different for Server.
 
 handle endianess for header. network endianess is bigendian. (your machine is litle, you phone is big), se host to network htons and 
 htons and htonl (shor and long) and their opposites ntohs and ntohl. network to host
+
+
+30)
+
+When you want a data packet, you call recvfrom().
+
+If recvfrom() returns a packet in timeout time,
+then check if there is space in assembly buffer.
+If There is a gap, or just free space... In any 
+case if you can store some or the entire payload bytes,
+and with these bytes you complete a gap,you should sent an ACK,
+for "up to those bytes". Of course you must update you receive window too.
+
+31)
+huffman encoding and bitpacking.
+
