@@ -1,18 +1,18 @@
-#include "fsm/microtcp_fsm.h"
-#include <stddef.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include "core/segment_io.h"
-#include "core/segment_processing.h"
-#include "core/socket_stats_updater.h"
-#include "fsm_common.h"
-#include "logging/microtcp_fsm_logger.h"
-#include "logging/microtcp_logger.h"
-#include "microtcp.h"
-#include "microtcp_core_macros.h"
-#include "microtcp_defines.h"
-#include "microtcp_helper_macros.h"
-#include "settings/microtcp_settings.h"
+#include <stddef.h>                       // for size_t
+#include <sys/socket.h>                   // for socklen_t, sockaddr
+#include <sys/types.h>                    // for ssize_t
+#include "core/segment_io.h"              // for RECV_SEGMENT_ERROR, RECV_SE...
+#include "core/socket_stats_updater.h"    // for update_socket_received_coun...
+#include "fsm/microtcp_fsm.h"             // for microtcp_accept_fsm
+#include "fsm_common.h"                   // for SENT_SYN_SEQUENCE_NUMBER_IN...
+#include "logging/microtcp_fsm_logger.h"  // for LOG_FSM_ACCEPT
+#include "logging/microtcp_logger.h"      // for LOG_ERROR
+#include "microtcp.h"                     // for microtcp_sock_t, LISTEN
+#include "microtcp_core_macros.h"         // for RETURN_ERROR_IF_MICROTCP_SO...
+#include "microtcp_defines.h"             // for MICROTCP_ACCEPT_FAILURE
+#include "microtcp_helper_macros.h"       // for STRINGIFY
+#include "settings/microtcp_settings.h"   // for get_accept_synack_retries
+
 
 typedef enum
 {

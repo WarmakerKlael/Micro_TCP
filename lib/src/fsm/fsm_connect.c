@@ -1,19 +1,18 @@
-#include "fsm/microtcp_fsm.h"
-#include <stddef.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include "core/segment_io.h"
-#include "core/segment_processing.h"
-#include "core/socket_stats_updater.h"
-#include "fsm_common.h"
-#include "logging/microtcp_fsm_logger.h"
-#include "logging/microtcp_logger.h"
-#include "microtcp.h"
-#include "microtcp_core_macros.h"
-#include "microtcp_defines.h"
-#include "microtcp_helper_macros.h"
-#include "settings/microtcp_settings.h"
-#include <pthread.h>
+#include <stddef.h>                       // for size_t
+#include <sys/socket.h>                   // for socklen_t, sockaddr
+#include <sys/types.h>                    // for ssize_t
+#include "core/segment_io.h"              // for SEND_SEGMENT_ERROR, SEND_SE...
+#include "core/socket_stats_updater.h"    // for update_socket_received_coun...
+#include "fsm/microtcp_fsm.h"             // for microtcp_connect_fsm
+#include "fsm_common.h"                   // for SENT_SYN_SEQUENCE_NUMBER_IN...
+#include "logging/microtcp_fsm_logger.h"  // for LOG_FSM_CONNECT
+#include "logging/microtcp_logger.h"      // for LOG_ERROR, LOG_INFO
+#include "microtcp.h"                     // for microtcp_sock_t, CLOSED
+#include "microtcp_core_macros.h"         // for RETURN_ERROR_IF_MICROTCP_SO...
+#include "microtcp_defines.h"             // for MICROTCP_CONNECT_FAILURE
+#include "microtcp_helper_macros.h"       // for STRINGIFY
+#include "settings/microtcp_settings.h"   // for get_connect_rst_retries
+
 
 typedef enum
 {
@@ -163,6 +162,7 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
                         log_errno_status(context.errno);
+                        send_rstack_control_segment(_socket, _address, _address_len);
                         return MICROTCP_CONNECT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
                         log_errno_status(context.errno);
