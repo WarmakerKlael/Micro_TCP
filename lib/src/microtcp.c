@@ -1,18 +1,17 @@
 #include "microtcp.h"
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include "core/misc.h"
-#include "core/resource_allocation.h"
-#include "core/receiver_thread.h"
-#include "fsm/microtcp_fsm.h"
-#include "logging/microtcp_logger.h"
-#include "microtcp_core_macros.h"
-#include "microtcp_defines.h"
-#include "microtcp_helper_functions.h"
-#include "microtcp_helper_macros.h"
-#include "settings/microtcp_settings.h"
-#include "smart_assert.h"
+#include <errno.h>                      // for errno
+#include <stdio.h>                      // for printf
+#include <string.h>                     // for strerror
+#include "core/misc.h"                  // for generate_initial_sequence_nu...
+#include "core/resource_allocation.h"   // for allocate_bytestream_assembly...
+#include "fsm/microtcp_fsm.h"           // for microtcp_accept_fsm, microtc...
+#include "logging/microtcp_logger.h"    // for LOG_ERROR_RETURN, LOG_INFO_R...
+#include "microtcp_core_macros.h"       // for RETURN_ERROR_IF_MICROTCP_SOC...
+#include "microtcp_defines.h"           // for MICROTCP_CONNECT_FAILURE
+#include "microtcp_helper_functions.h"  // for get_microtcp_state_to_string
+#include "microtcp_helper_macros.h"     // for STRINGIFY
+#include "settings/microtcp_settings.h" // for get_microtcp_ack_timeout
+#include "smart_assert.h"               // for SMART_ASSERT
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
 {
@@ -82,7 +81,6 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
 
         if (allocate_bytestream_assembly_buffer(_socket) == FAILURE)
                 goto connect_failure_cleanup;
-                #include "cli_color.h"
 
         LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
 

@@ -46,7 +46,7 @@ ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct
 {
         /* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
         /* Every receive function returns special code if RST was received. So that's how you detect it... */
-        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, LISTEN | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
 }
 
 ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
@@ -146,10 +146,10 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
                                    get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
         if ((control_segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT))
                 LOG_WARNING_RETURN(RECV_SEGMENT_UNEXPECTED_FINACK, "Control-field: Received = `%s`; Expected = `%s`.",
-                                 get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
+                                   get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
         if (control_segment->header.control != _required_control)
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Control-field: Received = `%s`; Expected = `%s`.",
-                                 get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
+                                   get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
 
         /* Ignore check if waiting to receive SYN (server side). */
         if (_required_control != SYN_BIT && control_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */

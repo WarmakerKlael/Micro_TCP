@@ -82,6 +82,21 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
         }
 }
 
+/**
+ * @brief Purpose of macro is to remove boiler-plate code from
+ * function fsm's substate functions. 
+ */
+#define RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context)                                         \
+        do                                                                                                         \
+        {                                                                                                          \
+                if ((_context)->finack_retries_counter == 0) /* Exhausted attempts to resend FIN|ACK. */           \
+                {                                                                                                  \
+                        (_context)->errno = PEER_ACK_TIMEOUT;                                                      \
+                        return EXIT_FAILURE_SUBSTATE;                                                              \
+                }                                                                                                  \
+                (_context)->finack_retries_counter--; /* Decrement retry counter and attempt to resend FIN|ACK. */ \
+        } while (0)
+
 static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                    socklen_t _address_len, fsm_context_t *_context)
 {
@@ -98,12 +113,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
-                if (_context->finack_retries_counter == 0) /* Exhausted attempts to resend FIN|ACK. */
-                {
-                        _context->errno = PEER_ACK_TIMEOUT;
-                        return EXIT_FAILURE_SUBSTATE;
-                }
-                _context->finack_retries_counter--; /* Decrement retry counter and attempt to resend FIN|ACK. */
+                RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context);
                 return CONNECTION_ESTABLISHED_SUBSTATE;
 
         case RECV_SEGMENT_RST_BIT:
@@ -117,6 +127,11 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
         }
 }
 
+/**
+ * @brief Purpose of macro is to remove boiler-plate code from
+ * function `execute_fin_double_substate`. 
+ * @note Support only sending ack and finack.
+ */
 #define TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, _cntrl_type)                                                                                                                                                       \
         do                                                                                                                                                                                                                                                 \
         {                                                                                                                                                                                                                                                  \
@@ -124,7 +139,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                     (sizeof(#_cntrl_type) == sizeof("ack") && #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') ||                                                                                    \
                         (sizeof(#_cntrl_type) == sizeof("finack") && #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' && #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'), \
                     "Invalid _cntrl_type: must be 'ack' or 'finack'");                                                                                                                                                                                     \
-                                                                                                                                                                                                                                                           \
+                                                                                                                                                                                                                                                        \
                 (_context)->send_##_cntrl_type##_ret_val = send_##_cntrl_type##_control_segment((_socket), (_address), (_address_len));                                                                                                                    \
                                                                                                                                                                                                                                                            \
                 if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_FATAL_ERROR)                                                                                                                                                                  \
@@ -158,6 +173,7 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
                 _socket->seq_number = _context->socket_shutdown_isn;
+                RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context);
                 TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, finack);
                 _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
                 return FIN_DOUBLE_SUBSTATE;
@@ -170,7 +186,9 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
                 return TIME_WAIT_SUBSTATE;
         }
 }
+
 #undef TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE
+#undef RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED
 
 static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                         socklen_t _address_len, fsm_context_t *_context)
