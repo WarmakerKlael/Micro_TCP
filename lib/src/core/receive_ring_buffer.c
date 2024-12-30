@@ -30,8 +30,9 @@ struct receive_ring_buffer
 static inline rrb_block_t *create_rrb_block(uint32_t _seq_number, uint32_t _size, rrb_block_t *_next);
 static void rrb_block_list_insert(rrb_block_t **_head_address, uint32_t _seq_number, uint32_t _size);
 static void rrb_block_list_destroy(rrb_block_t **_head_address);
-static inline void merge_with_left(rrb_block_t *_left_node, uint32_t _extend_size);
+// static inline void merge_with_left(rrb_block_t *_left_node, uint32_t _extend_size);
 static inline void merge_with_right(rrb_block_t *_prev_right_node, rrb_block_t *_right_node, uint32_t _new_seq_number, uint32_t _extend_size);
+static void debug_print_rrb_block_list(const rrb_block_t *head);
 
 receive_ring_buffer_t *rrb_create(const size_t _rrb_size, const uint32_t _current_seq_number)
 {
@@ -135,8 +136,9 @@ static inline rrb_block_t *create_rrb_block(uint32_t _seq_number, uint32_t _size
         return new_block;
 }
 
-static inline void merge_with_left(rrb_block_t *_left_node, uint32_t _extend_size)
+static inline void merge_with_left(rrb_block_t *_prev_left_node, rrb_block_t *_left_node, uint32_t _extend_size, rrb_block_t **_head_address)
 {
+#define HEAD (*_head_address)
         _left_node->size += _extend_size;
         /* If reached another block to right, merge too. */
         if (_left_node->next != NULL && _left_node->next->seq_number == _left_node->seq_number + _left_node->size)
@@ -146,6 +148,15 @@ static inline void merge_with_left(rrb_block_t *_left_node, uint32_t _extend_siz
                 _left_node->next = _left_node->next->next;
                 FREE_NULLIFY_LOG(next_node_copy);
         }
+        else if (_left_node->seq_number + _left_node->size == HEAD->seq_number) /* Can we merge with HEAD? */
+        {
+                HEAD->seq_number = _left_node->seq_number;
+                HEAD->size += _left_node->size;
+                FREE_NULLIFY_LOG(_left_node);
+                if (_prev_left_node != NULL)
+                        _prev_left_node->next = NULL;
+        }
+#undef HEAD
 }
 
 static inline void merge_with_right(rrb_block_t *_prev_right_node, rrb_block_t *_right_node, uint32_t _new_seq_number, uint32_t _extend_size)
@@ -194,7 +205,7 @@ static void rrb_block_list_insert(rrb_block_t **const _head_address, const uint3
                 /* Case 1: Continuation of current node. */
                 if (curr_node->seq_number + curr_node->size == _seq_number)
                 {
-                        merge_with_left(curr_node, _size);
+                        merge_with_left(prev_node, curr_node, _size, _head_address);
                         return;
                 }
                 /* Case 2: Merge with the current block (less than) */
@@ -204,16 +215,6 @@ static void rrb_block_list_insert(rrb_block_t **const _head_address, const uint3
                         return;
                 }
 
-                if (_seq_number + _size == curr_node->seq_number)
-                {
-                        curr_node->seq_number = _seq_number;
-                        curr_node->size += _size;
-
-                        /* YOU need to MERGE.. left or right.. aint sure. I havent slept... */
-
-
-                        return;
-                }
                 prev_node = curr_node;
                 curr_node = curr_node->next;
         }
@@ -221,6 +222,15 @@ static void rrb_block_list_insert(rrb_block_t **const _head_address, const uint3
         prev_node = NULL;
         while (curr_node != NULL)
         {
+                if (_seq_number + _size == curr_node->seq_number)
+                {
+                        curr_node->seq_number = _seq_number;
+                        curr_node->size += _size;
+                        printf("here?\n");
+
+                        /* YOU need to MERGE.. left or right.. aint sure. I havent slept... */
+                        return;
+                }
                 /* Case 3: Insert before the current block (less than, no merge) */
                 if (_seq_number < curr_node->seq_number)
                 {
@@ -255,7 +265,7 @@ int main()
         rrb_block_list_insert(&head, UINT32_MAX, 1);
         debug_print_rrb_block_list(head); // 9
 
-        rrb_block_list_destroy(&head);
+        // rrb_block_list_destroy(&head);
         // receive_ring_buffer_t *rrb = rrb_create(MICROTCP_RECVBUF_LEN, CURR_SEQ_NUM);
         // rrb_destroy(&rrb);
 }
