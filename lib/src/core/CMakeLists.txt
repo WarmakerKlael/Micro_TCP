@@ -5,6 +5,7 @@ add_library(microtcp_core STATIC
         segment_processing.c
         socket_stats_updater.c
         receiver_thread.c
+        receive_window_buffer.c
 )
 
 target_include_directories(microtcp_core PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
