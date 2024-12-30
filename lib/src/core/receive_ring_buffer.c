@@ -70,6 +70,34 @@ void rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 #undef RRB
 }
 
+static grow_list(receive_ring_buffer_t *const _rrb)
+{
+        rrb_block_t *prev_node = NULL;
+        rrb_block_t *curr_node = _rrb->rrb_block_list_head;
+        _Bool found_match = FALSE;
+        do
+        {
+                found_match = FALSE;
+                for (; curr_node != NULL; curr_node = curr_node->next)
+                {
+                        if (_rrb->head_seq_number + _rrb->consumable_bytes != curr_node->seq_number)
+                        {
+                                prev_node = curr_node;
+                                continue;
+                        }
+
+                        if (prev_node == NULL) /* curr_node == HEAD. */
+                                _rrb->rrb_block_list_head = curr_node->next;
+                        else
+                                prev_node->next = curr_node->next;
+
+                        FREE_NULLIFY_LOG(curr_node);
+                        found_match = TRUE;
+                        break;
+                }
+        }while(found_match == TRUE);
+}
+
 /**
  * @returns Number of bytes, appended to the Receive-Ring-Buffer
  * @note Due to the checksum function we need to first process the segment in continuous buffer.
@@ -89,11 +117,14 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
                 rrb_block_list_insert(&(_rrb->rrb_block_list_head), _segment->header.seq_number, bytes_to_copy);
 
         /* Check if you can grow consumable bytes (using metadata list). */
+
         rrb_block_t *curr_node = _rrb->rrb_block_list_head;
         while (curr_node != NULL)
         {
                 if (_rrb->head_seq_number + _rrb->consumable_bytes == curr_node->seq_number)
-                        ; /*???????????????????????????*/
+                        ;
+                {
+                }
         }
 
         /* Right Side of RRB: */
@@ -248,12 +279,12 @@ int main()
         // CHECK: rrb_block_list_insert()
         rrb_block_t *head = NULL;
 
-        rrb_block_list_insert(&head, UINT32_MAX - 500, 600);
+        rrb_block_list_insert(&head, UINT32_MAX, 600);
         debug_print_rrb_block_list(head);
-        rrb_block_list_insert(&head, 100, 600);
         rrb_block_list_insert(&head, 800, 600);
         debug_print_rrb_block_list(head);
-        rrb_block_list_insert(&head, 99, 1);
+        rrb_block_list_insert(&head, 600, 10);
+        rrb_block_list_insert(&head, 599, 1);
         debug_print_rrb_block_list(head);
 
         // rrb_block_list_destroy(&head);
