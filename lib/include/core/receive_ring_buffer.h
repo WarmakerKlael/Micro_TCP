@@ -14,4 +14,7 @@ void rrb_destroy(receive_ring_buffer_t **_rrb_address);
  */
 uint32_t rrb_append(receive_ring_buffer_t *_rrb, const microtcp_segment_t *_segment);
 
+uint32_t rrb_size(const receive_ring_buffer_t *_rrb);
+uint32_t rrb_consumable_bytes(const receive_ring_buffer_t *_rrb);
+
 #endif /* CORE_RECEIVE_RING_BUFFER_H */

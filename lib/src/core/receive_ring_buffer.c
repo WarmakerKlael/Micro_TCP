@@ -103,17 +103,34 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
         /* Write segment's data onto RRB: */
         /* Right Side of RRB: */
         const uint32_t begin_pos = _segment->header.seq_number % _rrb->buffer_size; /* TODO: optimize, by getting buffer_size by global variable. */
-        const uint32_t bytes_fitting_right_side = _rrb->buffer_size - begin_pos;
-        if (bytes_to_copy <= bytes_fitting_right_side)
-        {
-                memcpy(_rrb->buffer + begin_pos, _segment->raw_payload_bytes, bytes_to_copy);
-        }
-        else
-        {
-                memcpy(_rrb->buffer + begin_pos, _segment->raw_payload_bytes, bytes_fitting_right_side);
-                memcpy(_rrb->buffer, _segment->raw_payload_bytes + bytes_fitting_right_side, bytes_to_copy - bytes_fitting_right_side);
-        }
+        const uint32_t bytes_on_right_side = MIN(bytes_to_copy, _rrb->buffer_size - begin_pos);
+        const uint32_t bytes_on_left_size = bytes_to_copy - bytes_on_right_side;
+        memcpy(_rrb->buffer + begin_pos, _segment->raw_payload_bytes, bytes_on_right_side);
+        memcpy(_rrb->buffer, _segment->raw_payload_bytes + bytes_on_right_side, bytes_on_left_size);
         return bytes_to_copy;
+}
+
+uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *_buffer, uint32_t _buffer_length)
+{
+        const uint32_t bytes_to_copy = MIN(_rrb->consumable_bytes, _buffer_length);
+        const uint32_t begin_pos = (_rrb->last_consumed_seq_number + 1) % _rrb->buffer_size; /* TODO: optimize, by getting buffer_size by global variable. */
+        const uint32_t bytes_on_right_side = MIN(bytes_to_copy, _rrb->buffer_size - begin_pos);
+        const uint32_t bytes_on_left_size = bytes_to_copy - bytes_on_right_side;
+        memcpy(_buffer, _rrb->buffer + begin_pos, bytes_on_right_side);
+        memcpy(_buffer + bytes_on_right_side, _rrb->buffer, bytes_on_left_size);
+        _rrb->consumable_bytes -= bytes_to_copy;
+        _rrb->last_consumed_seq_number += bytes_to_copy;
+        return bytes_to_copy;
+}
+
+uint32_t rrb_size(const receive_ring_buffer_t *const _rrb)
+{
+        return _rrb->buffer_size;
+}
+
+uint32_t rrb_consumable_bytes(const receive_ring_buffer_t *const _rrb)
+{
+        return _rrb->consumable_bytes;
 }
 
 static void rrb_block_list_destroy(rrb_block_t **const _head_address)
@@ -328,37 +345,22 @@ static void debug_print_rrb(const receive_ring_buffer_t *_rrb)
 int main()
 {
 #define CURR_SEQ_NUM UINT32_MAX - 1
+#define BUFFER_SIZE (1 << 6)
 
-        receive_ring_buffer_t *rrb = rrb_create(1 << 0, CURR_SEQ_NUM);
+        receive_ring_buffer_t *rrb = rrb_create(BUFFER_SIZE, 12);
         char raw1[] = {'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'};
         char raw2[] = {'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'};
         char raw3[] = {'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'};
-        microtcp_segment_t t1 = {.header.seq_number = UINT32_MAX, .header.data_len = 1, .raw_payload_bytes = raw1};
-        microtcp_segment_t t2 = {.header.seq_number = UINT32_MAX + 1, .header.data_len = 1, .raw_payload_bytes = raw2};
-        // microtcp_segment_t t3 = {.header.seq_number = 21, .header.data_len = 1, .raw_payload_bytes = raw3};
+        microtcp_segment_t t1 = {.header.seq_number = 13, .header.data_len = 1, .raw_payload_bytes = raw1};
+        microtcp_segment_t t2 = {.header.seq_number = 16, .header.data_len = 1, .raw_payload_bytes = raw2};
+        microtcp_segment_t t3 = {.header.seq_number = 21, .header.data_len = 1, .raw_payload_bytes = raw3};
 
         rrb_append(rrb, &t1);
         rrb_append(rrb, &t2);
-        // rrb_append(rrb, &t3);
+        rrb_append(rrb, &t3);
+        rrb_pop(rrb,raw2, 20);
         debug_print_rrb(rrb);
+        printf("%.*s", 20, raw2);
 
         rrb_destroy(&rrb);
-
-rrename:
-assembly:
-to:
-receive:
-ring:
-buffer:
-
-Now:
-you:
-need:
-to:
-write:
-the:
-function:
-that:
-consumes:
-RRB:
 }
