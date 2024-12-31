@@ -47,6 +47,7 @@ main(int argc, char **argv)
     // configure_microtcp_settings();
     
     struct sockaddr_in servaddr;
+    
 
     microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 

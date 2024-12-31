@@ -92,7 +92,7 @@ static void logger_constructor(void)
 static void logger_destructor(void)
 {
 #define PTHREAD_MUTEX_DESTROY_SUCCESS 0 /* Specified in man pages. */
-	if (mutex_logger != NULL || pthread_mutex_destroy(mutex_logger) == PTHREAD_MUTEX_DESTROY_SUCCESS)
+	if (mutex_logger != NULL && pthread_mutex_destroy(mutex_logger) == PTHREAD_MUTEX_DESTROY_SUCCESS)
 	{
 		free(mutex_logger);
 		mutex_logger = NULL;
