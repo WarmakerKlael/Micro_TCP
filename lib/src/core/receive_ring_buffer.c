@@ -4,6 +4,7 @@
 #include "microtcp.h"
 #include "smart_assert.h"
 #include "core/segment_processing.h"
+#include "microtcp_helper_functions.h"
 #include "microtcp_helper_macros.h"
 #include "core/receive_ring_buffer.h"
 #include "microtcp_defines.h"
@@ -41,7 +42,7 @@ static void debug_print_rrb(const receive_ring_buffer_t *_rrb);
 
 receive_ring_buffer_t *rrb_create(const size_t _rrb_size, const uint32_t _current_seq_number)
 {
-        SMART_ASSERT(_rrb_size > 0, _rrb_size <= UINT32_MAX);
+        SMART_ASSERT(_rrb_size > 0, _rrb_size <= UINT32_MAX, is_power_of_2(_rrb_size));
         receive_ring_buffer_t *rrb = MALLOC_LOG(rrb, sizeof(receive_ring_buffer_t));
         if (rrb == NULL)
                 return NULL;
@@ -326,14 +327,14 @@ static void debug_print_rrb(const receive_ring_buffer_t *_rrb)
 
 int main()
 {
-#define CURR_SEQ_NUM UINT32_MAX-1
+#define CURR_SEQ_NUM UINT32_MAX - 1
 
-        receive_ring_buffer_t *rrb = rrb_create(100, CURR_SEQ_NUM);
+        receive_ring_buffer_t *rrb = rrb_create(1 << 0, CURR_SEQ_NUM);
         char raw1[] = {'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'};
         char raw2[] = {'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'};
         char raw3[] = {'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'};
         microtcp_segment_t t1 = {.header.seq_number = UINT32_MAX, .header.data_len = 1, .raw_payload_bytes = raw1};
-        microtcp_segment_t t2 = {.header.seq_number = UINT32_MAX+1, .header.data_len = 1, .raw_payload_bytes = raw2};
+        microtcp_segment_t t2 = {.header.seq_number = UINT32_MAX + 1, .header.data_len = 1, .raw_payload_bytes = raw2};
         // microtcp_segment_t t3 = {.header.seq_number = 21, .header.data_len = 1, .raw_payload_bytes = raw3};
 
         rrb_append(rrb, &t1);
@@ -342,4 +343,22 @@ int main()
         debug_print_rrb(rrb);
 
         rrb_destroy(&rrb);
+
+rrename:
+assembly:
+to:
+receive:
+ring:
+buffer:
+
+Now:
+you:
+need:
+to:
+write:
+the:
+function:
+that:
+consumes:
+RRB:
 }

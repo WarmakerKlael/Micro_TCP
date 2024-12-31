@@ -32,9 +32,9 @@ size_t get_bytestream_assembly_buffer_len(void)
 
 void set_bytestream_assembly_buffer_len(size_t _bytstream_assembly_bufferlength)
 {
-        SMART_ASSERT(_bytstream_assembly_bufferlength != 0);
+        SMART_ASSERT(is_power_of_2(MICROTCP_RECVBUF_LEN), is_power_of_2(_bytstream_assembly_bufferlength));
         if (_bytstream_assembly_bufferlength != MICROTCP_RECVBUF_LEN)
-                LOG_WARNING("Setting `bytestream_assembly_buffer` length to %d bytes; Less than default: %s = %d bytes",
+                LOG_WARNING("Setting `bytestream_assembly_buffer` length to %d bytes; Default: %s = %d bytes",
                             _bytstream_assembly_bufferlength, STRINGIFY(MICROTCP_RECVBUF_LEN), MICROTCP_RECVBUF_LEN);
         else
                 LOG_INFO("Setting `bytestream_assembly_buffer` length to %d bytes", _bytstream_assembly_bufferlength);

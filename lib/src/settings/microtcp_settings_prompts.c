@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include "cli_color.h"
 #include "microtcp.h"
+#include "microtcp_helper_functions.h"
 #include "microtcp_helper_macros.h"
 #include "microtcp_settings_common.h"
 #include "settings/microtcp_settings.h"
@@ -63,60 +64,62 @@ static inline int count_format_specifiers(const char *_format)
  *        according to the given format string. If the format contains no valid specifiers,
  *        it may cause the macro to become stuck in a loop waiting for valid input
  */
-#define PROMPT_WITH_READLINE(_prompt, _format, ...)                                                                                                                           \
-        do                                                                                                                                                                    \
-        {                                                                                                                                                                     \
-                const char extension[] = " %c";                                                                                                                               \
-                size_t extended_format_length = strlen(_format) + sizeof(extension);                                                                                          \
-                char *extended_format = calloc(extended_format_length, sizeof(char));                                                                                         \
-                                                                                                                                                                              \
-                if (extended_format == NULL)                                                                                                                                  \
-                        break;                                                                                                                                                \
-                                                                                                                                                                              \
-                strcat(extended_format, _format);                                                                                                                             \
-                strcat(extended_format, extension);                                                                                                                           \
-                                                                                                                                                                              \
-                char *line = NULL;                                                                                                                                            \
-                size_t line_length = 0;                                                                                                                                       \
-                for (;;)                                                                                                                                                      \
-                {                                                                                                                                                             \
+#define PROMPT_WITH_READLINE(_prompt, _format, ...)                                                                                                                                   \
+        do                                                                                                                                                                            \
+        {                                                                                                                                                                             \
+                const char extension[] = " %c";                                                                                                                                       \
+                size_t extended_format_length = strlen(_format) + sizeof(extension);                                                                                                  \
+                char *extended_format = calloc(extended_format_length, sizeof(char));                                                                                                 \
+                                                                                                                                                                                      \
+                if (extended_format == NULL)                                                                                                                                          \
+                        break;                                                                                                                                                        \
+                                                                                                                                                                                      \
+                strcat(extended_format, _format);                                                                                                                                     \
+                strcat(extended_format, extension);                                                                                                                                   \
+                                                                                                                                                                                      \
+                char *line = NULL;                                                                                                                                                    \
+                size_t line_length = 0;                                                                                                                                               \
+                for (;;)                                                                                                                                                              \
+                {                                                                                                                                                                     \
                         fprintf(prompt_stream, "%s>> %s%s", COLOR_ASCII_FG_MAGENTA, _prompt, SGR_RESET); /* Passing _prompt as argument, as _prompt is variable (compiler warning) */ \
-                        int getline_ret = getline(&line, &line_length, stdin);                                                                                                \
-                        if (getline_ret == -1 && feof(stdin))                                                                                                                 \
-                        {                                                                                                                                                     \
-                                handle_eof();                                                                                                                                 \
-                                continue;                                                                                                                                     \
-                        }                                                                                                                                                     \
-                        else if (getline_ret == -1)                                                                                                                           \
-                                break;                                                                                                                                        \
-                        else if (getline_ret == 1)                                                                                                                            \
-                        {                                                                                                                                                     \
-                                handle_empty_line();                                                                                                                          \
-                                continue;                                                                                                                                     \
-                        }                                                                                                                                                     \
-                        char extra = '\0'; /* We use this extra to detect more wanted registrations. */                                                                       \
-                        int parsed_count = sscanf(line, extended_format, ##__VA_ARGS__, &extra);                                                                              \
-                        /* If there's no extra character, parsing was successful, and the line ends with a newline, we're done. */                                            \
-                        if (extra == '\0' && parsed_count == count_format_specifiers(_format) && line[getline_ret - 1] == '\n')                                               \
-                                break;                                                                                                                                        \
-                        /* Move the cursor up and clear the line to reprint the prompt. */                                                                                    \
-                        if (line[getline_ret - 1] == '\n')                                                                                                                    \
-                                printf("\033[1F");                                                                                                                            \
-                        printf("\033[2K"); /* Reset cursor to prompt line. */                                                                                                 \
-                }                                                                                                                                                             \
-                free(extended_format);                                                                                                                                        \
+                        int getline_ret = getline(&line, &line_length, stdin);                                                                                                        \
+                        if (getline_ret == -1 && feof(stdin))                                                                                                                         \
+                        {                                                                                                                                                             \
+                                handle_eof();                                                                                                                                         \
+                                continue;                                                                                                                                             \
+                        }                                                                                                                                                             \
+                        else if (getline_ret == -1)                                                                                                                                   \
+                                break;                                                                                                                                                \
+                        else if (getline_ret == 1)                                                                                                                                    \
+                        {                                                                                                                                                             \
+                                handle_empty_line();                                                                                                                                  \
+                                continue;                                                                                                                                             \
+                        }                                                                                                                                                             \
+                        char extra = '\0'; /* We use this extra to detect more wanted registrations. */                                                                               \
+                        int parsed_count = sscanf(line, extended_format, ##__VA_ARGS__, &extra);                                                                                      \
+                        /* If there's no extra character, parsing was successful, and the line ends with a newline, we're done. */                                                    \
+                        if (extra == '\0' && parsed_count == count_format_specifiers(_format) && line[getline_ret - 1] == '\n')                                                       \
+                                break;                                                                                                                                                \
+                        /* Move the cursor up and clear the line to reprint the prompt. */                                                                                            \
+                        if (line[getline_ret - 1] == '\n')                                                                                                                            \
+                                printf("\033[1F");                                                                                                                                    \
+                        printf("\033[2K"); /* Reset cursor to prompt line. */                                                                                                         \
+                }                                                                                                                                                                     \
+                free(extended_format);                                                                                                                                                \
         } while (0)
 
 void prompt_set_assembly_buffer_length(void)
 {
-        const char *prompt = "Specify the assembly buffer size (in bytes, Default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
+        const char *prompt = "Specify the assembly buffer size (uint32_t, power of 2, in bytes, Default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
+
         long assembly_buffer_length = 0;
-        do
+        while (1)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld", &assembly_buffer_length);
-                if (assembly_buffer_length <= 0)
-                        clean_line();
-        } while (assembly_buffer_length <= 0);
+                if (assembly_buffer_length > 0 && assembly_buffer_length < UINT32_MAX && is_power_of_2(assembly_buffer_length))
+                        break;
+                clean_line();
+        }
         set_bytestream_assembly_buffer_len(assembly_buffer_length);
 }
 
