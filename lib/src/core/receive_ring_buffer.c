@@ -83,10 +83,11 @@ void rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t *const _segment)
 {
         if (!is_in_bounds(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number))
-                LOG_ERROR_RETURN(0, "RRB received a segment with out-of-bounds `seq_number` = %u.", _segment->header.seq_number);
+                LOG_ERROR_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
+                                 _rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
 
-        uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
-        uint32_t bytes_to_copy = MIN(available_space, _segment->header.data_len);
+        const uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
+        const uint32_t bytes_to_copy = MIN(available_space, _segment->header.data_len);
         if (bytes_to_copy == 0)
                 return 0;
 
@@ -100,8 +101,8 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
 
         /* Write segment's data onto RRB: */
         /* Right Side of RRB: */
-        uint32_t begin_pos = _segment->header.seq_number % _rrb->buffer_size; /* TODO: optimize, by getting buffer_size by global variable. */
-        uint32_t bytes_fitting_right_side = _rrb->buffer_size - begin_pos;
+        const uint32_t begin_pos = _segment->header.seq_number % _rrb->buffer_size; /* TODO: optimize, by getting buffer_size by global variable. */
+        const uint32_t bytes_fitting_right_side = _rrb->buffer_size - begin_pos;
         if (bytes_to_copy <= bytes_fitting_right_side)
         {
                 memcpy(_rrb->buffer + begin_pos, _segment->raw_payload_bytes, bytes_to_copy);
@@ -134,22 +135,22 @@ static inline _Bool is_in_bounds(uint32_t _rrb_last_consumed_seq_number, uint32_
 
         _Bool wrap_around_occurs = _rrb_last_consumed_seq_number > _rrb_last_consumed_seq_number + _rrb_size;
         /* Check if in first range: */
-        uint32_t min1_ex = _rrb_last_consumed_seq_number;
-        uint32_t max1_in = wrap_around_occurs ? UINT32_MAX : _rrb_last_consumed_seq_number + _rrb_size;
+        const uint32_t min1_ex = _rrb_last_consumed_seq_number;
+        const uint32_t max1_in = wrap_around_occurs ? UINT32_MAX : _rrb_last_consumed_seq_number + _rrb_size;
 
         if (!wrap_around_occurs && _segment_seq_number > min1_ex && _segment_seq_number <= max1_in)
                 return TRUE;
 
         /*Check wrap_arround.*/
-        uint32_t min2_in = 0;
-        uint32_t max2_in = _rrb_last_consumed_seq_number + _rrb_size;
+        const uint32_t min2_in = 0;
+        const uint32_t max2_in = _rrb_last_consumed_seq_number + _rrb_size;
         if (wrap_around_occurs && ((_segment_seq_number > min1_ex && _segment_seq_number <= max1_in) || (_segment_seq_number >= min2_in && _segment_seq_number <= max2_in)))
                 return TRUE;
 
         return FALSE;
 }
 
-static inline uint32_t free_space(uint32_t _rrb_last_consumed_seq_number, uint32_t _rrb_size, uint32_t _segment_seq_number)
+static inline uint32_t free_space(const uint32_t _rrb_last_consumed_seq_number, const uint32_t _rrb_size, const uint32_t _segment_seq_number)
 {
         SMART_ASSERT(is_in_bounds(_rrb_last_consumed_seq_number, _rrb_size, _segment_seq_number));
 
@@ -313,23 +314,31 @@ static void debug_print_rrb(const receive_ring_buffer_t *_rrb)
         printf("rrb.last_consumed_seq_number = %u\n", _rrb->last_consumed_seq_number);
         printf("rrb.consumable_bytes = %u\n", _rrb->consumable_bytes);
         debug_print_rrb_block_list(_rrb->rrb_block_list_head);
+        for (uint32_t i = 0; i < _rrb->buffer_size; i++)
+        {
+                // char ch = *((char *)_rrb->buffer + (_rrb->last_consumed_seq_number + i) % _rrb->buffer_size);
+                char ch = *((char *)_rrb->buffer + i);
+                printf("%c", ch == 0 ? '0' : ch);
+        }
+        printf("\n");
         printf("*******************************************************************%d\n", call_counter);
 }
 
 int main()
 {
-#define CURR_SEQ_NUM 0
+#define CURR_SEQ_NUM UINT32_MAX-1
 
-        receive_ring_buffer_t *rrb = rrb_create(8192, CURR_SEQ_NUM);
+        receive_ring_buffer_t *rrb = rrb_create(100, CURR_SEQ_NUM);
         char raw1[] = {'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'};
         char raw2[] = {'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'};
         char raw3[] = {'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'};
-        microtcp_segment_t t1 = {.header.seq_number = 0, .header.data_len = 20, .raw_payload_bytes = raw1};
-        microtcp_segment_t t2 = {.header.seq_number = 120, .header.data_len = 20, .raw_payload_bytes = raw2};
-        microtcp_segment_t t3 = {.header.seq_number = 140, .header.data_len = 20, .raw_payload_bytes = raw3};
-        debug_print_rrb(rrb);
+        microtcp_segment_t t1 = {.header.seq_number = UINT32_MAX, .header.data_len = 1, .raw_payload_bytes = raw1};
+        microtcp_segment_t t2 = {.header.seq_number = UINT32_MAX+1, .header.data_len = 1, .raw_payload_bytes = raw2};
+        // microtcp_segment_t t3 = {.header.seq_number = 21, .header.data_len = 1, .raw_payload_bytes = raw3};
 
         rrb_append(rrb, &t1);
+        rrb_append(rrb, &t2);
+        // rrb_append(rrb, &t3);
         debug_print_rrb(rrb);
 
         rrb_destroy(&rrb);
