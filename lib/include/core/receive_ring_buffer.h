@@ -13,6 +13,7 @@ void rrb_destroy(receive_ring_buffer_t **_rrb_address);
  * @returns Number of bytes, appended to the Receive-Ring-Buffer
  */
 uint32_t rrb_append(receive_ring_buffer_t *_rrb, const microtcp_segment_t *_segment);
+uint32_t rrb_pop(receive_ring_buffer_t *_rrb, void *_buffer, uint32_t _buffer_length);
 
 uint32_t rrb_size(const receive_ring_buffer_t *_rrb);
 uint32_t rrb_consumable_bytes(const receive_ring_buffer_t *_rrb);
