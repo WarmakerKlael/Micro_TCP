@@ -86,6 +86,12 @@ static inline int _get_leading_spaces(const char *_string)
                 if (assert_failure == _TRUE)                                                                                                                \
                         abort();                                                                                                                            \
         } while (0)
+#ifdef DEBUG_MODE
+#define DEBUG_SMART_ASSERT(...) SMART_ASSERT(__VA_ARGS__)
+#else
+#define DEBUG_SMART_ASSERT(...) /* Nothing */
+#endif /* DEBUG_MODE */
+
 
 /* Clear global namespace. */
 // #undef _TRUE

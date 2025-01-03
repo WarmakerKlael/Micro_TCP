@@ -87,7 +87,7 @@ ssize_t receive_fsm(microtcp_sock_t *const _socket, void *_input_buffer, size_t 
 {
 #ifdef DEBUG_MODE
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, ESTABLISHED);
-        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket->peer_socket_address);
+        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket->peer_address);
 #endif /* DEBUG_MODE */
 
         /* Passing function arguments to FSM's 'context'
@@ -111,7 +111,7 @@ ssize_t load_assembly_buffer(microtcp_sock_t *_socket)
 {
 #ifdef DEBUG_MODE
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_RECV_FAILURE, _socket, ESTABLISHED);
-        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_RECV_FAILURE, _socket->peer_socket_address);
+        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_RECV_FAILURE, _socket->peer_address);
 #endif /* DEBUG_MODE */
 
         ssize_t loaded_bytes = 0;

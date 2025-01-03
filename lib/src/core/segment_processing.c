@@ -36,7 +36,7 @@ microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_
         return new_segment;
 }
 
-void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_segment)
+void *serialize_microtcp_segment(microtcp_sock_t *const _socket, microtcp_segment_t *const _segment)
 {
         SMART_ASSERT(_socket != NULL, _segment != NULL);
         SMART_ASSERT(_socket->bytestream_build_buffer);
@@ -47,17 +47,17 @@ void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_
                 LOG_WARNING("Checksum should be zeroed before serialization; Checksum field zeroed.");
         }
 
-        uint16_t header_length = sizeof(_segment->header); /* Valid segments contain at lease sizeof(microtcp_header_t) bytes. */
-        uint16_t payload_length = _segment->header.data_len;
+        const uint16_t header_length = sizeof(_segment->header); /* Valid segments contain at lease sizeof(microtcp_header_t) bytes. */
+        const uint16_t payload_length = _segment->header.data_len;
 
-        uint16_t bytestream_buffer_length = header_length + payload_length;
+        const uint16_t bytestream_buffer_length = header_length + payload_length;
         void *bytestream_buffer = _socket->bytestream_build_buffer;
 
         memcpy(bytestream_buffer, &(_segment->header), header_length);
         memcpy(bytestream_buffer + header_length, _segment->raw_payload_bytes, payload_length);
 
         /* Calculate crc32 checksum: */
-        uint32_t checksum_result = crc32(bytestream_buffer, bytestream_buffer_length);
+        const uint32_t checksum_result = crc32(bytestream_buffer, bytestream_buffer_length);
 
         /* Implant the CRC checksum. */
         ((microtcp_header_t *)bytestream_buffer)->checksum = checksum_result;

@@ -9,8 +9,8 @@ struct timeval;
 struct timeval get_microtcp_ack_timeout(void);
 void set_microtcp_ack_timeout(struct timeval _tv);
 
-size_t get_bytestream_assembly_buffer_len(void);
-void set_bytestream_assembly_buffer_len(size_t _length);
+size_t get_bytestream_rrb_size(void);
+void set_bytestream_rrb_size(size_t _length);
 
 
 /* Connect()'s FSM configurators. */

@@ -30,8 +30,4 @@ const char *get_microtcp_control_to_string(uint16_t _control);
 
 void normalize_timeval(struct timeval *_tv);
 
-static inline _Bool is_power_of_2(uint32_t _num) {
-    return (_num > 0) && ((_num & (_num - 1)) == 0);
-}
-
 #endif /* MICROTCP_HELPER_FUNCTIONS_H */

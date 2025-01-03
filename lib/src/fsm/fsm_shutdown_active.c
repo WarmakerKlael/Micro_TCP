@@ -281,7 +281,7 @@ static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_
 static shutdown_active_fsm_substates_t execute_closed_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                  socklen_t _address_len, fsm_context_t *_context)
 {
-        release_and_reset_handshake_resources(_socket, CLOSED);
+        release_and_reset_connection_resources(_socket, CLOSED);
         return CLOSED_2_SUBSTATE;
 }
 

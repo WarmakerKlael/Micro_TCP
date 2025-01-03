@@ -6,7 +6,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h> // IWYU pragma: keep
-#include <pthread.h>
+#include "core/receive_ring_buffer.h"
+#include "microtcp_helper_macros.h"
+
+typedef struct microtcp_segment microtcp_segment_t;
 
 /*
  * Several useful constants
@@ -18,12 +21,12 @@
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
 
+_Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_LEN) " must be a power of 2 number");
+
 #define ACK_BIT (1 << 12)
 #define RST_BIT (1 << 13)
 #define SYN_BIT (1 << 14)
 #define FIN_BIT (1 << 15)
-
-typedef struct microtcp_segment microtcp_segment_t;
 
 /**
  * Possible states of the microTCP socket
@@ -55,10 +58,7 @@ typedef struct
         size_t curr_win_size;   /* The current window size. */
         size_t peer_win_size;
 
-        void *bytestream_assembly_buffer; /* a.k.a `recvbuf`, used to reassmble bytes of incoming packets. */
-        pthread_mutex_t assembly_buffer_mutex;
-
-        size_t buf_fill_level; /* Amount of data in the buffer. */
+        receive_ring_buffer_t *bytestream_rrb; /* a.k.a `recvbuf`, used to store and reassmble bytes of incoming packets. */
 
         size_t cwnd;
         size_t ssthresh;
@@ -85,7 +85,7 @@ typedef struct
         microtcp_segment_t *segment_receive_buffer;
         void *bytestream_receive_buffer;
 
-        struct sockaddr *peer_socket_address;
+        struct sockaddr *peer_address;
 } microtcp_sock_t;
 
 /**

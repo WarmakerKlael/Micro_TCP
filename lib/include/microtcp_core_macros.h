@@ -5,6 +5,14 @@
 #include "microtcp_helper_macros.h"
 #include "microtcp_helper_functions.h"
 #include "smart_assert.h"
+#include "microtcp.h"
+
+static inline _Bool socket_requires_peer_address(const microtcp_sock_t *const _socket)
+{
+        return _socket->state == ESTABLISHED ||
+               _socket->state == CLOSING_BY_HOST ||
+               _socket->state == CLOSING_BY_PEER;
+}
 
 /* Directly used in: microtcp_socket() */
 #define RETURN_ERROR_IF_FUNCTION_PARAMETER_MICROTCP_SOCKET_INVALID(_failure_return_value,               \
@@ -23,20 +31,24 @@
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() &  construct_microtcp_segment() */
-#define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                                \
-        do                                                                                                                                      \
-        {                                                                                                                                       \
-                SMART_ASSERT((_socket) != NULL);                                                                                                \
-                                                                                                                                                \
-                if (!((_socket)->state & (_allowed_states)))                                                                                    \
-                {                                                                                                                               \
-                        /* Separated these... because they cause problems with static buffer. */                                                \
-                        LOG_ERROR("Expected socket in state(s): %s.", get_microtcp_state_to_string(_allowed_states));                           \
-                        LOG_ERROR_RETURN((_failure_return_value), "Current socket->state = %s.", get_microtcp_state_to_string(_socket->state)); \
-                }                                                                                                                               \
-                                                                                                                                                \
-                if ((_socket)->sd < 0)                                                                                                          \
-                        LOG_ERROR_RETURN((_failure_return_value), "Invalid MicroTCP socket descriptor; (sd = %d).", (_socket)->sd);             \
+#define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                       \
+        do                                                                                                                             \
+        {                                                                                                                              \
+                SMART_ASSERT((_socket) != NULL);                                                                                       \
+                                                                                                                                       \
+                if (!((_socket)->state & (_allowed_states)))                                                                           \
+                {                                                                                                                      \
+                        /* Separated these... because they cause problems with static buffer. */                                       \
+                        LOG_ERROR_RETURN((_failure_return_value), "Expected socket in state(s): %s. Current socket->state = %s.",      \
+                                         get_microtcp_state_to_string(_allowed_states), get_microtcp_state_to_string(_socket->state)); \
+                }                                                                                                                      \
+                                                                                                                                       \
+                if (socket_requires_peer_address((_socket)) && (_socket)->peer_address == NULL)                                        \
+                        LOG_ERROR_RETURN((_failure_return_value), "Current socket->state = %s, but peer_address is missing.",          \
+                                         get_microtcp_state_to_string((_socket)->state));                                              \
+                                                                                                                                       \
+                if ((_socket)->sd < 0)                                                                                                 \
+                        LOG_ERROR_RETURN((_failure_return_value), "Invalid MicroTCP socket descriptor; (sd = %d).", (_socket)->sd);    \
         } while (0)
 
 /* Directly used in: microtcp_bind() & microtcp_connect() */

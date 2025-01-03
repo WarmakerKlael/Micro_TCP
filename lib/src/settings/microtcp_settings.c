@@ -8,7 +8,7 @@
 #include "microtcp_settings_common.h"
 
 /* ----------------------------------------- MicroTCP general configuration variables ----------------------------------------- */
-static size_t microtcp_bytestream_assembly_buffer_len = MICROTCP_RECVBUF_LEN;
+static size_t microtcp_bytestream_rrb_size = MICROTCP_RECVBUF_LEN;
 static struct timeval microtcp_ack_timeout = DEFAULT_MICROTCP_ACK_TIMEOUT;
 
 /* ----------------------------------------- Connect()'s FSM configuration variables ------------------------------------------ */
@@ -25,20 +25,20 @@ static size_t shutdown_finack_retries = TCP_RETRIES2; /* Default. Can be changed
 /* ___________________________________________________________________________________________________________________________ */
 
 /* ----------------------------------------- MicroTCP socket configurators ------------------------------------------ */
-size_t get_bytestream_assembly_buffer_len(void)
+size_t get_bytestream_rrb_size(void)
 {
-        return microtcp_bytestream_assembly_buffer_len;
+        return microtcp_bytestream_rrb_size;
 }
 
-void set_bytestream_assembly_buffer_len(size_t _bytstream_assembly_bufferlength)
+void set_bytestream_rrb_size(size_t _bytstream_rrb_size)
 {
-        SMART_ASSERT(is_power_of_2(MICROTCP_RECVBUF_LEN), is_power_of_2(_bytstream_assembly_bufferlength));
-        if (_bytstream_assembly_bufferlength != MICROTCP_RECVBUF_LEN)
-                LOG_WARNING("Setting `bytestream_assembly_buffer` length to %d bytes; Default: %s = %d bytes",
-                            _bytstream_assembly_bufferlength, STRINGIFY(MICROTCP_RECVBUF_LEN), MICROTCP_RECVBUF_LEN);
+        SMART_ASSERT(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), IS_POWER_OF_2(_bytstream_rrb_size));
+        if (_bytstream_rrb_size != MICROTCP_RECVBUF_LEN)
+                LOG_WARNING("Setting `microtcp_bytestream_rrb_size` to %d bytes; Default: %s = %d bytes",
+                            _bytstream_rrb_size, STRINGIFY(MICROTCP_RECVBUF_LEN), MICROTCP_RECVBUF_LEN);
         else
-                LOG_INFO("Setting `bytestream_assembly_buffer` length to %d bytes", _bytstream_assembly_bufferlength);
-        microtcp_bytestream_assembly_buffer_len = _bytstream_assembly_bufferlength;
+                LOG_INFO("Setting `microtcp_bytestream_rrb_size` to %d bytes", _bytstream_rrb_size);
+        microtcp_bytestream_rrb_size = _bytstream_rrb_size;
 }
 
 struct timeval get_microtcp_ack_timeout(void)

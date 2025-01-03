@@ -126,7 +126,7 @@ static connect_fsm_substates_t execute_synack_received_substate(microtcp_sock_t 
 static connect_fsm_substates_t execute_ack_sent_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
-        _socket->peer_socket_address = (struct sockaddr *)_address;
+        _socket->peer_address = (struct sockaddr *)_address;
         _socket->state = ESTABLISHED;
         return CONNECTION_ESTABLISHED_SUBSTATE;
 }
@@ -162,7 +162,6 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
                         log_errno_status(context.errno);
-                        send_rstack_control_segment(_socket, _address, _address_len);
                         return MICROTCP_CONNECT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
                         log_errno_status(context.errno);

@@ -74,8 +74,7 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .init_win_size = MICROTCP_WIN_SIZE, /* Our initial window size. */
             .curr_win_size = MICROTCP_WIN_SIZE, /* Our window size. */
             .peer_win_size = 0,                 /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
-            .bytestream_assembly_buffer = NULL, /* Buffer gets allocated in 3-way handshake. */
-            .buf_fill_level = 0,
+            .bytestream_rrb = NULL,             /* Receive-Ring-Buffer gets allocated in 3-way handshake. */
             .cwnd = MICROTCP_INIT_CWND,
             .ssthresh = MICROTCP_INIT_SSTHRESH,
             .seq_number = 0, /* Default value, waiting 3 way. */
@@ -89,20 +88,26 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .segment_build_buffer = NULL,
             .bytestream_build_buffer = NULL,
             .bytestream_receive_buffer = NULL,
-            .peer_socket_address = NULL};
+            .peer_address = NULL};
         return new_socket;
 }
 
 void cleanup_microtcp_socket(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
-        deallocate_handshake_required_buffers(_socket);
-        deallocate_bytestream_assembly_buffer(_socket);
+        _Bool graceful_operation = TRUE;
+        deallocate_pre_handshake_buffers(_socket);
+        if (deallocate_post_handshake_buffers(_socket) == FAILURE)
+        {
+                LOG_ERROR("Cleanup of microtcp partial failure: couldn't deallocate post handshake buffers.");
+                graceful_operation = FALSE;
+        }
+
         if (_socket->sd != POSIX_SOCKET_FAILURE_VALUE)
                 close(_socket->sd);
         _socket->sd = POSIX_SOCKET_FAILURE_VALUE;
-        _socket->buf_fill_level = 0;
         _socket->state = INVALID;
-        _socket->peer_socket_address = NULL;
-        LOG_INFO("MicroTCP socket, successfully cleaned its resources.");
+        _socket->peer_address = NULL;
+        if (graceful_operation)
+                LOG_INFO("MicroTCP socket, successfully cleaned its resources.");
 }

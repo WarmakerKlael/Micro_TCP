@@ -1,18 +1,17 @@
-#include <stddef.h>                       // for size_t
-#include <sys/socket.h>                   // for socklen_t, sockaddr
-#include <sys/types.h>                    // for ssize_t
-#include "core/segment_io.h"              // for RECV_SEGMENT_ERROR, RECV_SE...
-#include "core/socket_stats_updater.h"    // for update_socket_received_coun...
-#include "fsm/microtcp_fsm.h"             // for microtcp_accept_fsm
-#include "fsm_common.h"                   // for SENT_SYN_SEQUENCE_NUMBER_IN...
-#include "logging/microtcp_fsm_logger.h"  // for LOG_FSM_ACCEPT
-#include "logging/microtcp_logger.h"      // for LOG_ERROR
-#include "microtcp.h"                     // for microtcp_sock_t, LISTEN
-#include "microtcp_core_macros.h"         // for RETURN_ERROR_IF_MICROTCP_SO...
-#include "microtcp_defines.h"             // for MICROTCP_ACCEPT_FAILURE
-#include "microtcp_helper_macros.h"       // for STRINGIFY
-#include "settings/microtcp_settings.h"   // for get_accept_synack_retries
-
+#include <stddef.h>                      // for size_t
+#include <sys/socket.h>                  // for socklen_t, sockaddr
+#include <sys/types.h>                   // for ssize_t
+#include "core/segment_io.h"             // for RECV_SEGMENT_ERROR, RECV_SE...
+#include "core/socket_stats_updater.h"   // for update_socket_received_coun...
+#include "fsm/microtcp_fsm.h"            // for microtcp_accept_fsm
+#include "fsm_common.h"                  // for SENT_SYN_SEQUENCE_NUMBER_IN...
+#include "logging/microtcp_fsm_logger.h" // for LOG_FSM_ACCEPT
+#include "logging/microtcp_logger.h"     // for LOG_ERROR
+#include "microtcp.h"                    // for microtcp_sock_t, LISTEN
+#include "microtcp_core_macros.h"        // for RETURN_ERROR_IF_MICROTCP_SO...
+#include "microtcp_defines.h"            // for MICROTCP_ACCEPT_FAILURE
+#include "microtcp_helper_macros.h"      // for STRINGIFY
+#include "settings/microtcp_settings.h"  // for get_accept_synack_retries
 
 typedef enum
 {
@@ -133,7 +132,7 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
 static accept_fsm_substates execute_ack_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
                                                           socklen_t _address_len, fsm_context_t *_context)
 {
-        _socket->peer_socket_address = _address;
+        _socket->peer_address = (struct sockaddr *)_address;
         _socket->state = ESTABLISHED;
         // TODO: LOG FSM's result (Like: "FSM succeded: Established connection.") or similar.
         return CONNECTION_ESTABLISHED_SUBSTATE;

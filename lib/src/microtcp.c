@@ -1,9 +1,9 @@
 #include "microtcp.h"
-#include <errno.h>                      // for errno
-#include <stdio.h>                      // for printf
-#include <string.h>                     // for strerror
-#include "core/misc.h"                  // for generate_initial_sequence_nu...
-#include "core/resource_allocation.h"   // for allocate_bytestream_assembly...
+#include <errno.h>     // for errno
+#include <stdio.h>     // for printf
+#include <string.h>    // for strerror
+#include "core/misc.h" // for generate_initial_sequence_nu...
+#include "core/resource_allocation.h"
 #include "fsm/microtcp_fsm.h"           // for microtcp_accept_fsm, microtc...
 #include "logging/microtcp_logger.h"    // for LOG_ERROR_RETURN, LOG_INFO_R...
 #include "microtcp_core_macros.h"       // for RETURN_ERROR_IF_MICROTCP_SOC...
@@ -72,20 +72,20 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
 
         /* Initialize socket handshake reuired resources for connection.*/
         generate_initial_sequence_number(_socket);
-        if (allocate_handshake_required_buffers(_socket) == FAILURE)
+        if (allocate_pre_handshake_buffers(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
         /* Run the `connect's` state machine. */
         if (microtcp_connect_fsm(_socket, _address, _address_len) == MICROTCP_CONNECT_FAILURE)
                 goto connect_failure_cleanup;
 
-        if (allocate_bytestream_assembly_buffer(_socket) == FAILURE)
+        if (allocate_post_handshake_buffers(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
         LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
 
 connect_failure_cleanup:
-        release_and_reset_handshake_resources(_socket, CLOSED);
+        release_and_reset_connection_resources(_socket, CLOSED);
         LOG_ERROR_RETURN(MICROTCP_CONNECT_FAILURE, "Connect operation failed.");
 }
 
@@ -99,20 +99,20 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
 
         /* Initialize socket's resources required for 3-way handshake. */
         generate_initial_sequence_number(_socket);
-        if (allocate_handshake_required_buffers(_socket) == FAILURE)
+        if (allocate_pre_handshake_buffers(_socket) == FAILURE)
                 goto accept_failure_cleanup;
 
         /* Run the `accept's` state machine. */
         if (microtcp_accept_fsm(_socket, _address, _address_len) == MICROTCP_ACCEPT_FAILURE)
                 goto accept_failure_cleanup;
 
-        if (allocate_bytestream_assembly_buffer(_socket) == FAILURE)
+        if (allocate_post_handshake_buffers(_socket) == FAILURE)
                 goto accept_failure_cleanup;
 
         LOG_INFO_RETURN(MICROTCP_ACCEPT_SUCCESS, "Accept operation succeeded; Post handshake buffer allocated.");
 
 accept_failure_cleanup:
-        release_and_reset_handshake_resources(_socket, LISTEN);
+        release_and_reset_connection_resources(_socket, LISTEN);
         LOG_ERROR_RETURN(MICROTCP_ACCEPT_FAILURE, "Accept operation failed.");
 }
 
@@ -121,8 +121,8 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         /* Validate input parameters. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED | CLOSING_BY_PEER);
 
-        struct sockaddr *address = _socket->peer_socket_address;
-        socklen_t address_len = sizeof(*(_socket->peer_socket_address));
+        struct sockaddr *address = _socket->peer_address;
+        socklen_t address_len = sizeof(*(_socket->peer_address));
 
         switch (_socket->state)
         {
@@ -142,9 +142,17 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
         /* We dont clean socket... If shutdown fails... it's up to caller to use `microtcp_close_socket()` and recycle microtcp_sock_t. */
 }
 
-ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length, int flags)
+ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _length, int _flags)
 {
-        /* Your code here */
+        SMART_ASSERT(_socket != NULL, _buffer != NULL, _length > 0);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SEND_FAILURE, _socket, ESTABLISHED);
+        struct sockaddr *address = _socket->peer_address;
+        socklen_t address_len = sizeof(*(_socket->peer_address));
+
+        // TODO: CALL send_fsm();...
+
+
+
         return 0;
 }
 
@@ -158,14 +166,14 @@ ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_le
         // SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
         // RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
 
-        // struct sockaddr *address = _socket->peer_socket_address;
-        // socklen_t address_len = sizeof(*(_socket->peer_socket_address));
+        // struct sockaddr *address = _socket->peer_address;
+        // socklen_t address_len = sizeof(*(_socket->peer_address));
         /* Validate input parameters. */
         SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
 
-        struct sockaddr *address = _socket->peer_socket_address;
-        socklen_t address_len = sizeof(*(_socket->peer_socket_address));
+        struct sockaddr *address = _socket->peer_address;
+        socklen_t address_len = sizeof(*(_socket->peer_address));
         while (TRUE)
         {
 #define NO_RECVFROM_FLAGS 0

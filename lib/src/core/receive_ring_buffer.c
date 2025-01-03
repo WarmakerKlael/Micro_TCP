@@ -1,6 +1,8 @@
+#include <errno.h>
 #include <stdint.h>
-#include <allocator/allocator_macros.h>
+#include <pthread.h>
 #include <sys/socket.h>
+#include "allocator/allocator_macros.h"
 #include "microtcp.h"
 #include "smart_assert.h"
 #include "core/segment_processing.h"
@@ -26,6 +28,7 @@ struct receive_ring_buffer
         uint32_t last_consumed_seq_number;
         uint32_t consumable_bytes;
         rrb_block_t *rrb_block_list_head;
+        pthread_mutex_t access_mutex;
 };
 
 /* Inner helper functions. */
@@ -37,12 +40,10 @@ static uint32_t join_rrb_blocks(receive_ring_buffer_t *_rrb);
 static inline rrb_block_t *create_rrb_block(uint32_t _seq_number, uint32_t _size, rrb_block_t *_next);
 static inline void merge_with_left(rrb_block_t *_prev_left_node, rrb_block_t *_left_node, uint32_t _extend_size, rrb_block_t **_head_address);
 static inline void merge_with_right(rrb_block_t *_prev_right_node, rrb_block_t *_right_node, uint32_t _new_seq_number, uint32_t _extend_size);
-static void debug_print_rrb_block_list(const rrb_block_t *head);
-static void debug_print_rrb(const receive_ring_buffer_t *_rrb);
 
 receive_ring_buffer_t *rrb_create(const size_t _rrb_size, const uint32_t _current_seq_number)
 {
-        SMART_ASSERT(_rrb_size > 0, _rrb_size <= UINT32_MAX, is_power_of_2(_rrb_size));
+        SMART_ASSERT(_rrb_size > 0, _rrb_size <= UINT32_MAX, IS_POWER_OF_2(_rrb_size));
         receive_ring_buffer_t *rrb = MALLOC_LOG(rrb, sizeof(receive_ring_buffer_t));
         if (rrb == NULL)
                 return NULL;
@@ -57,22 +58,27 @@ receive_ring_buffer_t *rrb_create(const size_t _rrb_size, const uint32_t _curren
         rrb->buffer_size = _rrb_size;
         rrb->consumable_bytes = 0;
         rrb->last_consumed_seq_number = _current_seq_number;
+        pthread_mutex_init(&rrb->access_mutex, NULL);
         return rrb;
 }
 
 /* We request a double pointer, in order to NULLIFY user's circle buffer pointer. */
-void rrb_destroy(receive_ring_buffer_t **const _rrb_address)
+status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 {
         SMART_ASSERT(_rrb_address != NULL); /* receive_window's pointer can be NULL, but not its address. */
 
 #define RRB (*_rrb_address)
         if (RRB == NULL)
-                return;
+                return SUCCESS;
+
+        if (pthread_mutex_destroy(&RRB->access_mutex) == EBUSY)
+                return FAILURE;
 
         /* Proceed with destruction. */
+        rrb_block_list_destroy(&RRB->rrb_block_list_head);
         FREE_NULLIFY_LOG(RRB->buffer);
-        rrb_block_list_destroy(&(RRB->rrb_block_list_head));
         FREE_NULLIFY_LOG(RRB);
+        return SUCCESS;
 #undef RRB
 }
 
@@ -84,8 +90,9 @@ void rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t *const _segment)
 {
         SMART_ASSERT(_rrb != NULL, _segment != NULL);
+        pthread_mutex_lock(&_rrb->access_mutex);
         if (!is_in_bounds(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number))
-                LOG_ERROR_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
+                LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
                                  _rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
 
         const uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
@@ -108,13 +115,15 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
         memcpy(_rrb->buffer + begin_pos, _segment->raw_payload_bytes, bytes_on_right_side);
         /* Write on Left-Side of RRB (if wrap-around occurs): */
         memcpy(_rrb->buffer, _segment->raw_payload_bytes + bytes_on_right_side, bytes_on_left_size);
+        pthread_mutex_unlock(&_rrb->access_mutex);
         return bytes_to_copy;
 }
 
-uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const uint32_t _buffer_length)
+uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const uint32_t _buffer_size)
 {
-        SMART_ASSERT(_rrb != NULL, _buffer != NULL, _buffer_length > 0);
-        const uint32_t bytes_to_copy = MIN(_rrb->consumable_bytes, _buffer_length);
+        SMART_ASSERT(_rrb != NULL, _buffer != NULL, _buffer_size > 0);
+        pthread_mutex_lock(&_rrb->access_mutex);
+        const uint32_t bytes_to_copy = MIN(_rrb->consumable_bytes, _buffer_size);
         const uint32_t begin_pos = (_rrb->last_consumed_seq_number + 1) % _rrb->buffer_size; /* TODO: optimize, by getting buffer_size by global variable. */
         const uint32_t bytes_on_right_side = MIN(bytes_to_copy, _rrb->buffer_size - begin_pos);
         const uint32_t bytes_on_left_size = bytes_to_copy - bytes_on_right_side;
@@ -122,6 +131,7 @@ uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const u
         memcpy(_buffer + bytes_on_right_side, _rrb->buffer, bytes_on_left_size);
         _rrb->consumable_bytes -= bytes_to_copy;
         _rrb->last_consumed_seq_number += bytes_to_copy;
+        pthread_mutex_unlock(&_rrb->access_mutex);
         return bytes_to_copy;
 }
 
@@ -130,9 +140,11 @@ uint32_t rrb_size(const receive_ring_buffer_t *const _rrb)
         return _rrb->buffer_size;
 }
 
-uint32_t rrb_consumable_bytes(const receive_ring_buffer_t *const _rrb)
+uint32_t rrb_consumable_bytes(receive_ring_buffer_t *const _rrb)
 {
+        pthread_mutex_lock(&_rrb->access_mutex);
         return _rrb->consumable_bytes;
+        pthread_mutex_unlock(&_rrb->access_mutex);
 }
 
 static void rrb_block_list_destroy(rrb_block_t **const _head_address)
@@ -309,144 +321,4 @@ static inline void merge_with_right(rrb_block_t *_prev_right_node, rrb_block_t *
                 _prev_right_node->next = _right_node->next;
                 FREE_NULLIFY_LOG(_right_node);
         }
-}
-
-static void debug_print_rrb_block_list(const rrb_block_t *head)
-{
-        static int call_counter = 0;
-        call_counter++;
-        printf("==============RRB_BLOCK_LIST==============%d\n", call_counter);
-        while (head != NULL)
-        {
-                printf("SEQ_NUM = %u | SIZE = %u\n", head->seq_number, head->size);
-                head = head->next;
-        }
-        printf("==========================================%d\n", call_counter);
-}
-
-static void debug_print_rrb(const receive_ring_buffer_t *_rrb)
-{
-        static int call_counter = 0;
-        call_counter++;
-        printf("********************************RRB********************************%d\n", call_counter);
-        printf("rrb.buffer = %p\n", _rrb->buffer);
-        printf("rrb.buffer_size = %u\n", _rrb->buffer_size);
-        printf("rrb.last_consumed_seq_number = %u\n", _rrb->last_consumed_seq_number);
-        printf("rrb.consumable_bytes = %u\n", _rrb->consumable_bytes);
-        debug_print_rrb_block_list(_rrb->rrb_block_list_head);
-        for (uint32_t i = 0; i < _rrb->buffer_size; i++)
-        {
-                // char ch = *((char *)_rrb->buffer + (_rrb->last_consumed_seq_number + i) % _rrb->buffer_size);
-                char ch = *((char *)_rrb->buffer + i);
-                printf("%c", ch == 0 ? '0' : ch);
-        }
-        printf("\n");
-        printf("*******************************************************************%d\n", call_counter);
-}
-
-int main()
-{
-        char in1[] = {'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
-                      'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'};
-        char in2[] = {'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b',
-                      'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'};
-        char in3[] = {'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c',
-                      'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c', 'c'};
-#define CURR_SEQ_NUM UINT32_MAX
-#define RRB_SIZE (1 << 7)
-#define APPEND_PRINT(rrb, tN) printf("APPENDED == %u bytes of %s\n", rrb_append(rrb, &tN), #tN);
-#define POP_PRINT(rrb, buff, buff_len) printf("POPED == %u bytes to %s\n", rrb_pop(rrb, buff, buff_len), #buff);
-#define PRINT_BUFFER(buff, buff_len)                               \
-        do                                                         \
-        {                                                          \
-                printf("%s:|", #buff);                              \
-                for (int i = 0; i < buff_len; i++)                 \
-                        printf("%c", buff[i] != 0 ? buff[i] : '0'); \
-                            printf("|\n");                          \
-        } while (0)
-
-        char out1[300] = {0};
-        receive_ring_buffer_t *rrb = rrb_create(RRB_SIZE, CURR_SEQ_NUM);
-        microtcp_segment_t t1 = {.header.seq_number = 0, .header.data_len = 100, .raw_payload_bytes = in1};
-        microtcp_segment_t t2 = {.header.seq_number = 100, .header.data_len = 100, .raw_payload_bytes = in2};
-        microtcp_segment_t t3 = {.header.seq_number = 128, .header.data_len = 100, .raw_payload_bytes = in3};
-
-        APPEND_PRINT(rrb, t1)
-        APPEND_PRINT(rrb, t2)
-        // APPEND_PRINT(rrb, t3)
-        POP_PRINT(rrb, out1, 300);
-        APPEND_PRINT(rrb, t3)
-        PRINT_BUFFER(out1, 300);
-        debug_print_rrb(rrb);
-
-        rrb_destroy(&rrb);
 }

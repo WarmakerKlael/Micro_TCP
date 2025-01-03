@@ -108,19 +108,19 @@ static inline int count_format_specifiers(const char *_format)
                 free(extended_format);                                                                                                                                                \
         } while (0)
 
-void prompt_set_assembly_buffer_length(void)
+void prompt_set_rrb_length(void)
 {
-        const char *prompt = "Specify the assembly buffer size (uint32_t, power of 2, in bytes, Default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
+        const char *prompt = "Specify the Receive-Ring-Buffer size (uint32_t, power of 2, in bytes, Default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
 
-        long assembly_buffer_length = 0;
+        long rrb_size = 0;
         while (1)
         {
-                PROMPT_WITH_READLINE(prompt, "%ld", &assembly_buffer_length);
-                if (assembly_buffer_length > 0 && assembly_buffer_length < UINT32_MAX && is_power_of_2(assembly_buffer_length))
+                PROMPT_WITH_READLINE(prompt, "%ld", &rrb_size);
+                if (rrb_size > 0 && rrb_size < UINT32_MAX && IS_POWER_OF_2(rrb_size))
                         break;
                 clean_line();
         }
-        set_bytestream_assembly_buffer_len(assembly_buffer_length);
+        set_bytestream_rrb_size(rrb_size);
 }
 
 void prompt_set_ack_timeout(void)
@@ -149,7 +149,7 @@ void prompt_set_connect_retries(void)
         set_connect_rst_retries(retries);
 }
 
-void prompt_set_accept_retries()
+void prompt_set_accept_retries(void)
 {
         const char *prompt = "Specify the maximum SYN|ACK retries during handshake (Default: " STRINGIFY_EXPANDED(LINUX_DEFAULT_ACCEPT_TIMEOUTS) "): ";
         long retries = 0;
@@ -162,7 +162,7 @@ void prompt_set_accept_retries()
         set_accept_synack_retries(retries);
 }
 
-void prompt_set_shutdown_retries()
+void prompt_set_shutdown_retries(void)
 {
         const char *prompt = "Specify the maximum FIN|ACK retries during shutdown (Default: " STRINGIFY_EXPANDED(TCP_RETRIES2) "): ";
         long retries = 0;
@@ -175,7 +175,7 @@ void prompt_set_shutdown_retries()
         set_shutdown_finack_retries(retries);
 }
 
-void prompt_set_shutdown_time_wait_period()
+void prompt_set_shutdown_time_wait_period(void)
 {
         const char *prompt = "Specify the TIME-WAIT period (Default: " STRINGIFY_EXPANDED(DEFAULT_SHUTDOWN_TIME_WAIT_SEC) " seconds " STRINGIFY_EXPANDED(DEFAULT_SHUTDOWN_TIME_WAIT_USEC) " microseconds): ";
         struct timeval time_wait_period = {0};
@@ -190,7 +190,7 @@ void prompt_set_shutdown_time_wait_period()
 
 void configure_microtcp_settings(void)
 {
-        prompt_set_assembly_buffer_length();
+        prompt_set_rrb_size();
         prompt_set_ack_timeout();
         prompt_set_connect_retries();
         prompt_set_accept_retries();

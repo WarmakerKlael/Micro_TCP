@@ -3,6 +3,7 @@ add_library(microtcp_fsm STATIC
         fsm_connect.c
         fsm_accept.c
         # fsm_receive.c
+        fsm_send.c
         fsm_shutdown_active.c
         fsm_shutdown_passive.c
 )

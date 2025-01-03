@@ -121,7 +121,7 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         ssize_t expected_segment_size = sizeof(microtcp_header_t);
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
 
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MSS, NO_RECVFROM_FLAGS, _address, &_address_len);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MSS, MSG_TRUNC, _address, &_address_len);
         if (recvfrom_ret_val == RECVFROM_ERROR && (errno == EAGAIN || errno == EWOULDBLOCK))
                 return RECV_SEGMENT_TIMEOUT;
         if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
@@ -150,6 +150,7 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         if (control_segment->header.control != _required_control)
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Control-field: Received = `%s`; Expected = `%s`.",
                                    get_microtcp_control_to_string(control_segment->header.control), get_microtcp_control_to_string(_required_control));
+
 
         /* Ignore check if waiting to receive SYN (server side). */
         if (_required_control != SYN_BIT && control_segment->header.ack_number != _socket->seq_number) /* Not `+1` as FSM already incremented SN. */
