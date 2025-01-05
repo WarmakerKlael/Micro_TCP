@@ -55,7 +55,7 @@ static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *cons
         uint32_t total_data_bytes_sent = 0;
         while (total_data_bytes_sent != bytes_to_send)
         {
-                const size_t payload_size = MIN(bytes_to_send - total_data_bytes_sent, MAX_PAYLOAD_SIZE);
+                const size_t payload_size = MIN(bytes_to_send - total_data_bytes_sent, MICROTCP_MSS);
                 const ssize_t data_bytes_sent = send_data_segment(_socket, _context->buffer + total_data_bytes_sent, payload_size);
                 if (RARE_CASE(data_bytes_sent == SEND_SEGMENT_FATAL_ERROR))
                         return EXIT_FAILURE_SUBSTATE;
@@ -182,10 +182,6 @@ static send_fsm_substates_t execute_slow_start_substate(microtcp_sock_t *_socket
 
         if (!sq_is_empty(_context->send_queue)) /* Packets in Send-Queue, begin retransmissions. */
         {
-                _socket->ssthresh = MAX(_socket->cwnd / 2, MICROTCP_MSS);
-                _socket->cwnd = MICROTCP_MSS;
-                struct timeval timer;
-                gettimeofday(&timer, NULL);
                 send_fsm_substates_t next_substate = perform_interleaved_retransmissions_round(_socket, _context);
                 if (next_substate != CONTINUE_SUBSTATE)
                         return next_substate;
@@ -244,4 +240,3 @@ int microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer,
         }
         sq_destroy(&context.send_queue);
 }
-#undef MAX_PAYLOAD_SIZE

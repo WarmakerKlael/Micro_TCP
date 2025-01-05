@@ -70,10 +70,10 @@ static inline _Bool socket_requires_peer_address(const microtcp_sock_t *const _s
 #define RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(_failure_return_value, _microtcp_payload)                                               \
         do                                                                                                                               \
         {                                                                                                                                \
-                if ((_microtcp_payload).size + sizeof(microtcp_header_t) > MICROTCP_MSS)                                                 \
+                if ((_microtcp_payload).size > MICROTCP_MSS)                                                 \
                         LOG_ERROR_RETURN((_failure_return_value), "Tried to create %s with %d bytes of payload; Limit is %s = %d",       \
                                          STRINGIFY(microtcp_segment_t), (_microtcp_payload).size,                                        \
-                                         STRINGIFY(MICROTCP_MSS - sizeof(microtcp_header_t)), MICROTCP_MSS - sizeof(microtcp_header_t)); \
+                                         STRINGIFY(MICROTCP_MSS), MICROTCP_MSS ); \
                                                                                                                                          \
                 if ((_microtcp_payload.size == 0) != ((_microtcp_payload).raw_bytes == NULL))                                            \
                         LOG_ERROR_RETURN((_failure_return_value), "Payload field mismatch: size is %d, but raw_bytes is %s.",            \

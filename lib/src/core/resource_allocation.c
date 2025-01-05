@@ -119,7 +119,7 @@ static void *allocate_bytestream_build_buffer(microtcp_sock_t *_socket)
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, (CLOSED | LISTEN));
         SMART_ASSERT(_socket->bytestream_build_buffer == NULL);
 
-        _socket->bytestream_build_buffer = CALLOC_LOG(_socket->bytestream_build_buffer, MICROTCP_MSS);
+        _socket->bytestream_build_buffer = CALLOC_LOG(_socket->bytestream_build_buffer, MICROTCP_MTU);
         if (_socket->bytestream_build_buffer == NULL)
                 LOG_ERROR_RETURN(_socket->bytestream_build_buffer, "Failed to allocate socket's `bytestream_build_buffer`.");
         LOG_INFO_RETURN(_socket->bytestream_build_buffer, "Succesful allocation of `bytestream_build_buffer`.");
@@ -136,7 +136,7 @@ static void *allocate_bytestream_receive_buffer(microtcp_sock_t *_socket)
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, (CLOSED | LISTEN));
         SMART_ASSERT(_socket->bytestream_receive_buffer == NULL);
 
-        _socket->bytestream_receive_buffer = CALLOC_LOG(_socket->bytestream_receive_buffer, MICROTCP_MSS);
+        _socket->bytestream_receive_buffer = CALLOC_LOG(_socket->bytestream_receive_buffer, MICROTCP_MTU);
         if (_socket->bytestream_receive_buffer == NULL)
                 LOG_ERROR_RETURN(_socket->bytestream_receive_buffer, "Failed to allocate socket's `bytestream_receive_buffer`.");
         LOG_INFO_RETURN(_socket->bytestream_receive_buffer, "Succesful allocation of `bytestream_receive_buffer`.");

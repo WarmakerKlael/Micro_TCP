@@ -77,7 +77,7 @@ ssize_t receive_ack_control_segment_async(microtcp_sock_t *const _socket, _Bool 
         const int recvfrom_flags = MSG_TRUNC | (_block ? 0 : MSG_DONTWAIT);
         socklen_t peer_address_length = sizeof(*_socket->peer_address);
 
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MSS, recvfrom_flags, _socket->peer_address, &peer_address_length);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MTU, recvfrom_flags, _socket->peer_address, &peer_address_length);
         if (recvfrom_ret_val == RECVFROM_ERROR && errno == EWOULDBLOCK)
                 return RECV_SEGMENT_TIMEOUT;
         if (RARE_CASE(recvfrom_ret_val == RECVFROM_SHUTDOWN))
@@ -164,7 +164,7 @@ static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct so
         ssize_t expected_segment_size = sizeof(microtcp_header_t);
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
 
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MSS, MSG_TRUNC, _address, &_address_len);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MTU, MSG_TRUNC, _address, &_address_len);
         if (recvfrom_ret_val == RECVFROM_ERROR && errno == EWOULDBLOCK)
                 return RECV_SEGMENT_TIMEOUT;
         if (RARE_CASE(recvfrom_ret_val == RECVFROM_SHUTDOWN))

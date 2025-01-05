@@ -11,11 +11,29 @@
 
 typedef struct microtcp_segment microtcp_segment_t;
 
+/**
+ * microTCP header structure
+ * NOTE: DO NOT CHANGE!
+ */
+typedef struct
+{
+        uint32_t seq_number;  /**< Sequence number */
+        uint32_t ack_number;  /**< ACK number */
+        uint16_t control;     /**< Control bits (e.g. SYN, ACK, FIN) */
+        uint16_t window;      /**< Window size in bytes */
+        uint32_t data_len;    /**< Data length in bytes (EXCLUDING header) */
+        uint32_t future_use0; /**< 32-bits for future use */
+        uint32_t future_use1; /**< 32-bits for future use */
+        uint32_t future_use2; /**< 32-bits for future use */
+        uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
+} microtcp_header_t;
+
 /*
  * Several useful constants
  */
 #define MICROTCP_ACK_TIMEOUT_US 200000
 #define MICROTCP_MSS 1400
+#define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
 #define MICROTCP_RECVBUF_LEN 8192
 #define MICROTCP_WIN_SIZE MICROTCP_RECVBUF_LEN
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
@@ -88,22 +106,6 @@ typedef struct
         struct sockaddr *peer_address;
 } microtcp_sock_t;
 
-/**
- * microTCP header structure
- * NOTE: DO NOT CHANGE!
- */
-typedef struct
-{
-        uint32_t seq_number;  /**< Sequence number */
-        uint32_t ack_number;  /**< ACK number */
-        uint16_t control;     /**< Control bits (e.g. SYN, ACK, FIN) */
-        uint16_t window;      /**< Window size in bytes */
-        uint32_t data_len;    /**< Data length in bytes (EXCLUDING header) */
-        uint32_t future_use0; /**< 32-bits for future use */
-        uint32_t future_use1; /**< 32-bits for future use */
-        uint32_t future_use2; /**< 32-bits for future use */
-        uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
-} microtcp_header_t;
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);
 

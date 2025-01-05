@@ -69,19 +69,18 @@ static inline ssize_t receive_data_segment(microtcp_sock_t *const _socket)
 #endif /* DEBUG_MODE */
         struct sockaddr *peer_address = _socket->peer_address;
         socklen_t peer_address_len = sizeof(*peer_address);
-        const ssize_t maximum_segment_size = MICROTCP_MSS;
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
         const int flags = MSG_TRUNC;
 
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, maximum_segment_size, flags, peer_address, &peer_address_len);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MTU, flags, peer_address, &peer_address_len);
         if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned 0, which points a closed connection; but underlying protocol is UDP, so this should not happen.");
         if (recvfrom_ret_val == RECVFROM_ERROR)
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
 
-        if (recvfrom_ret_val > maximum_segment_size)
+        if (recvfrom_ret_val > MICROTCP_MTU)
                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Received illegal segment; Segment's size = %d;  %s = %d .",
-                                 recvfrom_ret_val, STRINGIFY(maximum_segment_size), maximum_segment_size);
+                                 recvfrom_ret_val, STRINGIFY(MICROTCP_MTU), MICROTCP_MTU);
 
         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
