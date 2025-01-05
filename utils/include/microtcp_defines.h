@@ -10,6 +10,7 @@
 #define FAILURE 0
 typedef _Bool status_t; 
 
+#define MAX_PAYLOAD_SIZE (MICROTCP_MSS - sizeof(microtcp_header_t))
 
 /* Priority numbers of constructors/destructors. */
 #define LOGGER_CONSTRUCTOR_PRIORITY 1001

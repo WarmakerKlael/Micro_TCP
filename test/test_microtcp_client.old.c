@@ -72,6 +72,11 @@ main(int argc, char **argv)
     //     printf("From server: %s\n", rbuff);
     // } while (strcmp(sbuff, "exit\n") != 0);
 
+
+    char data12[100000];
+
+    microtcp_send(&tcpsocket, data12, 10000, 0);
+
     printf("Closing connection...\n");
     microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     printf("Connection closed\n");

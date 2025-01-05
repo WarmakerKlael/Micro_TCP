@@ -17,8 +17,8 @@
 #include "smart_assert.h"
 
 /* TODO: Check the validity of the is_ functions... */
-static inline _Bool is_old_packet(uint32_t _seq_number, uint32_t _ack_number, uint32_t _remaining_space);
-static inline _Bool is_segment_within_window(uint32_t _seq_number, uint32_t _ack_number);
+// static inline _Bool is_old_packet(uint32_t _seq_number, uint32_t _ack_number, uint32_t _remaining_space);
+// static inline _Bool is_segment_within_window(uint32_t _seq_number, uint32_t _ack_number);
 static inline ssize_t receive_data_segment(microtcp_sock_t *const _socket);
 
 #define RECEIVER_FATAL_ERROR -1

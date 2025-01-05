@@ -4,6 +4,7 @@
 #include "core/socket_stats_updater.h"
 #include "core/send_queue.h"
 #include "segment_io_internal.h"
+#include "core/segment_io.h"
 #include "smart_assert.h"
 #include "logging/microtcp_logger.h"
 
@@ -16,13 +17,13 @@ size_t send_data_segment(microtcp_sock_t *const _socket, const void *const _buff
         const size_t data_bytestream_size = _segment_size + sizeof(microtcp_header_t);
 
         ssize_t sendto_ret_val = sendto(_socket->sd, data_bytestream, data_bytestream_size,
-                                        NO_SENDTO_FLAGS, _socket->peer_address, sizeof(_socket->peer_address));
+                                        NO_SENDTO_FLAGS, _socket->peer_address, sizeof(*_socket->peer_address));
         if (sendto_ret_val == SENDTO_ERROR)
-                LOG_ERROR_RETURN(0, "Sending data segment failed. sendto() errno(%d):%s.",
+                LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Sending data segment failed. sendto() errno(%d):%s.",
                                  errno, strerror(errno));
         DEBUG_SMART_ASSERT(sendto_ret_val > 0);
         if ((size_t)sendto_ret_val != data_bytestream_size)
-                LOG_WARNING_RETURN(0, "Failed sending data segment. sendto() sent %d bytes, but was asked to sent %d bytes",
+                LOG_WARNING_RETURN(SEND_SEGMENT_ERROR, "Failed sending data segment. sendto() sent %d bytes, but was asked to sent %d bytes",
                                    sendto_ret_val, data_bytestream_size);
         update_socket_sent_counters(_socket, sendto_ret_val);
         return _segment_size;

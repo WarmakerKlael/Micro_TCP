@@ -27,6 +27,9 @@ ssize_t receive_synack_control_segment(microtcp_sock_t *const _socket, struct so
 ssize_t receive_ack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
 ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
 
+ssize_t receive_ack_control_segment_async(microtcp_sock_t *const _socket, _Bool _block);
+
+
 /* DATA */
 size_t send_data_segment(microtcp_sock_t *_socket, const void *_buffer, size_t _segment_size);
 

@@ -4,6 +4,7 @@
 #include "logging/microtcp_logger.h"
 #include "microtcp.h"
 #include "microtcp_core_macros.h"
+#include "microtcp_helper_macros.h"
 #include "smart_assert.h"
 
 /* No memory allocation occurs, we just overwrite socket's segment_build_buffer. */
@@ -65,17 +66,17 @@ void *serialize_microtcp_segment(microtcp_sock_t *const _socket, microtcp_segmen
         return bytestream_buffer;
 }
 
-_Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, size_t _bytestream_buffer_length)
+_Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, const ssize_t _bytestream_length)
 {
-#ifdef DEBUG_MODE
-        SMART_ASSERT(_bytestream_buffer != NULL, _bytestream_buffer_length >= sizeof(microtcp_header_t));
-#endif /* DEBUG_MODE */
+        DEBUG_SMART_ASSERT(_bytestream_buffer != NULL);
+        if (RARE_CASE(_bytestream_length < (ssize_t)sizeof(microtcp_header_t) || _bytestream_length > MICROTCP_MSS))
+                return FALSE;
 
         uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 
         /* Zeroing checksum to calculate crc. */
         ((microtcp_header_t *)_bytestream_buffer)->checksum = 0;
-        uint32_t calculated_checksum = crc32(_bytestream_buffer, _bytestream_buffer_length);
+        uint32_t calculated_checksum = crc32(_bytestream_buffer, _bytestream_length);
         ((microtcp_header_t *)_bytestream_buffer)->checksum = extracted_checksum;
 
         return calculated_checksum == extracted_checksum;

@@ -146,10 +146,11 @@ ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _len
 {
         SMART_ASSERT(_socket != NULL, _buffer != NULL, _length > 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SEND_FAILURE, _socket, ESTABLISHED);
-        struct sockaddr *address = _socket->peer_address;
-        socklen_t address_len = sizeof(*(_socket->peer_address));
+        // struct sockaddr *address = _socket->peer_address;
+        // socklen_t address_len = sizeof(*(_socket->peer_address));
 
         // TODO: CALL send_fsm();...
+        microtcp_send_fsm(_socket, _buffer, _length);
 
 
 

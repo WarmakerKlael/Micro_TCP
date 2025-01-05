@@ -34,7 +34,7 @@ static inline _Bool socket_requires_peer_address(const microtcp_sock_t *const _s
 #define RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(_failure_return_value, _socket, _allowed_states)                                       \
         do                                                                                                                             \
         {                                                                                                                              \
-                SMART_ASSERT((_socket) != NULL);                                                                                       \
+                DEBUG_SMART_ASSERT((_socket) != NULL);                                                                                       \
                                                                                                                                        \
                 if (!((_socket)->state & (_allowed_states)))                                                                           \
                 {                                                                                                                      \

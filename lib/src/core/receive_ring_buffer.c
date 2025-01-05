@@ -28,7 +28,7 @@ struct receive_ring_buffer
         uint32_t last_consumed_seq_number;
         uint32_t consumable_bytes;
         rrb_block_t *rrb_block_list_head;
-        pthread_mutex_t access_mutex;
+        pthread_mutex_t access_mutex; /* TODO? Will we go multithreading? */
 };
 
 /* Inner helper functions. */

@@ -7,8 +7,9 @@ struct timeval;
 #define SENT_SYN_SEQUENCE_NUMBER_INCREMENT 1
 #define SENT_FIN_SEQUENCE_NUMBER_INCREMENT 1
 
-void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend);
-time_t timeval_to_us(const struct timeval _timeval);
+void subtract_timeval(struct timeval *_subtrahend, struct timeval _minuend);
+time_t timeval_to_us(struct timeval _timeval);
+struct timeval us_to_timeval(time_t _us);
 time_t elapsed_time_us(struct timeval _start_time);
 
 #endif /* STATE_MACHINES_COMMON_H */
