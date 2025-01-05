@@ -170,7 +170,8 @@ static inline send_fsm_substates_t perform_interleaved_retransmissions_round(mic
                         return next_substate;
                 if (curr_node == sq_front(_context->send_queue)) /* No ACK, or ACK didn't match. */
                         curr_node = curr_node->next;
-                curr_node = sq_front(_context->send_queue);
+                else
+                        curr_node = sq_front(_context->send_queue);
         }
         return perform_receive_ack_round(_socket, _context);
 }
