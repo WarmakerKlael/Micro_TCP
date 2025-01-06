@@ -14,23 +14,23 @@
 #define RECV_SEGMENT_RST_BIT -3
 #define RECV_SEGMENT_NOT_SYN_BIT -4
 #define RECV_SEGMENT_UNEXPECTED_FINACK -5
+#define RECV_SEGMENT_CARRIES_DATA -6
 
 /* CONTROL */
-ssize_t send_syn_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t send_syn_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+ssize_t send_synack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+ssize_t send_ack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+ssize_t send_finack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+ssize_t send_rstack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
 
-ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t receive_synack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t receive_ack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
-ssize_t receive_finack_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len);
+ssize_t receive_syn_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len);
+ssize_t receive_synack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number);
+ssize_t receive_ack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number);
+ssize_t receive_finack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number);
 
-ssize_t receive_ack_control_segment_async(microtcp_sock_t *const _socket, _Bool _block);
-
+ssize_t receive_ack_control_segment_async(microtcp_sock_t *_socket, _Bool _block);
 
 /* DATA */
-size_t send_data_segment(microtcp_sock_t *_socket, const void *_buffer, size_t _segment_size);
+size_t send_data_segment(microtcp_sock_t *_socket, const void *_buffer, size_t _segment_size, uint32_t _seq_number);
 
 #endif /* CORE_CONTROL_SEGMENTS_IO_H */

@@ -17,7 +17,7 @@ typedef struct
         uint16_t size;
 } microtcp_payload_t;
 
-microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload);
+microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint32_t _seq_number, uint16_t _control, microtcp_payload_t _payload);
 void *serialize_microtcp_segment(microtcp_sock_t *_socket, microtcp_segment_t *_segment);
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, ssize_t _bytestream_buffer_length);
 void extract_microtcp_segment(microtcp_segment_t **_segment_buffer, void *_bytestream_buffer, size_t _bytestream_buffer_length);

@@ -39,11 +39,24 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 #include "microtcp.h"
 #include "settings/microtcp_settings_prompts.h"
+#include "core/segment_io.h"
+#include <stdlib.h>
+#include <time.h>
 
 #define PORT 54321
+#define TIME_100MS 100000
+
+int getRandomNumber()
+{
+    // Static pointer, initialized once with a side effect (calling srand)
+
+    // Generate and return the random number
+    return 100000 + rand() % (300000 - 100000 + 1);
+}
 
 int main(int argc, char **argv)
 {
@@ -54,6 +67,7 @@ int main(int argc, char **argv)
     memset(&clientaddr, 0, sizeof(clientaddr));
     // configure_microtcp_settings();
 
+    srand(time(NULL));
     microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     servaddr.sin_family = AF_INET;
@@ -67,7 +81,14 @@ int main(int argc, char **argv)
     printf("Waiting for connection request...\n");
     microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Connected\n");
-
+    tcpsocket.ack_number--;
+    while (TRUE)
+    {
+        int sleep_time_us = getRandomNumber();
+        printf("Gonna Sleep for: %d\n", sleep_time_us);
+        usleep(sleep_time_us);
+        send_ack_control_segment(&tcpsocket, tcpsocket.peer_address, sizeof(*tcpsocket.peer_address));
+    }
     // const char* rmsg = "Message received";
 
     // char buff[1024] = {0};
@@ -87,7 +108,6 @@ int main(int argc, char **argv)
     // ssize_t bytes = microtcp_recv(&tcpsocket, ff, 2000, 0);
     // printf("recv finished, bytes read = %zd\n", bytes);
     // if (bytes == 0)
-    // microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     // printf("ANOTHER HERE\n");
     return EXIT_SUCCESS;
 }

@@ -8,11 +8,11 @@
 #include "smart_assert.h"
 #include "logging/microtcp_logger.h"
 
-size_t send_data_segment(microtcp_sock_t *const _socket, const void *const _buffer, const size_t _segment_size)
+size_t send_data_segment(microtcp_sock_t *const _socket,  const void *const _buffer, const size_t _segment_size, const uint32_t _seq_number)
 {
         DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL, _segment_size > 0);
         const microtcp_payload_t payload = {.raw_bytes = (uint8_t *)_buffer, .size = _segment_size};
-        microtcp_segment_t *data_segment = construct_microtcp_segment(_socket, ACK_BIT, payload);
+        microtcp_segment_t *data_segment = construct_microtcp_segment(_socket, _seq_number, ACK_BIT, payload);
         const void *data_bytestream = serialize_microtcp_segment(_socket, data_segment);
         const size_t data_bytestream_size = _segment_size + sizeof(microtcp_header_t);
 

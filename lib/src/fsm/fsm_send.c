@@ -12,6 +12,7 @@
 #include "microtcp_defines.h"
 #include "smart_assert.h"
 #include "microtcp_core_macros.h"
+#include "logging/microtcp_fsm_logger.h"
 
 #define RECVFROM_SHUTDOWN (0)
 #define RECVFROM_ERROR (-1)
@@ -40,11 +41,15 @@ typedef struct
 static __always_inline void respond_to_triple_dup_ack(microtcp_sock_t *_socket, fsm_context_t *_context);
 static __always_inline void respond_to_timeout(microtcp_sock_t *_socket, fsm_context_t *_context);
 static __always_inline void handle_cwnd_increment(microtcp_sock_t *_socket, const fsm_context_t *_context, size_t _acked_segments);
+static __always_inline void handle_seq_number_increment(microtcp_sock_t *_socket, uint32_t _received_ack_number, size_t _acked_segments);
+static __always_inline void handle_peer_win_size(microtcp_sock_t *_socket, const fsm_context_t *_context);
 
 static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *_socket, fsm_context_t *_context);
 static inline send_fsm_substates_t perform_receive_ack_round(microtcp_sock_t *_socket, fsm_context_t *_context);
 static inline send_fsm_substates_t perform_interleaved_retransmissions_round(microtcp_sock_t *_socket, fsm_context_t *_context);
 static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *_socket, fsm_context_t *_context, _Bool _block);
+
+static const char *convert_substate_to_string(send_fsm_substates_t _substate);
 
 static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *const _socket, fsm_context_t *const _context)
 {
@@ -56,7 +61,8 @@ static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *cons
         while (total_data_bytes_sent != bytes_to_send)
         {
                 const size_t payload_size = MIN(bytes_to_send - total_data_bytes_sent, MICROTCP_MSS);
-                const ssize_t data_bytes_sent = send_data_segment(_socket, _context->buffer + total_data_bytes_sent, payload_size);
+                const uint32_t segment_seq_number = _socket->seq_number + total_data_bytes_sent;
+                const ssize_t data_bytes_sent = send_data_segment(_socket, _context->buffer + total_data_bytes_sent, payload_size, segment_seq_number);
                 if (RARE_CASE(data_bytes_sent == SEND_SEGMENT_FATAL_ERROR))
                         return EXIT_FAILURE_SUBSTATE;
                 if (RARE_CASE(data_bytes_sent == SEND_SEGMENT_ERROR))
@@ -64,9 +70,8 @@ static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *cons
 
                 DEBUG_SMART_ASSERT((size_t)data_bytes_sent == payload_size);
 
-                sq_enqueue(_context->send_queue, _socket->seq_number, payload_size, _context->buffer + total_data_bytes_sent);
+                sq_enqueue(_context->send_queue, segment_seq_number, payload_size, _context->buffer + total_data_bytes_sent);
                 total_data_bytes_sent += data_bytes_sent;
-                _socket->seq_number += data_bytes_sent;
         }
         return CONTINUE_SUBSTATE;
 }
@@ -74,7 +79,7 @@ static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *cons
 static __always_inline void respond_to_triple_dup_ack(microtcp_sock_t *const _socket, fsm_context_t *const _context)
 {
         const send_queue_node_t *retransmission_node = sq_front(_context->send_queue);
-        send_data_segment(_socket, retransmission_node->buffer, retransmission_node->segment_size);
+        send_data_segment(_socket, retransmission_node->buffer, retransmission_node->segment_size, retransmission_node->seq_number);
         _socket->ssthresh = MAX(MICROTCP_MSS, _socket->cwnd / 2);
         _socket->cwnd = MICROTCP_MSS;
         _context->duplicate_ack_count = 0;
@@ -98,6 +103,17 @@ static __always_inline void handle_cwnd_increment(microtcp_sock_t *const _socket
                         _socket->cwnd += MAX((MICROTCP_MSS * MICROTCP_MSS) / _socket->cwnd, 1); /* If CWND > MSS^2, increament by 1 byte (tahoe). */
 }
 
+static __always_inline void handle_seq_number_increment(microtcp_sock_t *const _socket, const uint32_t _received_ack_number, const size_t _acked_segments)
+{
+        if (_acked_segments > 0) /* That means received_ack_number matched to a sent segment. */
+                _socket->seq_number = _received_ack_number;
+}
+
+static __always_inline void handle_peer_win_size(microtcp_sock_t *const _socket, const fsm_context_t *const _context)
+{
+        _socket->peer_win_size = _socket->segment_receive_buffer->header.window - sq_stored_bytes(_context->send_queue);
+}
+
 static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *const _socket, fsm_context_t *const _context, const _Bool _block)
 {
         ssize_t recv_ack_ret_val = receive_ack_control_segment_async(_socket, _block);
@@ -109,7 +125,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
                 if (_block == TRUE) /* If in block, timeout timer expired. */
                 {
                         respond_to_timeout(_socket, _context);
-                        return SLOW_START_SUBSTATE; /* Any timeout leads to slow-start. */
+                        LOG_WARNING_RETURN(SLOW_START_SUBSTATE, "Timeout occured!"); /* TRIPLE DUPLICATE ACK */
                 }
                 break; /* Currently no UDP packets available. */
         case RECV_SEGMENT_UNEXPECTED_FINACK:
@@ -127,13 +143,15 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
                         if (++_context->duplicate_ack_count == DUPLICATE_ACK_FOR_FAST_RETRANSMIT)
                         {
                                 respond_to_triple_dup_ack(_socket, _context);
-                                return SLOW_START_SUBSTATE; /* TRIPLE DUPLICATE ACK */
+                                LOG_WARNING_RETURN(SLOW_START_SUBSTATE, "Received 3DUP_ACK"); /* TRIPLE DUPLICATE ACK */
                         }
                         break;
                 }
                 _context->duplicate_ack_count = 0;
                 const size_t acked_segments = sq_dequeue(_context->send_queue, received_ack_number);
+                handle_seq_number_increment(_socket, received_ack_number, acked_segments);
                 handle_cwnd_increment(_socket, _context, acked_segments);
+                handle_peer_win_size(_socket, _context);
         }
         }
         return CONTINUE_SUBSTATE;
@@ -159,19 +177,19 @@ static inline send_fsm_substates_t perform_interleaved_retransmissions_round(mic
         send_queue_node_t *curr_node = sq_front(_context->send_queue);
         while (curr_node != NULL)
         {
-                if (bytes_resent + curr_node->segment_size >= _socket->cwnd) /* Hit transmission limit. */
+                if (bytes_resent + curr_node->segment_size > _socket->cwnd) /* Hit transmission limit. */
                         break;
-                _socket->seq_number = curr_node->seq_number;
                 update_socket_lost_counters(_socket, curr_node->segment_size);
-                send_data_segment(_socket, curr_node->buffer, curr_node->segment_size);
+                send_data_segment(_socket, curr_node->buffer, curr_node->segment_size, curr_node->seq_number);
 
+                const size_t stored_segments_pre_ack = sq_stored_segments(_context->send_queue);
                 send_fsm_substates_t next_substate = receive_and_process_ack(_socket, _context, FALSE);
                 if (next_substate != CONTINUE_SUBSTATE)
                         return next_substate;
-                if (curr_node == sq_front(_context->send_queue)) /* No ACK, or ACK didn't match. */
+                if (stored_segments_pre_ack == sq_stored_segments(_context->send_queue)) /* No ACK, or ACK didn't match. SEND-NEXT */
                         curr_node = curr_node->next;
                 else
-                        curr_node = sq_front(_context->send_queue);
+                        curr_node = sq_front(_context->send_queue); /* ACK, match segment in send_queue. FAST-FORWARD. */
         }
         return perform_receive_ack_round(_socket, _context);
 }
@@ -220,7 +238,8 @@ int microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer,
 
         while (TRUE)
         {
-                // LOG_FSM_CONNECT("Entering %s", convert_substate_to_string(current_substate));
+                printf("MY_SEQ_NUMBER_IS == %u\n", _socket->seq_number);
+                LOG_FSM_SEND("Entering %s", convert_substate_to_string(context.current_substate));
                 switch (context.current_substate)
                 {
                 case SLOW_START_SUBSTATE:
@@ -241,3 +260,20 @@ int microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer,
         }
         sq_destroy(&context.send_queue);
 }
+
+// clang-format off
+static const char *convert_substate_to_string(send_fsm_substates_t _substate)
+{
+        switch (_substate)
+        {
+        case CONTINUE_SUBSTATE:                 return STRINGIFY(CONTINUE_SUBSTATE);
+        case SLOW_START_SUBSTATE:               return STRINGIFY(SLOW_START_SUBSTATE);
+        case CONGESTION_AVOIDANCE_SUBSTATE:     return STRINGIFY(CONGESTION_AVOIDANCE_SUBSTATE);
+        case RECEIVED_FINACK_SUBSTATE:          return STRINGIFY(RECEIVED_FINACK_SUBSTATE);
+        case RECEIVED_RST_SUBSTATE:             return STRINGIFY(RECEIVED_RST_SUBSTATE);
+        case EXIT_SUCCESS_SUBSTATE:             return STRINGIFY(EXIT_SUCCESS_SUBSTATE);
+        case EXIT_FAILURE_SUBSTATE:             return STRINGIFY(EXIT_FAILURE_SUBSTATE);
+        default:                                return "??SEND_SUBSTATE??";
+        }
+}
+// clang-format on

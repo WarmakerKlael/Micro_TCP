@@ -81,8 +81,8 @@ typedef struct
         size_t cwnd;
         size_t ssthresh;
 
-        size_t seq_number;         /* Keep the state of the sequence number. */
-        size_t ack_number;         /* Keep the state of the ack number. */
+        uint32_t seq_number;         /* Keep the state of the sequence number. */
+        uint32_t ack_number;         /* Keep the state of the ack number. */
         uint64_t packets_sent;     /* Packets that were sent from socket. */
         uint64_t packets_lost;     /* Packets that were sent from socket, but (probably) lost.*/
         uint64_t packets_received; /* Packets that were received from socket.  */
@@ -105,7 +105,6 @@ typedef struct
 
         struct sockaddr *peer_address;
 } microtcp_sock_t;
-
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);
 

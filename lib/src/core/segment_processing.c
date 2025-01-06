@@ -8,7 +8,7 @@
 #include "smart_assert.h"
 
 /* No memory allocation occurs, we just overwrite socket's segment_build_buffer. */
-microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_t _control, microtcp_payload_t _payload)
+microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint32_t _seq_number, uint16_t _control, microtcp_payload_t _payload)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ~INVALID);
         RETURN_ERROR_IF_MICROTCP_PAYLOAD_INVALID(NULL, _payload);
@@ -18,7 +18,7 @@ microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint16_
                 return NULL;
 
         /* Header initialization. */
-        new_segment->header.seq_number = _socket->seq_number;
+        new_segment->header.seq_number = _seq_number;
         new_segment->header.ack_number = _socket->ack_number;
         new_segment->header.control = _control;
         new_segment->header.window = _socket->curr_win_size; /* As sender we advertise our receive window, so opposite host wont overflow us .*/

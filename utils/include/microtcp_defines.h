@@ -10,6 +10,13 @@
 #define FAILURE 0
 typedef _Bool status_t; 
 
+/* In TCP, segments containing control flags (e.g., SYN, FIN),
+ * other than pure ACKs, are treated as carrying a virtual payload. 
+ * That is the reason for the +1 increment. 
+ */
+#define SYN_SEQ_NUMBER_INCREMENT 1
+#define FIN_SEQ_NUMBER_INCREMENT 1
+
 /* Priority numbers of constructors/destructors. */
 #define LOGGER_CONSTRUCTOR_PRIORITY 1001
 #define LOGGER_DESTRUCTOR_PRIORITY LOGGER_CONSTRUCTOR_PRIORITY

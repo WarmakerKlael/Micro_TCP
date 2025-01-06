@@ -21,7 +21,7 @@ typedef enum
         ACK_RECEIVED_SUBSTATE,
         CONNECTION_ESTABLISHED_SUBSTATE = ESTABLISHED, /* Terminal substate (success). FSM exit point. */
         EXIT_FAILURE_SUBSTATE = -1,                    /* Terminal substate (failure). FSM exit point. */
-} accept_fsm_substates;
+} accept_fsm_substates_t;
 
 /* NO errno for accept()'s FSM, Very little that can go wrong (host-side fat errors). */
 
@@ -31,20 +31,14 @@ typedef struct
         ssize_t send_synack_ret_val;
         ssize_t recv_ack_ret_val;
 
-        size_t socket_init_seq_num;
-        /* By adding the socket's initial sequence number in the
-         * FSM's context, we avoid having to do errorneous
-         * subtractions, like seq_number -= 1, in order to match ISN.
-         */
         ssize_t synack_retries_counter;
-
 } fsm_context_t;
 
 /* ----------------------------------------- LOCAL HELPER FUNCTIONS ----------------------------------------- */
-static const char *convert_substate_to_string(accept_fsm_substates _substate);
+static const char *convert_substate_to_string(accept_fsm_substates_t _substate);
 
-static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                    socklen_t _address_len, fsm_context_t *_context)
+static accept_fsm_substates_t execute_listen_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                      socklen_t _address_len, fsm_context_t *_context)
 {
         _context->recv_syn_ret_val = receive_syn_control_segment(_socket, _address, _address_len);
         switch (_context->recv_syn_ret_val)
@@ -70,12 +64,9 @@ static accept_fsm_substates execute_listen_substate(microtcp_sock_t *_socket, st
         }
 }
 
-static accept_fsm_substates execute_syn_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                          socklen_t _address_len, fsm_context_t *_context)
+static accept_fsm_substates_t execute_syn_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                            socklen_t _address_len, fsm_context_t *_context)
 {
-        /* When ever we receive a SYN, we reset socket's sequence number, as it might be a retry. */
-        _socket->seq_number = _context->socket_init_seq_num;
-
         _context->send_synack_ret_val = send_synack_control_segment(_socket, _address, _address_len);
         switch (_context->send_synack_ret_val)
         {
@@ -86,19 +77,16 @@ static accept_fsm_substates execute_syn_received_substate(microtcp_sock_t *_sock
                 return SYN_RECEIVED_SUBSTATE;
 
         default:
-                /* In TCP, segments containing control flags (e.g., SYN, FIN),
-                 * other than pure ACKs, are treated as carrying a virtual payload.
-                 * As a result, they are incrementing the sequence number by 1. */
-                _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
                 update_socket_sent_counters(_socket, _context->send_synack_ret_val);
                 return SYNACK_SENT_SUBSTATE;
         }
 }
 
-static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                         socklen_t _address_len, fsm_context_t *_context)
+static accept_fsm_substates_t execute_synack_sent_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                           socklen_t _address_len, fsm_context_t *_context)
 {
-        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
+        const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
+        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len, required_ack_number);
         switch (_context->recv_ack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:
@@ -124,13 +112,14 @@ static accept_fsm_substates execute_synack_sent_substate(microtcp_sock_t *_socke
                 return LISTEN_SUBSTATE;
 
         default:
+                _socket->seq_number = required_ack_number;
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return ACK_RECEIVED_SUBSTATE;
         }
 }
 
-static accept_fsm_substates execute_ack_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
-                                                          socklen_t _address_len, fsm_context_t *_context)
+static accept_fsm_substates_t execute_ack_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
+                                                            socklen_t _address_len, fsm_context_t *_context)
 {
         _socket->peer_address = (struct sockaddr *)_address;
         _socket->state = ESTABLISHED;
@@ -146,10 +135,9 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_ACCEPT_FAILURE, _address_len, sizeof(*_address));
         /* No argument validation needed. FSMs are called from their
          * respective functions which already vildated their input arguments. */
-        fsm_context_t context = {.socket_init_seq_num = _socket->seq_number,
-                                 .synack_retries_counter = get_accept_synack_retries()};
+        fsm_context_t context = {.synack_retries_counter = get_accept_synack_retries()};
 
-        accept_fsm_substates current_substate = LISTEN_SUBSTATE;
+        accept_fsm_substates_t current_substate = LISTEN_SUBSTATE;
         while (TRUE)
         {
                 LOG_FSM_ACCEPT("Entering %s", convert_substate_to_string(current_substate));
@@ -181,7 +169,7 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
 }
 
 // clang-format off
-static const char *convert_substate_to_string(accept_fsm_substates _substate)
+static const char *convert_substate_to_string(accept_fsm_substates_t _substate)
 {
         switch (_substate)
         {

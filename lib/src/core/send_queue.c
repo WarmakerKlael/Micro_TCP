@@ -10,16 +10,17 @@ struct send_queue
 {
         send_queue_node_t *front;
         send_queue_node_t *rear;
-        size_t size;
+        size_t stored_segments;
+        size_t stored_bytes;
 };
-
-static inline _Bool _sq_is_empty(const send_queue_t *_sq);
 
 send_queue_t *sq_create(void)
 {
         send_queue_t *sq = MALLOC_LOG(sq, sizeof(send_queue_t));
         sq->front = NULL;
         sq->rear = NULL;
+        sq->stored_segments = 0;
+        sq->stored_bytes = 0;
         return sq;
 }
 
@@ -55,7 +56,8 @@ void sq_enqueue(send_queue_t *const _sq, const uint32_t _seq_number, const uint3
                 _sq->front = _sq->rear = new_node;
         else
                 _sq->rear = _sq->rear->next = new_node;
-        _sq->size++;
+        _sq->stored_segments++;
+        _sq->stored_bytes += _segment_size;
 }
 
 /**
@@ -84,9 +86,10 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
         {
                 uint32_t calculated_ack_number = _sq->front->seq_number + _sq->front->segment_size;
                 send_queue_node_t *old_front = _sq->front;
+                _sq->stored_segments--;
+                _sq->stored_bytes -= _sq->front->segment_size;
                 _sq->front = _sq->front->next;
                 FREE_NULLIFY_LOG(old_front);
-                _sq->size--;
                 dequeued_node_counter++;
 
                 if (calculated_ack_number == _ack_number)
@@ -96,24 +99,25 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
         return dequeued_node_counter;
 }
 
-size_t sq_size(const send_queue_t *const _sq)
+size_t sq_stored_segments(const send_queue_t *const _sq)
 {
         DEBUG_SMART_ASSERT(_sq);
-        return _sq->size;
+        return _sq->stored_segments;
+}
+
+size_t sq_stored_bytes(const send_queue_t *const _sq)
+{
+        DEBUG_SMART_ASSERT(_sq);
+        return _sq->stored_bytes;
 }
 
 _Bool sq_is_empty(const send_queue_t *const _sq)
 {
-        return _sq_is_empty(_sq);
+        DEBUG_SMART_ASSERT(_sq);
+        return _sq->front == NULL;
 }
 
 send_queue_node_t *sq_front(send_queue_t *const _sq)
 {
         return _sq->front;
-}
-
-static inline _Bool _sq_is_empty(const send_queue_t *const _sq)
-{
-        DEBUG_SMART_ASSERT(_sq);
-        return _sq->front == NULL;
 }

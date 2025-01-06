@@ -40,7 +40,6 @@ typedef struct
         size_t send_finack_ret_val;
         size_t recv_ack_ret_val;
 
-        size_t socket_shutdown_isn;
         struct timeval last_ack_wait_time_timer;
         struct timeval recvfrom_timeout;
         shutdown_fsm_errno_t errno;
@@ -54,7 +53,6 @@ static void log_errno_status(shutdown_fsm_errno_t _errno);
 static shutdown_passive_fsm_substates_t execute_finack_received_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                          socklen_t _address_len, fsm_context_t *_context)
 {
-        _socket->seq_number = _context->socket_shutdown_isn;
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
         switch (_context->send_ack_ret_val)
         {
@@ -73,7 +71,6 @@ static shutdown_passive_fsm_substates_t execute_close_wait_substate(microtcp_soc
 {
         /* TODO: PLACEHOLDER: Send any data left, for graceful closure. */
 
-        _socket->seq_number = _context->socket_shutdown_isn;
         _context->send_finack_ret_val = send_finack_control_segment(_socket, _address, _address_len);
         switch (_context->send_finack_ret_val)
         {
@@ -82,7 +79,6 @@ static shutdown_passive_fsm_substates_t execute_close_wait_substate(microtcp_soc
         case SEND_SEGMENT_ERROR:
                 return FINACK_RECEIVED_SUBSTATE;
         default:
-                _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
                 update_socket_sent_counters(_socket, _context->send_finack_ret_val);
                 return LAST_ACK_SUBSTATE;
         }
@@ -91,7 +87,8 @@ static shutdown_passive_fsm_substates_t execute_close_wait_substate(microtcp_soc
 static shutdown_passive_fsm_substates_t execute_last_ack_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                   socklen_t _address_len, fsm_context_t *_context)
 {
-        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
+        const uint32_t required_ack_number = _socket->seq_number + FIN_SEQ_NUMBER_INCREMENT;
+        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len, required_ack_number);
         switch (_context->recv_ack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:
@@ -128,13 +125,12 @@ static shutdown_passive_fsm_substates_t execute_closed_1_substate(microtcp_sock_
 
 int microtcp_shutdown_passive_fsm(microtcp_sock_t *const _socket, struct sockaddr *_address, socklen_t _address_len)
 {
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, CLOSING_BY_PEER);                  /* Validate socket state. */
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, CLOSING_BY_PEER);              /* Validate socket state. */
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address);                                     /* Validate address structure. */
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address_len, sizeof(*_address)); /* Validate address length. */
 
         /* Initialize FSM's context. */
-        fsm_context_t context = {.socket_shutdown_isn = _socket->seq_number,
-                                 .last_ack_wait_time_timer = get_shutdown_time_wait_period(),
+        fsm_context_t context = {.last_ack_wait_time_timer = get_shutdown_time_wait_period(),
                                  .recvfrom_timeout = get_socket_recvfrom_timeout(_socket),
                                  .errno = NO_ERROR};
 

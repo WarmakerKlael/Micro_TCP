@@ -1,18 +1,17 @@
-#include <stddef.h>                       // for size_t
-#include <sys/socket.h>                   // for socklen_t, sockaddr
-#include <sys/types.h>                    // for ssize_t
-#include "core/segment_io.h"              // for SEND_SEGMENT_ERROR, SEND_SE...
-#include "core/socket_stats_updater.h"    // for update_socket_received_coun...
-#include "fsm/microtcp_fsm.h"             // for microtcp_connect_fsm
-#include "fsm_common.h"                   // for SENT_SYN_SEQUENCE_NUMBER_IN...
-#include "logging/microtcp_fsm_logger.h"  // for LOG_FSM_CONNECT
-#include "logging/microtcp_logger.h"      // for LOG_ERROR, LOG_INFO
-#include "microtcp.h"                     // for microtcp_sock_t, CLOSED
-#include "microtcp_core_macros.h"         // for RETURN_ERROR_IF_MICROTCP_SO...
-#include "microtcp_defines.h"             // for MICROTCP_CONNECT_FAILURE
-#include "microtcp_helper_macros.h"       // for STRINGIFY
-#include "settings/microtcp_settings.h"   // for get_connect_rst_retries
-
+#include <stddef.h>                      // for size_t
+#include <sys/socket.h>                  // for socklen_t, sockaddr
+#include <sys/types.h>                   // for ssize_t
+#include "core/segment_io.h"             // for SEND_SEGMENT_ERROR, SEND_SE...
+#include "core/socket_stats_updater.h"   // for update_socket_received_coun...
+#include "fsm/microtcp_fsm.h"            // for microtcp_connect_fsm
+#include "fsm_common.h"                  // for SENT_SYN_SEQUENCE_NUMBER_IN...
+#include "logging/microtcp_fsm_logger.h" // for LOG_FSM_CONNECT
+#include "logging/microtcp_logger.h"     // for LOG_ERROR, LOG_INFO
+#include "microtcp.h"                    // for microtcp_sock_t, CLOSED
+#include "microtcp_core_macros.h"        // for RETURN_ERROR_IF_MICROTCP_SO...
+#include "microtcp_defines.h"            // for MICROTCP_CONNECT_FAILURE
+#include "microtcp_helper_macros.h"      // for STRINGIFY
+#include "settings/microtcp_settings.h"  // for get_connect_rst_retries
 
 typedef enum
 {
@@ -37,10 +36,6 @@ typedef struct
         ssize_t recv_synack_ret_val;
         ssize_t send_ack_ret_val;
 
-        /* By adding the socket's initial sequence number in the
-         * FSM's context, we avoid having to do errorneous
-         * subtractions, like seq_number -= 1, in order to match ISN. */
-        size_t socket_init_seq_num;
         ssize_t rst_retries_counter;
         connect_fsm_errno_t errno;
 
@@ -54,9 +49,6 @@ static inline connect_fsm_substates_t handle_fatal_error(fsm_context_t *_context
 static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                        socklen_t _address_len, fsm_context_t *_context)
 {
-        /* When ever we start, we reset socket's sequence number, as it might be a retry. */
-        _socket->seq_number = _context->socket_init_seq_num;
-
         _context->send_syn_ret_val = send_syn_control_segment(_socket, _address, _address_len);
         switch (_context->send_syn_ret_val)
         {
@@ -67,7 +59,6 @@ static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket,
                 return CLOSED_SUBSTATE;
 
         default:
-                _socket->seq_number += SENT_SYN_SEQUENCE_NUMBER_INCREMENT;
                 update_socket_sent_counters(_socket, _context->send_syn_ret_val);
                 return SYN_SENT_SUBSTATE;
         }
@@ -76,7 +67,8 @@ static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket,
 static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
-        _context->recv_synack_ret_val = receive_synack_control_segment(_socket, (struct sockaddr *)_address, _address_len);
+        const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
+        _context->recv_synack_ret_val = receive_synack_control_segment(_socket, (struct sockaddr *)_address, _address_len, required_ack_number);
         switch (_context->recv_synack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:
@@ -100,6 +92,7 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                 return CLOSED_SUBSTATE;
 
         default:
+                _socket->seq_number = required_ack_number;
                 update_socket_received_counters(_socket, _context->recv_synack_ret_val);
                 return SYNACK_RECEIVED_SUBSTATE;
         }
@@ -138,8 +131,7 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        fsm_context_t context = {.socket_init_seq_num = _socket->seq_number,
-                                 .rst_retries_counter = get_connect_rst_retries(),
+        fsm_context_t context = {.rst_retries_counter = get_connect_rst_retries(),
                                  .errno = NO_ERROR};
 
         connect_fsm_substates_t current_substate = CLOSED_SUBSTATE;

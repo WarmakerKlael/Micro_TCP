@@ -50,7 +50,6 @@ typedef struct
         ssize_t recv_finack_ret_val;
         ssize_t send_ack_ret_val;
 
-        size_t socket_shutdown_isn;
         ssize_t finack_retries_counter;
         struct timeval finack_wait_time_timer;
         struct timeval recvfrom_timeout;
@@ -65,7 +64,6 @@ static void log_errno_status(shutdown_active_fsm_errno_t _errno);
 static shutdown_active_fsm_substates_t execute_connection_established_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                                socklen_t _address_len, fsm_context_t *_context)
 {
-        _socket->seq_number = _context->socket_shutdown_isn;
         _context->send_finack_ret_val = send_finack_control_segment(_socket, _address, _address_len);
         switch (_context->send_finack_ret_val)
         {
@@ -76,7 +74,6 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
                 return CONNECTION_ESTABLISHED_SUBSTATE;
 
         default:
-                _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
                 update_socket_sent_counters(_socket, _context->send_finack_ret_val);
                 return FIN_WAIT_1_SUBSTATE;
         }
@@ -84,7 +81,7 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
 
 /**
  * @brief Purpose of macro is to remove boiler-plate code from
- * function fsm's substate functions. 
+ * function fsm's substate functions.
  */
 #define RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context)                                         \
         do                                                                                                         \
@@ -100,7 +97,8 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
 static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                    socklen_t _address_len, fsm_context_t *_context)
 {
-        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
+        const uint32_t required_ack_number = _socket->seq_number + FIN_SEQ_NUMBER_INCREMENT;
+        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len, required_ack_number);
         switch (_context->recv_ack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:
@@ -122,6 +120,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 return CLOSED_1_SUBSTATE;
 
         default:
+                _socket->seq_number = required_ack_number;
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return FIN_WAIT_2_RECV_SUBSTATE;
         }
@@ -129,7 +128,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
 
 /**
  * @brief Purpose of macro is to remove boiler-plate code from
- * function `execute_fin_double_substate`. 
+ * function `execute_fin_double_substate`.
  * @note Support only sending ack and finack.
  */
 #define TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, _cntrl_type)                                                                                                                                                       \
@@ -139,7 +138,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                     (sizeof(#_cntrl_type) == sizeof("ack") && #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') ||                                                                                    \
                         (sizeof(#_cntrl_type) == sizeof("finack") && #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' && #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'), \
                     "Invalid _cntrl_type: must be 'ack' or 'finack'");                                                                                                                                                                                     \
-                                                                                                                                                                                                                                                        \
+                                                                                                                                                                                                                                                           \
                 (_context)->send_##_cntrl_type##_ret_val = send_##_cntrl_type##_control_segment((_socket), (_address), (_address_len));                                                                                                                    \
                                                                                                                                                                                                                                                            \
                 if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_FATAL_ERROR)                                                                                                                                                                  \
@@ -158,8 +157,9 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
         _socket->peer_win_size = _socket->segment_build_buffer->header.window;
 
         TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, ack);
+        const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
 
-        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len);
+        _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len, required_ack_number);
         switch (_context->recv_ack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:
@@ -172,16 +172,15 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
-                _socket->seq_number = _context->socket_shutdown_isn;
                 RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context);
                 TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, finack);
-                _socket->seq_number += SENT_FIN_SEQUENCE_NUMBER_INCREMENT;
                 return FIN_DOUBLE_SUBSTATE;
         case RECV_SEGMENT_RST_BIT:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 _context->errno = RST_EXPECTED_ACK;
                 return CLOSED_1_SUBSTATE;
         default: /* Received ACK for our FIN|ACK. */
+                _socket->seq_number = required_ack_number;
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return TIME_WAIT_SUBSTATE;
         }
@@ -193,7 +192,7 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
 static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                         socklen_t _address_len, fsm_context_t *_context)
 {
-        _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
+        _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len, _socket->seq_number);
         switch (_context->recv_finack_ret_val)
         {
         case RECV_SEGMENT_FATAL_ERROR:
@@ -249,7 +248,7 @@ static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_
 
         while (elapsed_time_us(starting_time) < timewait_period_us)
         {
-                _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len);
+                _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len, _socket->seq_number);
                 switch (_context->recv_finack_ret_val)
                 {
                 case RECV_SEGMENT_FATAL_ERROR:
@@ -292,8 +291,7 @@ int microtcp_shutdown_active_fsm(microtcp_sock_t *const _socket, struct sockaddr
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_SHUTDOWN_FAILURE, _address_len, sizeof(*_address)); /* Validate address length. */
 
         /* Initialize FSM's context. */
-        fsm_context_t context = {.socket_shutdown_isn = _socket->seq_number,
-                                 .finack_retries_counter = get_shutdown_finack_retries(),
+        fsm_context_t context = {.finack_retries_counter = get_shutdown_finack_retries(),
                                  .finack_wait_time_timer = get_shutdown_time_wait_period(),
                                  .recvfrom_timeout = get_socket_recvfrom_timeout(_socket),
                                  .errno = NO_ERROR};
