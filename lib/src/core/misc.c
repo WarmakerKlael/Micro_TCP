@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "core/resource_allocation.h"
+#include "core/send_queue.h"
 #include "logging/microtcp_logger.h"
 #include "microtcp.h"
 #include "microtcp_core_macros.h"
@@ -87,6 +88,7 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .bytes_lost = 0,
             .segment_build_buffer = NULL,
             .bytestream_build_buffer = NULL,
+            .send_queue = NULL,
             .bytestream_receive_buffer = NULL,
             .peer_address = NULL};
         return new_socket;

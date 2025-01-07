@@ -105,7 +105,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 return handle_fatal_error(_context);
 
         /* Actions on the following two cases are the same. */
-        case RECV_SEGMENT_UNEXPECTED_FINACK:
+        case RECV_SEGMENT_FINACK_UNEXPECTED:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return FIN_DOUBLE_SUBSTATE;
         case RECV_SEGMENT_ERROR:
@@ -114,7 +114,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context);
                 return CONNECTION_ESTABLISHED_SUBSTATE;
 
-        case RECV_SEGMENT_RST_BIT:
+        case RECV_SEGMENT_RST_RECEIVED:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 _context->errno = RST_EXPECTED_ACK;
                 return CLOSED_1_SUBSTATE;
@@ -165,7 +165,7 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
 
-        case RECV_SEGMENT_UNEXPECTED_FINACK:
+        case RECV_SEGMENT_FINACK_UNEXPECTED:
                 update_socket_lost_counters(_socket, _context->send_ack_ret_val);
                 TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, ack);
                 return FIN_DOUBLE_SUBSTATE;
@@ -175,7 +175,7 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
                 RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context);
                 TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, finack);
                 return FIN_DOUBLE_SUBSTATE;
-        case RECV_SEGMENT_RST_BIT:
+        case RECV_SEGMENT_RST_RECEIVED:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 _context->errno = RST_EXPECTED_ACK;
                 return CLOSED_1_SUBSTATE;
@@ -210,7 +210,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp
                 _context->errno = PEER_FIN_TIMEOUT;
                 return CLOSED_1_SUBSTATE;
 
-        case RECV_SEGMENT_RST_BIT:
+        case RECV_SEGMENT_RST_RECEIVED:
                 update_socket_received_counters(_socket, _context->recv_finack_ret_val);
                 _context->errno = RST_EXPECTED_FINACK;
                 return CLOSED_1_SUBSTATE;
@@ -254,7 +254,7 @@ static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_
                 case RECV_SEGMENT_FATAL_ERROR:
                         return handle_fatal_error(_context);
 
-                case RECV_SEGMENT_RST_BIT:
+                case RECV_SEGMENT_RST_RECEIVED:
                         update_socket_received_counters(_socket, _context->recv_finack_ret_val);
                         _context->errno = RST_EXPECTED_TIMEOUT;
                         return CLOSED_1_SUBSTATE;

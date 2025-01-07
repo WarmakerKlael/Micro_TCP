@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     {
         int sleep_time_us = getRandomNumber();
         printf("Gonna Sleep for: %d\n", sleep_time_us);
-        usleep(sleep_time_us);
+        // usleep(sleep_time_us);
         send_ack_control_segment(&tcpsocket, tcpsocket.peer_address, sizeof(*tcpsocket.peer_address));
     }
     // const char* rmsg = "Message received";

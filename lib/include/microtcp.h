@@ -10,6 +10,7 @@
 #include "microtcp_helper_macros.h"
 
 typedef struct microtcp_segment microtcp_segment_t;
+typedef struct send_queue send_queue_t;
 
 /**
  * microTCP header structure
@@ -27,6 +28,7 @@ typedef struct
         uint32_t future_use2; /**< 32-bits for future use */
         uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
+#define MICROTCP_HEADER_SIZE sizeof(microtcp_header_t)
 
 /*
  * Several useful constants
@@ -40,11 +42,6 @@ typedef struct
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
 
 _Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_LEN) " must be a power of 2 number");
-
-#define ACK_BIT (1 << 12)
-#define RST_BIT (1 << 13)
-#define SYN_BIT (1 << 14)
-#define FIN_BIT (1 << 15)
 
 /**
  * Possible states of the microTCP socket
@@ -70,11 +67,11 @@ typedef enum
  */
 typedef struct
 {
-        int sd;                 /* The underline UDP socket descriptor. */
-        mircotcp_state_t state; /* The state of the microTCP socket. */
-        size_t init_win_size;   /* The window size advertised at the 3-way handshake. */
-        size_t curr_win_size;   /* The current window size. */
-        size_t peer_win_size;
+        int sd;                       /* The underline UDP socket descriptor. */
+        mircotcp_state_t state;       /* The state of the microTCP socket. */
+        const size_t init_win_size;   /* The window size advertised at the 3-way handshake. */
+        _Atomic size_t curr_win_size; /* The current window size. */
+        _Atomic size_t peer_win_size;
 
         receive_ring_buffer_t *bytestream_rrb; /* a.k.a `recvbuf`, used to store and reassmble bytes of incoming packets. */
 
@@ -82,13 +79,13 @@ typedef struct
         size_t ssthresh;
 
         uint32_t seq_number;         /* Keep the state of the sequence number. */
-        uint32_t ack_number;         /* Keep the state of the ack number. */
-        uint64_t packets_sent;     /* Packets that were sent from socket. */
-        uint64_t packets_lost;     /* Packets that were sent from socket, but (probably) lost.*/
-        uint64_t packets_received; /* Packets that were received from socket.  */
-        uint64_t bytes_sent;       /* Bytes that were sent from socket. */
-        uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
-        uint64_t bytes_received;   /* Bytes that were received from socket. */
+        _Atomic uint32_t ack_number; /* Keep the state of the ack number. */
+        uint64_t packets_sent;       /* Packets that were sent from socket. */
+        uint64_t packets_lost;       /* Packets that were sent from socket, but (probably) lost.*/
+        uint64_t packets_received;   /* Packets that were received from socket.  */
+        uint64_t bytes_sent;         /* Bytes that were sent from socket. */
+        uint64_t bytes_lost;         /* Bytes that were sent from socket, but (probably) lost. */
+        uint64_t bytes_received;     /* Bytes that were received from socket. */
 
         /* Instead of allocating buffers all the time, constructing and receiving
          * MicroTCP segments, we allocate 3 buffers that do all immediate receiving
@@ -100,6 +97,9 @@ typedef struct
          */
         microtcp_segment_t *segment_build_buffer;
         void *bytestream_build_buffer;
+        send_queue_t *send_queue;
+
+        /* During data transfering only receiver thread has access. */
         microtcp_segment_t *segment_receive_buffer;
         void *bytestream_receive_buffer;
 

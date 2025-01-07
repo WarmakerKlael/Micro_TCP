@@ -1,11 +1,10 @@
 add_library(microtcp_core STATIC
         misc.c
         resource_allocation.c
-        segment_io_control.c
-        segment_io_data.c
+        segment_io.c
         segment_processing.c
         socket_stats_updater.c
-        # receiver_thread.c
+        receiver_thread.c
         receive_ring_buffer.c
         send_queue.c
 )

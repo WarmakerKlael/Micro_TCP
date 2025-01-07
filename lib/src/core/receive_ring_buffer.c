@@ -12,6 +12,13 @@
 #include "microtcp_defines.h"
 #include "core/segment_processing.h"
 
+#define MUTEX_UNLOCK_AND_RETURN(_return_value, _mutex_ptr) \
+        do                                                 \
+        {                                                  \
+                pthread_mutex_unlock((_mutex_ptr));        \
+                return (_return_value);                    \
+        } while (0)
+
 typedef struct rrb_block rrb_block_t;
 struct rrb_block
 {
@@ -70,7 +77,6 @@ status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 #define RRB (*_rrb_address)
         if (RRB == NULL)
                 return SUCCESS;
-
         if (pthread_mutex_destroy(&RRB->access_mutex) == EBUSY)
                 return FAILURE;
 
@@ -93,12 +99,14 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
         pthread_mutex_lock(&_rrb->access_mutex);
         if (!is_in_bounds(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number))
                 LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
-                                 _rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
+                                   _rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
 
         const uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
-        const uint32_t bytes_to_copy = MIN(available_space, _segment->header.data_len);
+        const uint32_t data_len = _segment->header.data_len;
+        DEBUG_SMART_ASSERT(data_len <= available_space); /* SHOULD NOT receive packet, that doesnt fit.. sender should respect my receive_window */
+        const uint32_t bytes_to_copy = data_len * (data_len <= available_space);
         if (bytes_to_copy == 0)
-                return 0;
+                MUTEX_UNLOCK_AND_RETURN(0, &_rrb->access_mutex);
 
         if (_rrb->last_consumed_seq_number + _rrb->consumable_bytes + 1 == _segment->header.seq_number)
                 _rrb->consumable_bytes += bytes_to_copy;
@@ -115,8 +123,7 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
         memcpy(_rrb->buffer + begin_pos, _segment->raw_payload_bytes, bytes_on_right_side);
         /* Write on Left-Side of RRB (if wrap-around occurs): */
         memcpy(_rrb->buffer, _segment->raw_payload_bytes + bytes_on_right_side, bytes_on_left_size);
-        pthread_mutex_unlock(&_rrb->access_mutex);
-        return bytes_to_copy;
+        MUTEX_UNLOCK_AND_RETURN(bytes_to_copy, &_rrb->access_mutex);
 }
 
 uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const uint32_t _buffer_size)
@@ -143,8 +150,9 @@ uint32_t rrb_size(const receive_ring_buffer_t *const _rrb)
 uint32_t rrb_consumable_bytes(receive_ring_buffer_t *const _rrb)
 {
         pthread_mutex_lock(&_rrb->access_mutex);
-        return _rrb->consumable_bytes;
+        const uint32_t consumable_bytes = _rrb->consumable_bytes;
         pthread_mutex_unlock(&_rrb->access_mutex);
+        return consumable_bytes;
 }
 
 static void rrb_block_list_destroy(rrb_block_t **const _head_address)

@@ -12,6 +12,7 @@ typedef enum
 {
         RECEIVE_SUBSTATE, /* Start state. */
         RECEIVED_FINACK_SUBSTATE,
+        RECEIVED_RST_SUBSTATE,
         TIMEOUT_OCCURED_SUBSTATE,
         EXIT_SUCCESS_SUBSTATE,
 
@@ -37,7 +38,7 @@ static const char *convert_state_to_string(receive_internal_states _state)
 }
 // clang-format on
 
-static receive_internal_states execute_receive_substate(microtcp_sock_t *_socket, void *_input_buffer, size_t _input_buffer_length, fsm_context_t *_context)
+static void fill_rrb(microtcp_sock_t *_socket)
 {
 #ifdef DEBUG_MODE
         SMART_ASSERT(_context != NULL);
@@ -83,52 +84,44 @@ static receive_internal_states execute_receive_substate(microtcp_sock_t *_socket
         }
 }
 
-ssize_t receive_fsm(microtcp_sock_t *const _socket, void *_input_buffer, size_t _input_buffer_length)
+ssize_t till_timeout(microtcp_sock_t *const _socket, void *_buffer, const size_t _length)
 {
-#ifdef DEBUG_MODE
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket, ESTABLISHED);
-        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_SHUTDOWN_FAILURE, _socket->peer_address);
-#endif /* DEBUG_MODE */
-
-        /* Passing function arguments to FSM's 'context'
-         * this reduces function's stack frame size, making
-         * function calls faster. */
-        fsm_context_t context = {.loaded_bytes = 0};
-
-        receive_internal_states current_state = RECEIVE_SUBSTATE;
-        while (TRUE)
+        size_t remaining_bytes = _length;
+        while (remaining_bytes != 0)
         {
-                switch (current_state)
-                {
-                case RECEIVE_SUBSTATE:
-                        current_state = execute_receive_substate(_socket, _input_buffer, _input_buffer_length, &context);
-                        break;
-                }
         }
 }
 
-ssize_t load_assembly_buffer(microtcp_sock_t *_socket)
+void *microtcp_receiver_thread(void *_args)
 {
+        microtcp_sock_t *_socket = ((struct microtcp_receiver_thread_args *)_args)->_socket;
 #ifdef DEBUG_MODE
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_RECV_FAILURE, _socket, ESTABLISHED);
-        RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_RECV_FAILURE, _socket->peer_address);
+        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ESTABLISHED);
 #endif /* DEBUG_MODE */
 
-        ssize_t loaded_bytes = 0;
+        set_socket_recvfrom_to_block(_socket);
+        const uint32_t rrb_size = get_bytestream_rrb_size();
+
         while (TRUE)
         {
-                if (_socket->buf_fill_level == get_bytestream_assembly_buffer_len())
-                        return loaded_bytes;
-
                 ssize_t recv_data_ret_val = receive_data_segment(_socket);
                 if (recv_data_ret_val == RECV_SEGMENT_ERROR)
                         continue; /* Faulty segment, discard it. */
-                if (recv_data_ret_val == RECV_SEGMENT_TIMEOUT)
-                        return MICROTCP_RECV_TIMEOUT;
                 if (recv_data_ret_val == RECV_SEGMENT_FATAL_ERROR)
-                        LOG_ERROR_RETURN(MICROTCP_RECV_FAILURE, "Fatal-Error occured while loading the assembly-buffer.");
+                        LOG_ERROR_RETURN((void *)RECEIVER_FATAL_ERROR, "Fatal-Error occured while loading the assembly-buffer.");
 
-                if (_socket->segment_receive_buffer->header.control == (FIN_BIT | ACK_BIT))
-                        return MICROTCP_RECV_SHUTDOWN;
+                const microtcp_header_t new_header = _socket->segment_build_buffer->header;
+
+                if (new_header.control == (FIN_BIT | ACK_BIT))
+                        return (void *)RECEIVER_FINACK_RECEIVED;
+                if (new_header.control & RST_BIT)
+                        return (void *)RECEIVER_RST_RECEIVED;
+
+                /* Handles out-of-order, out-of-bounds (old and far ahead). */
+                uint32_t appended_bytes = rrb_append(_socket->bytestream_rrb, _socket->segment_receive_buffer);
+                _socket->curr_win_size -= appended_bytes;
+                _socket->ack_number += appended_bytes;
+                // send_ack_control_segment(_socket, )
         }
 }
+

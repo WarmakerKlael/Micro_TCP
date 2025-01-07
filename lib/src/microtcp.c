@@ -159,43 +159,17 @@ ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _len
 
 ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_length, int _flags)
 {
-        // struct microtcp_receiver_thread_args args = {._socket = _socket};
-
-        // pthread_t rtid;
-        // pthread_create(&rtid, NULL, &microtcp_receiver_thread, &args);
-        /* Validate input parameters. */
-        // SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
-        // RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
-
-        // struct sockaddr *address = _socket->peer_address;
-        // socklen_t address_len = sizeof(*(_socket->peer_address));
-        /* Validate input parameters. */
         SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
 
         struct sockaddr *address = _socket->peer_address;
         socklen_t address_len = sizeof(*(_socket->peer_address));
+        
         while (TRUE)
         {
-#define NO_RECVFROM_FLAGS 0
-                ssize_t ret_val = recvfrom(_socket->sd, _buffer, _buffer_length, NO_RECVFROM_FLAGS, address, &address_len);
-                if (ret_val == -1)
-                {
-                        printf("microtcp_recv hears nothing...\n");
-                        continue;
-                }
 
-                if (ret_val == sizeof(microtcp_header_t) && ((microtcp_header_t *)_buffer)->control == (FIN_BIT | ACK_BIT))
-                {
-                        printf("???r\n");
-                        _socket->state = CLOSING_BY_PEER;
-                        return MICROTCP_RECV_SHUTDOWN;
-                }
-                else
-                        printf("RECV: RETVAL == %zd\n", ret_val);
         }
 
-        return 0;
         return 0;
 }
 

@@ -3,6 +3,13 @@
 
 #define PROJECT_NAME "μTCP"
 
+#define ACK_BIT (1 << 12)
+#define RST_BIT (1 << 13)
+#define SYN_BIT (1 << 14)
+#define FIN_BIT (1 << 15)
+
+#define DATA_SEGMENT_CONTROL_FLAGS ACK_BIT
+
 #define TRUE 1
 #define FALSE 0
 

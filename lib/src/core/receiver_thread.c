@@ -12,87 +12,69 @@
 #include "microtcp_core_macros.h"
 #include "microtcp_defines.h"
 #include "microtcp_helper_macros.h"
-#include "segment_io_internal.h"
 #include "settings/microtcp_settings.h"
 #include "smart_assert.h"
+#include "stdatomic.h"
+#include "core/send_queue.h"
 
-/* TODO: Check the validity of the is_ functions... */
-// static inline _Bool is_old_packet(uint32_t _seq_number, uint32_t _ack_number, uint32_t _remaining_space);
-// static inline _Bool is_segment_within_window(uint32_t _seq_number, uint32_t _ack_number);
-static inline ssize_t receive_data_segment(microtcp_sock_t *const _socket);
+static __always_inline void handle_seq_number_increment(microtcp_sock_t *_socket, uint32_t _received_ack_number, size_t _acked_segments);
 
-#define RECEIVER_FATAL_ERROR -1
-#define RECEIVER_FINACK_RECEIVED 0
-#define RECEIVER_RST_RECEIVED 0
-
-#define SEQ_NUM_WRAP_THRESHOLD INT32_MAX
-
-void *microtcp_receiver_thread(void *_args)
+void *receiver_thread(void *_data)
 {
-        microtcp_sock_t *_socket = ((struct microtcp_receiver_thread_args *)_args)->_socket;
-#ifdef DEBUG_MODE
+        receiver_data_t *data = (receiver_data_t *)_data;
+        microtcp_sock_t *_socket = data->_socket;
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ESTABLISHED);
-#endif /* DEBUG_MODE */
-
-        set_socket_recvfrom_to_block(_socket);
         const uint32_t rrb_size = get_bytestream_rrb_size();
 
         while (TRUE)
         {
-                ssize_t recv_data_ret_val = receive_data_segment(_socket);
-                if (recv_data_ret_val == RECV_SEGMENT_ERROR)
-                        continue; /* Faulty segment, discard it. */
-                if (recv_data_ret_val == RECV_SEGMENT_FATAL_ERROR)
-                        LOG_ERROR_RETURN((void *)RECEIVER_FATAL_ERROR, "Fatal-Error occured while loading the assembly-buffer.");
-
-                const microtcp_header_t new_header = _socket->segment_build_buffer->header;
-
-                if (new_header.control == (FIN_BIT | ACK_BIT))
-                        return (void *)RECEIVER_FINACK_RECEIVED;
-                if (new_header.control & RST_BIT)
-                        return (void *)RECEIVER_RST_RECEIVED;
+                ssize_t receive_data_ret_val = receive_rt_segment(_socket, TRUE);
+                switch (receive_data_ret_val)
+                {
+                case RECV_SEGMENT_ERROR:
+                        break; /* Faulty segment, ignore it. */
+                case RECV_SEGMENT_FATAL_ERROR:
+                        LOG_ERROR("Receiver thread encountered fatal-error while receiving data segment");
+                        data->return_code = FATAL_ERROR;
+                        break;
+                case RECV_SEGMENT_FINACK_UNEXPECTED:
+                        LOG_WARNING("Receiver thread received FIN|ACK");
+                        data->return_code = RECEIVED_FINACK;
+                        break;
+                case RECV_SEGMENT_RST_RECEIVED:
+                        LOG_WARNING("Receiver thread received RST");
+                        data->return_code = RECEIVED_RST;
+                        break;
+                case RECV_SEGMENT_TIMEOUT:
+                        LOG_WARNING("Receiver thread TIMEOUT"); /* TODO: REMOVE THIS, just for debugging purposes. */
+                        break;
+                default:
+                {
+                        /* TODO: Are synced? USE ATOMICS*/
+                        microtcp_segment_t *const segment = _socket->segment_receive_buffer;
+                        if (segment->header.data_len > 0) /* DATA_PACKET. */
+                        {
+                                uint32_t appended_bytes = rrb_append(_socket->bytestream_rrb, _socket->segment_receive_buffer);
+                                _socket->curr_win_size -= appended_bytes;
+                                _socket->ack_number += appended_bytes;
+                        }
+                        else /* data_len == 0*/
+                        {
+                                const uint32_t received_ack_number = _socket->segment_receive_buffer->header.ack_number;
+                                const size_t acked_segments = sq_dequeue(_socket->send_queue, received_ack_number);
+                                handle_seq_number_increment(_socket, received_ack_number, acked_segments);
+                        }
+                }
+                }
 
                 /* Handles out-of-order, out-of-bounds (old and far ahead). */
                 uint32_t appended_bytes = rrb_append(_socket->bytestream_rrb, _socket->segment_receive_buffer);
-                _socket->curr_win_size -= appended_bytes;
-                _socket->ack_number += appended_bytes;
-                send_ack_control_segment(_socket, )
+                // send_ack_control_segment(_socket, )
         }
 }
 
-/* Just receive a data segment, and pass it to the receive buffer... not your job to pass it to assembly. */
-static inline ssize_t receive_data_segment(microtcp_sock_t *const _socket)
+static __always_inline void handle_seq_number_increment(microtcp_sock_t *const _socket, const uint32_t _received_ack_number, const size_t _acked_segments)
 {
-#ifdef DEBUG_MODE
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, ESTABLISHED);
-        RETURN_ERROR_IF_SOCKADDR_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket->peer_address);
-#endif /* DEBUG_MODE */
-        struct sockaddr *peer_address = _socket->peer_address;
-        socklen_t peer_address_len = sizeof(*peer_address);
-        void *const bytestream_buffer = _socket->bytestream_receive_buffer;
-        const int flags = MSG_TRUNC;
-
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MTU, flags, peer_address, &peer_address_len);
-        if (recvfrom_ret_val == RECVFROM_SHUTDOWN)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned 0, which points a closed connection; but underlying protocol is UDP, so this should not happen.");
-        if (recvfrom_ret_val == RECVFROM_ERROR)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "recvfrom returned %d, errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
-
-        if (recvfrom_ret_val > MICROTCP_MTU)
-                LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "Received illegal segment; Segment's size = %d;  %s = %d .",
-                                 recvfrom_ret_val, STRINGIFY(MICROTCP_MTU), MICROTCP_MTU);
-
-        if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
-                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
-        extract_microtcp_segment(&(_socket->segment_receive_buffer), bytestream_buffer, recvfrom_ret_val);
-        microtcp_segment_t *data_segment = _socket->segment_receive_buffer;
-        if (data_segment == NULL)
-                LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Extracting data segment resulted to a NULL pointer.");
-
-#ifdef DEBUG_MODE
-        SMART_ASSERT(recvfrom_ret_val > 0);
-#endif /* DEBUG_MODE*/
-
-        LOG_INFO_RETURN(data_segment->header.data_len, "data segment received; seq_number = %lu, data_len = %lu",
-                        data_segment->header.seq_number, data_segment->header.data_len);
+        if (_acked_segments > 0) /* That means received_ack_number matched to a sent segment. */
+                _socket->seq_number = _received_ack_number;
 }

@@ -75,13 +75,13 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                 return handle_fatal_error(_context);
 
         /* Actions on the following three cases are the same. */
-        case RECV_SEGMENT_UNEXPECTED_FINACK:
+        case RECV_SEGMENT_FINACK_UNEXPECTED:
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
                 return CLOSED_SUBSTATE;
 
-        case RECV_SEGMENT_RST_BIT:
+        case RECV_SEGMENT_RST_RECEIVED:
                 update_socket_received_counters(_socket, _context->recv_synack_ret_val);
                 if (_context->rst_retries_counter == 0)
                 {

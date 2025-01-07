@@ -94,7 +94,7 @@ static shutdown_passive_fsm_substates_t execute_last_ack_substate(microtcp_sock_
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
 
-        case RECV_SEGMENT_UNEXPECTED_FINACK:
+        case RECV_SEGMENT_FINACK_UNEXPECTED:
                 return FINACK_RECEIVED_SUBSTATE;
 
         case RECV_SEGMENT_ERROR:
@@ -108,7 +108,7 @@ static shutdown_passive_fsm_substates_t execute_last_ack_substate(microtcp_sock_
                 _context->errno = LAST_ACK_TIMEOUT;
                 return CLOSED_1_SUBSTATE;
 
-        case RECV_SEGMENT_RST_BIT:
+        case RECV_SEGMENT_RST_RECEIVED:
                 _context->errno = RST_EXPECTED_ACK;
         default:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);

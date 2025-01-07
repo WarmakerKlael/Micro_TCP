@@ -69,8 +69,8 @@ void *serialize_microtcp_segment(microtcp_sock_t *const _socket, microtcp_segmen
 _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, const ssize_t _bytestream_length)
 {
         DEBUG_SMART_ASSERT(_bytestream_buffer != NULL);
-        if (RARE_CASE(_bytestream_length < (ssize_t)sizeof(microtcp_header_t) || _bytestream_length > MICROTCP_MSS))
-                return FALSE;
+        if (RARE_CASE(_bytestream_length < (ssize_t)sizeof(microtcp_header_t) || _bytestream_length > (ssize_t)MICROTCP_MTU))
+                LOG_ERROR_RETURN(FALSE, "Invalid bytestream due to `_bytestream_length` = %zd", _bytestream_length);
 
         uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 
@@ -85,12 +85,11 @@ _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, const ssize_t _byte
 void extract_microtcp_segment(microtcp_segment_t **_segment_buffer, void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
         const size_t header_size = sizeof(microtcp_header_t);
-#ifdef DEBUG_MODE
-        SMART_ASSERT(_segment_buffer != NULL);
-        SMART_ASSERT(*_segment_buffer != NULL,
-                     _bytestream_buffer != NULL,
-                     _bytestream_buffer_length >= header_size);
-#endif /* DEBUG_MODE */
+        DEBUG_SMART_ASSERT(_segment_buffer != NULL);
+        DEBUG_SMART_ASSERT(*_segment_buffer != NULL,
+                           _bytestream_buffer != NULL,
+                           _bytestream_buffer_length >= header_size,
+                           _bytestream_buffer_length <= MICROTCP_MTU);
 
         const size_t payload_size = _bytestream_buffer_length - header_size;
 

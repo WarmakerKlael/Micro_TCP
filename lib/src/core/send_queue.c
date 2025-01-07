@@ -5,6 +5,8 @@
 #include "microtcp_defines.h"
 #include "microtcp.h"
 #include "smart_assert.h"
+#include <pthread.h>
+#include <errno.h>
 
 struct send_queue
 {
@@ -12,6 +14,7 @@ struct send_queue
         send_queue_node_t *rear;
         size_t stored_segments;
         size_t stored_bytes;
+        pthread_mutex_t access_mutex; /* TODO? Will we go multithreading?  MULTITHREAD BABY MULTITHREAD.. (GEORGE 2025) */
 };
 
 send_queue_t *sq_create(void)
@@ -21,13 +24,20 @@ send_queue_t *sq_create(void)
         sq->rear = NULL;
         sq->stored_segments = 0;
         sq->stored_bytes = 0;
+        pthread_mutex_init(&sq->access_mutex, NULL);
         return sq;
 }
 
-void sq_destroy(send_queue_t **const _sq)
+status_t sq_destroy(send_queue_t **const _sq_address)
 {
-#define SQ (*_sq)
-        SMART_ASSERT(_sq != NULL);
+        SMART_ASSERT(_sq_address != NULL);
+
+#define SQ (*_sq_address)
+        if (SQ == NULL)
+                return SUCCESS;
+        if (pthread_mutex_destroy(&SQ->access_mutex) == EBUSY)
+                return FAILURE;
+
         send_queue_node_t *curr_node = SQ->front;
         if (SQ->front != NULL)
                 LOG_ERROR("For correct protocol function Send-Queue should be empty when passed to `%s`", __func__);
@@ -38,6 +48,7 @@ void sq_destroy(send_queue_t **const _sq)
                 curr_node = next;
         }
         FREE_NULLIFY_LOG(SQ);
+        return FAILURE;
 #undef SQ
 }
 
@@ -50,7 +61,7 @@ void sq_enqueue(send_queue_t *const _sq, const uint32_t _seq_number, const uint3
         new_node->segment_size = _segment_size;
         new_node->buffer = _buffer;
         new_node->next = NULL;
-
+        pthread_mutex_lock(&_sq->access_mutex);
         if (_sq->front == NULL)
 
                 _sq->front = _sq->rear = new_node;
@@ -58,6 +69,7 @@ void sq_enqueue(send_queue_t *const _sq, const uint32_t _seq_number, const uint3
                 _sq->rear = _sq->rear->next = new_node;
         _sq->stored_segments++;
         _sq->stored_bytes += _segment_size;
+        pthread_mutex_unlock(&_sq->access_mutex);
 }
 
 /**
@@ -68,9 +80,13 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
         DEBUG_SMART_ASSERT(_sq != NULL);
         DEBUG_SMART_ASSERT((_sq->front == NULL && _sq->rear == NULL) || (_sq->front != NULL && _sq->rear != NULL));
         size_t dequeued_node_counter = 0;
+        pthread_mutex_lock(&_sq->access_mutex);
 
         if (_sq->front == NULL)
+        {
+                pthread_mutex_unlock(&_sq->access_mutex);
                 LOG_ERROR_RETURN(dequeued_node_counter, "Send-Queue is empty, dequeuing impossible.");
+        }
 
         /* Find requested node */
         send_queue_node_t *curr_node = _sq->front;
@@ -79,7 +95,10 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
 
         /* Not FOUND! Hint that something went wrong with protocol. */
         if (curr_node == NULL)
+        {
+                pthread_mutex_unlock(&_sq->access_mutex);
                 LOG_ERROR_RETURN(dequeued_node_counter, "out-of-sync: No match for ACK number = %u", _ack_number);
+        }
 
         /* ACK number matched. */
         while (TRUE)
@@ -96,28 +115,42 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
                         break;
                 DEBUG_SMART_ASSERT(_sq->front != NULL); /* If in this while loop, means we found the node; If assert fails something went very wrong... */
         }
+        pthread_mutex_unlock(&_sq->access_mutex);
         return dequeued_node_counter;
 }
 
-size_t sq_stored_segments(const send_queue_t *const _sq)
+size_t sq_stored_segments(send_queue_t *const _sq)
 {
-        DEBUG_SMART_ASSERT(_sq);
-        return _sq->stored_segments;
+        DEBUG_SMART_ASSERT(_sq != NULL);
+        pthread_mutex_lock(&_sq->access_mutex);
+        const size_t stored_segments = _sq->stored_segments;
+        pthread_mutex_unlock(&_sq->access_mutex);
+        return stored_segments;
 }
 
-size_t sq_stored_bytes(const send_queue_t *const _sq)
+size_t sq_stored_bytes(send_queue_t *const _sq)
 {
-        DEBUG_SMART_ASSERT(_sq);
-        return _sq->stored_bytes;
+        DEBUG_SMART_ASSERT(_sq != NULL);
+        pthread_mutex_lock(&_sq->access_mutex);
+        const size_t store_bytes = _sq->stored_bytes;
+        pthread_mutex_unlock(&_sq->access_mutex);
+        return store_bytes;
 }
 
-_Bool sq_is_empty(const send_queue_t *const _sq)
+_Bool sq_is_empty(send_queue_t *const _sq)
 {
-        DEBUG_SMART_ASSERT(_sq);
-        return _sq->front == NULL;
+        DEBUG_SMART_ASSERT(_sq != NULL);
+        pthread_mutex_lock(&_sq->access_mutex);
+        const _Bool is_empty = _sq->front == NULL;
+        pthread_mutex_unlock(&_sq->access_mutex);
+        return is_empty;
 }
 
 send_queue_node_t *sq_front(send_queue_t *const _sq)
 {
-        return _sq->front;
+        DEBUG_SMART_ASSERT(_sq != NULL);
+        pthread_mutex_lock(&_sq->access_mutex);
+        send_queue_node_t *const front = _sq->front;
+        pthread_mutex_unlock(&_sq->access_mutex);
+        return front;
 }

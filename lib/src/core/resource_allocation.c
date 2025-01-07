@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include "allocator/allocator_macros.h"
 #include "core/segment_io.h"
+#include "core/send_queue.h"
 #include "core/misc.h"
 #include "core/segment_processing.h"
 #include "logging/microtcp_logger.h"
@@ -56,7 +57,8 @@ void deallocate_pre_handshake_buffers(microtcp_sock_t *_socket)
 status_t allocate_post_handshake_buffers(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
-        SMART_ASSERT(_socket->state == ESTABLISHED);
+        SMART_ASSERT(_socket->state == ESTABLISHED, _socket->send_queue == NULL, _socket->bytestream_rrb == NULL);
+        _socket->send_queue = sq_create();
         if ((_socket->bytestream_rrb = rrb_create(get_bytestream_rrb_size(), _socket->seq_number)) == NULL)
                 goto failure_cleanup;
         return SUCCESS;
@@ -69,7 +71,8 @@ failure_cleanup:
 status_t deallocate_post_handshake_buffers(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
-        return rrb_destroy(&_socket->bytestream_rrb);
+        return sq_destroy(&_socket->send_queue) &&
+               rrb_destroy(&_socket->bytestream_rrb);
 }
 
 void release_and_reset_connection_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state)

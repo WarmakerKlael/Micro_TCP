@@ -47,12 +47,12 @@ static accept_fsm_substates_t execute_listen_substate(microtcp_sock_t *_socket, 
                 return EXIT_FAILURE_SUBSTATE;
 
         /* Actions on the following 5 cases end up to same current substate. */
-        case RECV_SEGMENT_NOT_SYN_BIT:
+        case RECV_SEGMENT_SYN_EXPECTED:
                 send_rstack_control_segment(_socket, _address, _address_len);
         case RECV_SEGMENT_TIMEOUT:
         case RECV_SEGMENT_ERROR:
-        case RECV_SEGMENT_UNEXPECTED_FINACK:
-        case RECV_SEGMENT_RST_BIT: /* Some asshole sends you RST before connection, do you care? FUCK NO! */
+        case RECV_SEGMENT_FINACK_UNEXPECTED:
+        case RECV_SEGMENT_RST_RECEIVED: /* Some asshole sends you RST before connection, do you care? FUCK NO! */
                 /* If received SYN segment was corrupted, or for any other reason caused errors;
                  * We discard it. If client still wants to make a connection with the server
                  * it will resend a SYN packet after a timeout occurs on its side. */
@@ -94,7 +94,7 @@ static accept_fsm_substates_t execute_synack_sent_substate(microtcp_sock_t *_soc
 
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_ERROR:
-        case RECV_SEGMENT_UNEXPECTED_FINACK:
+        case RECV_SEGMENT_FINACK_UNEXPECTED:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_synack_ret_val);
                 if (_context->synack_retries_counter > 0)
@@ -106,7 +106,7 @@ static accept_fsm_substates_t execute_synack_sent_substate(microtcp_sock_t *_soc
                 _context->synack_retries_counter = get_accept_synack_retries(); /* Reset contex's counter. */
                 return LISTEN_SUBSTATE;
 
-        case RECV_SEGMENT_RST_BIT:
+        case RECV_SEGMENT_RST_RECEIVED:
                 update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 LOG_FSM_ACCEPT("Handshake failed, received RST");
                 return LISTEN_SUBSTATE;
