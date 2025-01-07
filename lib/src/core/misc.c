@@ -62,7 +62,7 @@ void generate_initial_sequence_number(microtcp_sock_t *_socket)
         uint32_t high = rand() & 0xFFFF;   /* Get only the 16 lower bits. */
         uint32_t low = rand() & 0xFFFF;    /* Get only the 16 lower bits. */
         uint32_t isn = (high << 16) | low; /* Combine 16-bit random of low and 16-bit random of high, to create a 32-bit random ISN. */
-        _socket->seq_number = isn;
+        _socket->seq_number = 0;
 
         LOG_INFO("ISN generated. %u", _socket->seq_number);
 }

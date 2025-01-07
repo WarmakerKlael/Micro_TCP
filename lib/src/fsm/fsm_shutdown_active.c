@@ -74,7 +74,6 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
                 return CONNECTION_ESTABLISHED_SUBSTATE;
 
         default:
-                update_socket_sent_counters(_socket, _context->send_finack_ret_val);
                 return FIN_WAIT_1_SUBSTATE;
         }
 }
@@ -106,7 +105,6 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
 
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_FINACK_UNEXPECTED:
-                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return FIN_DOUBLE_SUBSTATE;
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
@@ -115,13 +113,11 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 return CONNECTION_ESTABLISHED_SUBSTATE;
 
         case RECV_SEGMENT_RST_RECEIVED:
-                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 _context->errno = RST_EXPECTED_ACK;
                 return CLOSED_1_SUBSTATE;
 
         default:
                 _socket->seq_number = required_ack_number;
-                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return FIN_WAIT_2_RECV_SUBSTATE;
         }
 }
@@ -146,14 +142,14 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_ERROR)                                                                                                                                                                        \
                         return FIN_DOUBLE_SUBSTATE;                                                                                                                                                                                                        \
                                                                                                                                                                                                                                                            \
-                update_socket_sent_counters((_socket), (_context)->send_##_cntrl_type##_ret_val);                                                                                                                                                          \
         } while (0)
 
 static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                    socklen_t _address_len, fsm_context_t *_context)
 {
         _context->errno = DOUBLE_FIN;
-        _socket->ack_number = _socket->segment_receive_buffer->header.seq_number + 1;
+        /* TODO: check if FINACK is with correct seq and ACK. (if it is SYNCED). */
+        _socket->ack_number = _socket->segment_receive_buffer->header.seq_number + FIN_SEQ_NUMBER_INCREMENT;
         _socket->peer_win_size = _socket->segment_build_buffer->header.window;
 
         TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, ack);
@@ -176,12 +172,10 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
                 TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, finack);
                 return FIN_DOUBLE_SUBSTATE;
         case RECV_SEGMENT_RST_RECEIVED:
-                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 _context->errno = RST_EXPECTED_ACK;
                 return CLOSED_1_SUBSTATE;
         default: /* Received ACK for our FIN|ACK. */
                 _socket->seq_number = required_ack_number;
-                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return TIME_WAIT_SUBSTATE;
         }
 }
@@ -211,12 +205,11 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp
                 return CLOSED_1_SUBSTATE;
 
         case RECV_SEGMENT_RST_RECEIVED:
-                update_socket_received_counters(_socket, _context->recv_finack_ret_val);
                 _context->errno = RST_EXPECTED_FINACK;
                 return CLOSED_1_SUBSTATE;
 
         default:
-                update_socket_received_counters(_socket, _context->recv_finack_ret_val);
+                _socket->ack_number = _socket->segment_receive_buffer->header.seq_number + FIN_SEQ_NUMBER_INCREMENT;
                 return FIN_WAIT_2_SEND_SUBSTATE;
         }
 }
@@ -234,7 +227,6 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_send_substate(microtcp
                 return FIN_WAIT_2_SEND_SUBSTATE; /* Retry sending ACK. Peer re-sending FIN-ACK is acceptable until ACK succeeds. */
 
         default:
-                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
                 return TIME_WAIT_SUBSTATE;
         }
 }
@@ -255,7 +247,6 @@ static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_
                         return handle_fatal_error(_context);
 
                 case RECV_SEGMENT_RST_RECEIVED:
-                        update_socket_received_counters(_socket, _context->recv_finack_ret_val);
                         _context->errno = RST_EXPECTED_TIMEOUT;
                         return CLOSED_1_SUBSTATE;
 
@@ -265,12 +256,9 @@ static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_
 
                 default: /* Heard FIN|ACK */
                         update_socket_lost_counters(_socket, _context->send_ack_ret_val);
-                        update_socket_received_counters(_socket, _context->recv_finack_ret_val);
                         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
                         if (_context->send_ack_ret_val == SEND_SEGMENT_FATAL_ERROR)
                                 return handle_fatal_error(_context);
-                        if (_context->send_ack_ret_val != SEND_SEGMENT_ERROR)
-                                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
                         break;
                 }
         }

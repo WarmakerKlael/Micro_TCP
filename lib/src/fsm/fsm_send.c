@@ -244,6 +244,7 @@ int microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer,
         while (TRUE)
         {
                 LOG_FSM_SEND("Entering %s, sent_bytes = %zu", convert_substate_to_string(context.current_substate), _socket->bytes_sent);
+                printf("fsm_send(), seq_number == %u\n", _socket->seq_number);
                 switch (context.current_substate)
                 {
                 case SLOW_START_SUBSTATE:

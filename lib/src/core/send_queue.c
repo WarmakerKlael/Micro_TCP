@@ -44,7 +44,7 @@ status_t sq_destroy(send_queue_t **const _sq_address)
                 curr_node = next;
         }
         FREE_NULLIFY_LOG(SQ);
-        return FAILURE;
+        return SUCCESS;
 #undef SQ
 }
 
@@ -62,6 +62,7 @@ void sq_enqueue(send_queue_t *const _sq, const uint32_t _seq_number, const uint3
                 _sq->front = _sq->rear = new_node;
         else
                 _sq->rear = _sq->rear->next = new_node;
+        DEBUG_SMART_ASSERT(_sq->rear != NULL && _sq->rear->next == NULL);
         _sq->stored_segments++;
         _sq->stored_bytes += _segment_size;
 }
@@ -102,6 +103,8 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
                         break;
                 DEBUG_SMART_ASSERT(_sq->front != NULL); /* If in this while loop, means we found the node; If assert fails something went very wrong... */
         }
+        if (_sq->front == NULL)
+                _sq->rear = NULL;
         return dequeued_node_counter;
 }
 

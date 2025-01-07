@@ -19,6 +19,7 @@ const char *get_microtcp_state_to_string(mircotcp_state_t _state)
         switch ((int)_state)
         {
         /* Single States */
+        CASE_RETURN_STRING(RESET);
         CASE_RETURN_STRING(INVALID);
         CASE_RETURN_STRING(CLOSED);
         CASE_RETURN_STRING(LISTEN);

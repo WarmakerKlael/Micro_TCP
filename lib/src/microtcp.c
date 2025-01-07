@@ -82,6 +82,7 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         if (allocate_post_handshake_buffers(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
+        printf("Connect sent %zu bytes for succeful connection.\n", _socket->bytes_sent);
         LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
 
 connect_failure_cleanup:
@@ -109,6 +110,7 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
         if (allocate_post_handshake_buffers(_socket) == FAILURE)
                 goto accept_failure_cleanup;
 
+        printf("Accept sent %zu bytes for succeful connection.\n", _socket->bytes_sent);
         LOG_INFO_RETURN(MICROTCP_ACCEPT_SUCCESS, "Accept operation succeeded; Post handshake buffer allocated.");
 
 accept_failure_cleanup:
@@ -152,24 +154,19 @@ ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _len
         // TODO: CALL send_fsm();...
         microtcp_send_fsm(_socket, _buffer, _length);
 
-
-
         return 0;
 }
 
 ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_length, int _flags)
 {
+        printf("Entered recev\n");
         SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
 
         struct sockaddr *address = _socket->peer_address;
         socklen_t address_len = sizeof(*(_socket->peer_address));
-        
-        while (TRUE)
-        {
 
-        }
-
+        // till_timeout(_socket, _buffer, _buffer_length);
         return 0;
 }
 

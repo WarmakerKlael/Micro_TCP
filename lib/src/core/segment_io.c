@@ -120,11 +120,6 @@ static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, st
                 LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "ACK number mismatch occured. (Got = %d)|(Required = %d)",
                                  control_segment->header.ack_number, _socket->seq_number + 1);
 
-        if (RARE_CASE(_required_control & SYN_BIT)) /* It is RARE_CASE as it only happen in the beggining of the connection. */
-                _socket->ack_number = control_segment->header.seq_number + SYN_SEQ_NUMBER_INCREMENT;
-        else
-                _socket->ack_number = get_most_recent_ack(_socket->ack_number, control_segment->header.seq_number + 1);
-
         _socket->peer_win_size = control_segment->header.window;
         LOG_INFO_RETURN(receive_segment_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
 }
@@ -141,7 +136,7 @@ ssize_t receive_data_segment(microtcp_sock_t *const _socket, const _Bool _block)
 
         microtcp_segment_t *data_segment = _socket->segment_receive_buffer;
 
-        DEBUG_SMART_ASSERT(receive_segment_ret_val >= MICROTCP_HEADER_SIZE);
+        DEBUG_SMART_ASSERT(receive_segment_ret_val >= (ssize_t)MICROTCP_HEADER_SIZE);
 
         LOG_INFO_RETURN(data_segment->header.data_len, "data segment received; seq_number = %lu, data_len = %lu",
                         data_segment->header.seq_number, data_segment->header.data_len);
@@ -205,6 +200,7 @@ static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockad
                 LOG_ERROR_RETURN(RECV_SEGMENT_FATAL_ERROR, "Receiving segment failed; recvfrom() set errno(%d):%s.", recvfrom_ret_val, errno, strerror(errno));
         if (!is_valid_microtcp_bytestream(bytestream_buffer, recvfrom_ret_val))
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "Received microtcp bytestream is corrupted.");
+        update_socket_received_counters(_socket, recvfrom_ret_val);
         return recvfrom_ret_val;
 }
 

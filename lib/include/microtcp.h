@@ -51,12 +51,13 @@ _Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_L
  */
 typedef enum
 {
-        INVALID = (1 << 0),
-        CLOSED = (1 << 1), /* when there is no connection. Like when Creating the socket, or after ending a connection. */
-        LISTEN = (1 << 2),
-        ESTABLISHED = (1 << 3),
-        CLOSING_BY_PEER = (1 << 4),
-        CLOSING_BY_HOST = (1 << 5),
+        RESET = 0x00,
+        INVALID = 0x01,
+        CLOSED = 0x02, /* when there is no connection. Like when Creating the socket, or after ending a connection. */
+        LISTEN = 0x04,
+        ESTABLISHED = 0x08,
+        CLOSING_BY_PEER = 0x10,
+        CLOSING_BY_HOST = 0x20,
 } mircotcp_state_t;
 
 /**
@@ -67,10 +68,10 @@ typedef enum
  */
 typedef struct
 {
-        int sd;                       /* The underline UDP socket descriptor. */
-        mircotcp_state_t state;       /* The state of the microTCP socket. */
-        const size_t init_win_size;   /* The window size advertised at the 3-way handshake. */
-        size_t curr_win_size; /* The current window size. */
+        int sd;                     /* The underline UDP socket descriptor. */
+        mircotcp_state_t state;     /* The state of the microTCP socket. */
+        const size_t init_win_size; /* The window size advertised at the 3-way handshake. */
+        size_t curr_win_size;       /* The current window size. */
         size_t peer_win_size;
 
         receive_ring_buffer_t *bytestream_rrb; /* a.k.a `recvbuf`, used to store and reassmble bytes of incoming packets. */
@@ -78,14 +79,14 @@ typedef struct
         size_t cwnd;
         size_t ssthresh;
 
-        uint32_t seq_number;         /* Keep the state of the sequence number. */
-        uint32_t ack_number; /* Keep the state of the ack number. */
-        uint64_t packets_sent;       /* Packets that were sent from socket. */
-        uint64_t packets_lost;       /* Packets that were sent from socket, but (probably) lost.*/
-        uint64_t packets_received;   /* Packets that were received from socket.  */
-        uint64_t bytes_sent;         /* Bytes that were sent from socket. */
-        uint64_t bytes_lost;         /* Bytes that were sent from socket, but (probably) lost. */
-        uint64_t bytes_received;     /* Bytes that were received from socket. */
+        uint32_t seq_number;       /* Keep the state of the sequence number. */
+        uint32_t ack_number;       /* Keep the state of the ack number. */
+        uint64_t packets_sent;     /* Packets that were sent from socket. */
+        uint64_t packets_lost;     /* Packets that were sent from socket, but (probably) lost.*/
+        uint64_t packets_received; /* Packets that were received from socket.  */
+        uint64_t bytes_sent;       /* Bytes that were sent from socket. */
+        uint64_t bytes_lost;       /* Bytes that were sent from socket, but (probably) lost. */
+        uint64_t bytes_received;   /* Bytes that were received from socket. */
 
         /* Instead of allocating buffers all the time, constructing and receiving
          * MicroTCP segments, we allocate 3 buffers that do all immediate receiving
@@ -104,6 +105,7 @@ typedef struct
         void *bytestream_receive_buffer;
 
         struct sockaddr *peer_address;
+
 } microtcp_sock_t;
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);

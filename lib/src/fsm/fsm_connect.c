@@ -1,7 +1,8 @@
-#include <stddef.h>                      // for size_t
-#include <sys/socket.h>                  // for socklen_t, sockaddr
-#include <sys/types.h>                   // for ssize_t
-#include "core/segment_io.h"             // for SEND_SEGMENT_ERROR, SEND_SE...
+#include <stddef.h>          // for size_t
+#include <sys/socket.h>      // for socklen_t, sockaddr
+#include <sys/types.h>       // for ssize_t
+#include "core/segment_io.h" // for SEND_SEGMENT_ERROR, SEND_SE...
+#include "core/segment_processing.h"
 #include "core/socket_stats_updater.h"   // for update_socket_received_coun...
 #include "fsm/microtcp_fsm.h"            // for microtcp_connect_fsm
 #include "fsm_common.h"                  // for SENT_SYN_SEQUENCE_NUMBER_IN...
@@ -49,6 +50,9 @@ static inline connect_fsm_substates_t handle_fatal_error(fsm_context_t *_context
 static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                        socklen_t _address_len, fsm_context_t *_context)
 {
+
+        printf("CONNECT sending SYN with seq_number = %u\n", _socket->seq_number);
+        printf("CONNECT sending SYN with ack_number = %u\n", _socket->ack_number);
         _context->send_syn_ret_val = send_syn_control_segment(_socket, _address, _address_len);
         switch (_context->send_syn_ret_val)
         {
@@ -59,7 +63,6 @@ static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket,
                 return CLOSED_SUBSTATE;
 
         default:
-                update_socket_sent_counters(_socket, _context->send_syn_ret_val);
                 return SYN_SENT_SUBSTATE;
         }
 }
@@ -68,6 +71,8 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
         const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
+        printf("CONNECT receiving SYNACK with seq_number = %u\n", _socket->seq_number);
+        printf("CONNECT receiving SYNACK with ack_number = %u\n", _socket->ack_number);
         _context->recv_synack_ret_val = receive_synack_control_segment(_socket, (struct sockaddr *)_address, _address_len, required_ack_number);
         switch (_context->recv_synack_ret_val)
         {
@@ -82,7 +87,6 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                 return CLOSED_SUBSTATE;
 
         case RECV_SEGMENT_RST_RECEIVED:
-                update_socket_received_counters(_socket, _context->recv_synack_ret_val);
                 if (_context->rst_retries_counter == 0)
                 {
                         _context->errno = RST_RETRIES_EXHAUSTED;
@@ -93,7 +97,7 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
 
         default:
                 _socket->seq_number = required_ack_number;
-                update_socket_received_counters(_socket, _context->recv_synack_ret_val);
+                _socket->ack_number = _socket->segment_receive_buffer->header.seq_number + SYN_SEQ_NUMBER_INCREMENT;
                 return SYNACK_RECEIVED_SUBSTATE;
         }
 }
@@ -101,6 +105,8 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
 static connect_fsm_substates_t execute_synack_received_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                                 socklen_t _address_len, fsm_context_t *_context)
 {
+        printf("CONNECT sending ACK with seq_number = %u\n", _socket->seq_number);
+        printf("CONNECT sending ACK with ack_number = %u\n", _socket->ack_number);
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
         switch (_context->send_ack_ret_val)
         {
@@ -111,7 +117,6 @@ static connect_fsm_substates_t execute_synack_received_substate(microtcp_sock_t 
                 return SYNACK_RECEIVED_SUBSTATE;
 
         default:
-                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
                 return ACK_SENT_SUBSTATE;
         }
 }
@@ -154,6 +159,8 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
                         log_errno_status(context.errno);
+                        printf("CONNECT_SUCCESS_EXIT_SEQ_NUMBER = %u\n", _socket->seq_number);
+                        printf("CONNECT_SUCCESS_EXIT_ACK_NUMBER = %u\n", _socket->ack_number);
                         return MICROTCP_CONNECT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
                         log_errno_status(context.errno);

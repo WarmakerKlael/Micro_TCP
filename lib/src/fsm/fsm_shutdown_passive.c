@@ -61,7 +61,6 @@ static shutdown_passive_fsm_substates_t execute_finack_received_substate(microtc
         case SEND_SEGMENT_ERROR:
                 return FINACK_RECEIVED_SUBSTATE;
         default:
-                update_socket_sent_counters(_socket, _context->send_ack_ret_val);
                 return CLOSE_WAIT_SUBTATE;
         }
 }
@@ -79,7 +78,6 @@ static shutdown_passive_fsm_substates_t execute_close_wait_substate(microtcp_soc
         case SEND_SEGMENT_ERROR:
                 return FINACK_RECEIVED_SUBSTATE;
         default:
-                update_socket_sent_counters(_socket, _context->send_finack_ret_val);
                 return LAST_ACK_SUBSTATE;
         }
 }
@@ -111,7 +109,6 @@ static shutdown_passive_fsm_substates_t execute_last_ack_substate(microtcp_sock_
         case RECV_SEGMENT_RST_RECEIVED:
                 _context->errno = RST_EXPECTED_ACK;
         default:
-                update_socket_received_counters(_socket, _context->recv_ack_ret_val);
                 return CLOSED_1_SUBSTATE;
         }
 }

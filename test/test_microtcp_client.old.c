@@ -59,7 +59,7 @@ main(int argc, char **argv)
 
     printf("Attemting to connect...\n");
     microtcp_connect(&tcpsocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
-    printf("Connected\n");
+    printf("Client Connected\n");
 
     // char sbuff[1024];
     // char rbuff[1024];
@@ -73,9 +73,9 @@ main(int argc, char **argv)
     // } while (strcmp(sbuff, "exit\n") != 0);
 
 
-    char data12[100000];
+    char data12[]="732424hhhhhhhhhhggg234978379324893728749832748472";
 
-    microtcp_send(&tcpsocket, data12, 10000, 0);
+    microtcp_send(&tcpsocket, data12, 50, 0);
 
     printf("Closing connection...\n");
     microtcp_shutdown(&tcpsocket, SHUT_RDWR);

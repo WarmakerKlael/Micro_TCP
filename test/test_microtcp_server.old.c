@@ -80,15 +80,18 @@ int main(int argc, char **argv)
 
     printf("Waiting for connection request...\n");
     microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
-    printf("Connected\n");
-    tcpsocket.ack_number--;
-    while (TRUE)
-    {
-        int sleep_time_us = getRandomNumber();
-        printf("Gonna Sleep for: %d\n", sleep_time_us);
-        // usleep(sleep_time_us);
-        send_ack_control_segment(&tcpsocket, tcpsocket.peer_address, sizeof(*tcpsocket.peer_address));
-    }
+    printf("Server Connected\n");
+
+    char buff[100] = {0};
+    microtcp_recv(&tcpsocket, buff, 30, 0);
+    printf("BUFF == |%100s|", buff);
+    // while (TRUE)
+    // {
+        // int sleep_time_us = getRandomNumber();
+        // printf("Gonna Sleep for: %d\n", sleep_time_us);
+        // // usleep(sleep_time_us);
+        // send_ack_control_segment(&tcpsocket, tcpsocket.peer_address, sizeof(*tcpsocket.peer_address));
+    // }
     // const char* rmsg = "Message received";
 
     // char buff[1024] = {0};
@@ -108,6 +111,7 @@ int main(int argc, char **argv)
     // ssize_t bytes = microtcp_recv(&tcpsocket, ff, 2000, 0);
     // printf("recv finished, bytes read = %zd\n", bytes);
     // if (bytes == 0)
+    microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     // printf("ANOTHER HERE\n");
     return EXIT_SUCCESS;
 }

@@ -85,15 +85,15 @@ status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
  */
 uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t *const _segment)
 {
+        printf("RRB_CONTAINS %u bytes\n", rrb_size(_rrb));
         SMART_ASSERT(_rrb != NULL, _segment != NULL);
         if (RARE_CASE(!is_in_bounds(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number)))
                 LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
                                    _rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
-
         const uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
         const uint32_t data_len = _segment->header.data_len;
-        DEBUG_SMART_ASSERT(data_len <= available_space); /* SHOULD NOT receive packet, that doesnt fit.. sender should respect my receive_window */
-        const uint32_t bytes_to_copy = data_len * (data_len <= available_space);
+        DEBUG_SMART_ASSERT(data_len <= available_space);                         /* SHOULD NOT receive packet, that doesnt fit.. sender should respect my receive_window */
+        const uint32_t bytes_to_copy = data_len * (data_len <= available_space); /* Copy whole segment.. Or no segment at all. */
         if (bytes_to_copy == 0)
                 return 0;
 
@@ -119,6 +119,8 @@ uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const u
 {
         SMART_ASSERT(_rrb != NULL, _buffer != NULL, _buffer_size > 0);
         const uint32_t bytes_to_copy = MIN(_rrb->consumable_bytes, _buffer_size);
+        if (bytes_to_copy == 0)
+                return 0;
         const uint32_t begin_pos = (_rrb->last_consumed_seq_number + 1) % _rrb->buffer_size; /* TODO: optimize, by getting buffer_size by global variable. */
         const uint32_t bytes_on_right_side = MIN(bytes_to_copy, _rrb->buffer_size - begin_pos);
         const uint32_t bytes_on_left_size = bytes_to_copy - bytes_on_right_side;
