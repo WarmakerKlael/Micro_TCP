@@ -16,7 +16,7 @@ typedef enum
         TIMEOUT_OCCURED_SUBSTATE,
         EXIT_SUCCESS_SUBSTATE,
 
-        EXIT_FAILURE_STATE
+        EXIT_FAILURE_SUBSTATE
 } receive_internal_states;
 
 typedef struct
@@ -86,42 +86,33 @@ static void fill_rrb(microtcp_sock_t *_socket)
 
 ssize_t till_timeout(microtcp_sock_t *const _socket, void *_buffer, const size_t _length)
 {
-        size_t remaining_bytes = _length;
-        while (remaining_bytes != 0)
+        receive_ring_buffer_t *const bytestream_rrb = _socket->bytestream_rrb; /* Create local pointer to avoid dereferencing. */
+        const size_t cached_rrb_size = rrb_size(bytestream_rrb);
+        size_t bytes_copied = 0;
+        while (bytes_copied != _length)
         {
+                ssize_t receive_data_ret_val = receive_data_segment(_socket, TRUE);
+                switch (receive_data_ret_val)
+                {
+                case RECV_SEGMENT_ERROR:
+                        break; /* Faulty segment, ignore it. */
+                case RECV_SEGMENT_FATAL_ERROR:
+                        return EXIT_FAILURE_SUBSTATE;
+                case RECV_SEGMENT_FINACK_UNEXPECTED:
+                        return RECEIVED_FINACK_SUBSTATE;
+                case RECV_SEGMENT_RST_RECEIVED:
+                        return RECEIVED_RST_SUBSTATE;
+                case RECV_SEGMENT_TIMEOUT:
+                        return TIMEOUT_OCCURED_SUBSTATE;
+                default:
+                        uint32_t stored_bytes = rrb_append(bytestream_rrb, _socket->segment_receive_buffer);
+                        if (RARE_CASE(stored_bytes == 0))
+                                break;
+                        _socket->ack_number = rrb_last_consumed_seq_number(bytestream_rrb) + rrb_consumable_bytes(bytestream_rrb) + 1;
+                        if (rrb_consumable_bytes(bytestream_rrb) == cached_rrb_size)
+                                bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied);
+                        _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb); /* TODO: is this correct? Is it based on stored? or consumable? */
+                        send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address));
+                }
         }
 }
-
-void *microtcp_receiver_thread(void *_args)
-{
-        microtcp_sock_t *_socket = ((struct microtcp_receiver_thread_args *)_args)->_socket;
-#ifdef DEBUG_MODE
-        RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(NULL, _socket, ESTABLISHED);
-#endif /* DEBUG_MODE */
-
-        set_socket_recvfrom_to_block(_socket);
-        const uint32_t rrb_size = get_bytestream_rrb_size();
-
-        while (TRUE)
-        {
-                ssize_t recv_data_ret_val = receive_data_segment(_socket);
-                if (recv_data_ret_val == RECV_SEGMENT_ERROR)
-                        continue; /* Faulty segment, discard it. */
-                if (recv_data_ret_val == RECV_SEGMENT_FATAL_ERROR)
-                        LOG_ERROR_RETURN((void *)RECEIVER_FATAL_ERROR, "Fatal-Error occured while loading the assembly-buffer.");
-
-                const microtcp_header_t new_header = _socket->segment_build_buffer->header;
-
-                if (new_header.control == (FIN_BIT | ACK_BIT))
-                        return (void *)RECEIVER_FINACK_RECEIVED;
-                if (new_header.control & RST_BIT)
-                        return (void *)RECEIVER_RST_RECEIVED;
-
-                /* Handles out-of-order, out-of-bounds (old and far ahead). */
-                uint32_t appended_bytes = rrb_append(_socket->bytestream_rrb, _socket->segment_receive_buffer);
-                _socket->curr_win_size -= appended_bytes;
-                _socket->ack_number += appended_bytes;
-                // send_ack_control_segment(_socket, )
-        }
-}
-

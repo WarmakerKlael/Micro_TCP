@@ -19,6 +19,7 @@ uint32_t rrb_append(receive_ring_buffer_t *_rrb, const microtcp_segment_t *_segm
 uint32_t rrb_pop(receive_ring_buffer_t *_rrb, void *_buffer, uint32_t _buffer_size);
 
 uint32_t rrb_size(const receive_ring_buffer_t *_rrb);
-uint32_t rrb_consumable_bytes(receive_ring_buffer_t *_rrb);
+uint32_t rrb_consumable_bytes(const receive_ring_buffer_t *_rrb);
+uint32_t rrb_last_consumed_seq_number(const receive_ring_buffer_t *_rrb);
 
 #endif /* CORE_RECEIVE_RING_BUFFER_H */

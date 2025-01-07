@@ -43,6 +43,7 @@ static __always_inline void respond_to_timeout(microtcp_sock_t *_socket, fsm_con
 static __always_inline void handle_cwnd_increment(microtcp_sock_t *_socket, const fsm_context_t *_context, size_t _acked_segments);
 static __always_inline void handle_seq_number_increment(microtcp_sock_t *_socket, uint32_t _received_ack_number, size_t _acked_segments);
 static __always_inline void handle_peer_win_size(microtcp_sock_t *_socket, const fsm_context_t *_context);
+static __always_inline uint32_t get_most_recent_ack(uint32_t _ack1, uint32_t _ack2);
 
 static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *_socket, fsm_context_t *_context);
 static inline send_fsm_substates_t perform_receive_ack_round(microtcp_sock_t *_socket, fsm_context_t *_context);
@@ -120,6 +121,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
         switch (recv_ack_ret_val)
         {
         case RECV_SEGMENT_ERROR:
+        case RECV_SEGMENT_CARRIES_DATA:
                 break;
         case RECV_SEGMENT_TIMEOUT:
                 if (_block == TRUE) /* If in block, timeout timer expired. */
@@ -137,6 +139,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
         default: /* Received an ACK. */
         {
                 const uint32_t received_ack_number = _socket->segment_receive_buffer->header.ack_number;
+                const microtcp_segment_t *control_segment = _socket->segment_receive_buffer;
 
                 if (sq_front(_socket->send_queue)->seq_number == received_ack_number) /* check for DUPLICATE ACK */
                 {
@@ -148,6 +151,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
                         break;
                 }
                 _context->duplicate_ack_count = 0;
+                _socket->ack_number = get_most_recent_ack(_socket->ack_number, control_segment->header.seq_number + 1);
                 const size_t acked_segments = sq_dequeue(_socket->send_queue, received_ack_number);
                 handle_seq_number_increment(_socket, received_ack_number, acked_segments);
                 handle_cwnd_increment(_socket, _context, acked_segments);
@@ -276,3 +280,8 @@ static const char *convert_substate_to_string(send_fsm_substates_t _substate)
         }
 }
 // clang-format on
+
+static __always_inline uint32_t get_most_recent_ack(const uint32_t _ack1, const uint32_t _ack2)
+{
+        return (int32_t)(_ack1 - _ack2) > 0 ? _ack1 : _ack2;
+}

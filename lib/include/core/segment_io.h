@@ -34,7 +34,4 @@ size_t send_data_segment(microtcp_sock_t *_socket, const void *_buffer, size_t _
 ssize_t receive_data_segment(microtcp_sock_t *_socket, _Bool _block);
 ssize_t receive_data_ack_segment(microtcp_sock_t *_socket, _Bool _block);
 
-/* receiver_thread:  */
-ssize_t receive_rt_segment(microtcp_sock_t *_socket, _Bool _block);
-
 #endif /* CORE_CONTROL_SEGMENTS_IO_H */

@@ -70,8 +70,8 @@ typedef struct
         int sd;                       /* The underline UDP socket descriptor. */
         mircotcp_state_t state;       /* The state of the microTCP socket. */
         const size_t init_win_size;   /* The window size advertised at the 3-way handshake. */
-        _Atomic size_t curr_win_size; /* The current window size. */
-        _Atomic size_t peer_win_size;
+        size_t curr_win_size; /* The current window size. */
+        size_t peer_win_size;
 
         receive_ring_buffer_t *bytestream_rrb; /* a.k.a `recvbuf`, used to store and reassmble bytes of incoming packets. */
 
@@ -79,7 +79,7 @@ typedef struct
         size_t ssthresh;
 
         uint32_t seq_number;         /* Keep the state of the sequence number. */
-        _Atomic uint32_t ack_number; /* Keep the state of the ack number. */
+        uint32_t ack_number; /* Keep the state of the ack number. */
         uint64_t packets_sent;       /* Packets that were sent from socket. */
         uint64_t packets_lost;       /* Packets that were sent from socket, but (probably) lost.*/
         uint64_t packets_received;   /* Packets that were received from socket.  */

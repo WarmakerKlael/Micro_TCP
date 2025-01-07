@@ -4,7 +4,6 @@ add_library(microtcp_core STATIC
         segment_io.c
         segment_processing.c
         socket_stats_updater.c
-        receiver_thread.c
         receive_ring_buffer.c
         send_queue.c
 )

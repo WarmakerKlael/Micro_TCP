@@ -129,16 +129,6 @@ static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, st
         LOG_INFO_RETURN(receive_segment_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
 }
 
-/* rt: stands for receiver_thread. */
-ssize_t receive_rt_segment(microtcp_sock_t *const _socket, const _Bool _block)
-{
-        return receive_segment(_socket,
-                               _socket->peer_address,
-                               sizeof(*_socket->peer_address),
-                               DATA_SEGMENT_CONTROL_FLAGS,
-                               _block);
-}
-
 /* Just receive a data segment, and pass it to the receive buffer... not your job to pass it to assembly. */
 ssize_t receive_data_segment(microtcp_sock_t *const _socket, const _Bool _block)
 {
@@ -150,9 +140,8 @@ ssize_t receive_data_segment(microtcp_sock_t *const _socket, const _Bool _block)
                 return receive_segment_ret_val;
 
         microtcp_segment_t *data_segment = _socket->segment_receive_buffer;
-        _socket->ack_number = get_most_recent_ack(_socket->ack_number, data_segment->header.seq_number + 1);
 
-        DEBUG_SMART_ASSERT(receive_segment_ret_val > 0);
+        DEBUG_SMART_ASSERT(receive_segment_ret_val >= MICROTCP_HEADER_SIZE);
 
         LOG_INFO_RETURN(data_segment->header.data_len, "data segment received; seq_number = %lu, data_len = %lu",
                         data_segment->header.seq_number, data_segment->header.data_len);
@@ -172,7 +161,6 @@ ssize_t receive_data_ack_segment(microtcp_sock_t *const _socket, const _Bool _bl
                 LOG_WARNING_RETURN(RECV_SEGMENT_CARRIES_DATA, "Received segment %s contains %d bytes of payload.",
                                    get_microtcp_control_to_string(control_segment->header.control), control_segment->header.data_len);
 
-        _socket->ack_number = get_most_recent_ack(_socket->ack_number, control_segment->header.seq_number + 1);
         LOG_INFO_RETURN(receive_segment_ret_val, "%s segment received.", get_microtcp_control_to_string(ACK_BIT));
 }
 
