@@ -73,9 +73,9 @@ main(int argc, char **argv)
     // } while (strcmp(sbuff, "exit\n") != 0);
 
 
-    char data12[]="732424hhhhhhhhhhggg234978379324893728749832748472";
+    char data12[5000000]="732424hhhhhhhhhhggg234978379324893728749832748472";
 
-    microtcp_send(&tcpsocket, data12, 50, 0);
+    microtcp_send(&tcpsocket, data12, 5000000, 0);
 
     printf("Closing connection...\n");
     microtcp_shutdown(&tcpsocket, SHUT_RDWR);

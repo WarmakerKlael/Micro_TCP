@@ -82,8 +82,8 @@ int main(int argc, char **argv)
     microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Server Connected\n");
 
-    char buff[100] = {0};
-    microtcp_recv(&tcpsocket, buff, 30, 0);
+    char buff[1000000] = {0};
+    microtcp_recv(&tcpsocket, buff, 1000000, 0);
     printf("BUFF == |%100s|", buff);
     // while (TRUE)
     // {

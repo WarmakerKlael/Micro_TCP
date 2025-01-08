@@ -102,20 +102,19 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
         {
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
-
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_FINACK_UNEXPECTED:
                 return FIN_DOUBLE_SUBSTATE;
+        case RECV_SEGMENT_CARRIES_DATA:
+                return FIN_WAIT_1_SUBSTATE;
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_finack_ret_val);
                 RETURN_EXIT_FAILURE_SUBSTATE_IF_FINACK_RETRIES_EXHAUSTED(_context);
                 return CONNECTION_ESTABLISHED_SUBSTATE;
-
         case RECV_SEGMENT_RST_RECEIVED:
                 _context->errno = RST_EXPECTED_ACK;
                 return CLOSED_1_SUBSTATE;
-
         default:
                 _socket->seq_number = required_ack_number;
                 return FIN_WAIT_2_RECV_SUBSTATE;
@@ -160,7 +159,8 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
         {
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
-
+        case RECV_SEGMENT_CARRIES_DATA:
+                return FIN_DOUBLE_SUBSTATE;
         case RECV_SEGMENT_FINACK_UNEXPECTED:
                 update_socket_lost_counters(_socket, _context->send_ack_ret_val);
                 TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, ack);
@@ -191,6 +191,8 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp
         {
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
+        case RECV_SEGMENT_CARRIES_DATA:
+                return FIN_WAIT_2_RECV_SUBSTATE;
 
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_ERROR:
@@ -252,6 +254,7 @@ static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_
 
                 case RECV_SEGMENT_TIMEOUT: /* Timeout: Do nothing; wait for the next segment or timer expiration. */
                 case RECV_SEGMENT_ERROR:   /* Heard junk, ignore. If peer sent an ack and was corrupted, it will resend it, after its timeout. */
+                case RECV_SEGMENT_CARRIES_DATA:
                         break;
 
                 default: /* Heard FIN|ACK */

@@ -3,6 +3,7 @@
 #include <stdio.h>     // for printf
 #include <string.h>    // for strerror
 #include "core/misc.h" // for generate_initial_sequence_nu...
+#include "core/recv_impl.h"
 #include "core/resource_allocation.h"
 #include "fsm/microtcp_fsm.h"           // for microtcp_accept_fsm, microtc...
 #include "logging/microtcp_logger.h"    // for LOG_ERROR_RETURN, LOG_INFO_R...
@@ -157,17 +158,18 @@ ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _len
         return 0;
 }
 
-ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _buffer_length, int _flags)
+ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _length, int _flags)
 {
-        printf("Entered recev\n");
-        SMART_ASSERT(_buffer != NULL, _buffer_length != 0);
+        SMART_ASSERT(_buffer != NULL, _length != 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
+        if (!ARE_VALID_MICROTCP_RECV_FLAGS(_flags))
+                return -1;
+        printf("Entered recev\n");
 
         struct sockaddr *address = _socket->peer_address;
         socklen_t address_len = sizeof(*(_socket->peer_address));
 
-        // till_timeout(_socket, _buffer, _buffer_length);
-        return 0;
+        return microtcp_recv_impl(_socket, _buffer, _length, _flags);
 }
 
 void microtcp_close_socket(microtcp_sock_t *_socket)
