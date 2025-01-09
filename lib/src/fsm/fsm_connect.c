@@ -58,10 +58,8 @@ static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket,
         {
         case SEND_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
-
         case SEND_SEGMENT_ERROR:
                 return CLOSED_SUBSTATE;
-
         default:
                 return SYN_SENT_SUBSTATE;
         }
@@ -78,10 +76,13 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
         {
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
+        case RECV_SEGMENT_SYN_EXPECTED:
+                LOG_ERROR_RETURN(EXIT_FAILURE_SUBSTATE, "Server is not expecting to establish a connection.");
 
         /* Actions on the following three cases are the same. */
         case RECV_SEGMENT_FINACK_UNEXPECTED:
         case RECV_SEGMENT_ERROR:
+                printf("TRIGGERED!\n");
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
                 return CLOSED_SUBSTATE;
@@ -93,7 +94,7 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                         return EXIT_FAILURE_SUBSTATE;
                 }
                 _context->rst_retries_counter--;
-                return CLOSED_SUBSTATE;
+                LOG_ERROR_RETURN(CLOSED_SUBSTATE, "Connection with the server refused!");
 
         default:
                 _socket->seq_number = required_ack_number;

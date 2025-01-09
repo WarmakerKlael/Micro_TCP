@@ -16,7 +16,7 @@
 
 #define RECVFROM_SHUTDOWN (0)
 #define RECVFROM_ERROR (-1)
-#define DUPLICATE_ACK_FOR_FAST_RETRANSMIT 3
+#define DUPLICATE_ACK_COUNT_FOR_FAST_RETRANSMIT 3
 
 typedef enum
 {
@@ -77,6 +77,7 @@ static inline send_fsm_substates_t perform_send_data_round(microtcp_sock_t *cons
         return CONTINUE_SUBSTATE;
 }
 
+/* FAST_RETRANSMIT: response to 3 dup ACK. */
 static __always_inline void respond_to_triple_dup_ack(microtcp_sock_t *const _socket, fsm_context_t *const _context)
 {
         const send_queue_node_t *retransmission_node = sq_front(_socket->send_queue);
@@ -143,7 +144,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
 
                 if (sq_front(_socket->send_queue)->seq_number == received_ack_number) /* check for DUPLICATE ACK */
                 {
-                        if (++_context->duplicate_ack_count == DUPLICATE_ACK_FOR_FAST_RETRANSMIT)
+                        if (++_context->duplicate_ack_count == DUPLICATE_ACK_COUNT_FOR_FAST_RETRANSMIT)
                         {
                                 respond_to_triple_dup_ack(_socket, _context);
                                 LOG_WARNING_RETURN(SLOW_START_SUBSTATE, "Received 3DUP_ACK"); /* TRIPLE DUPLICATE ACK */
@@ -167,7 +168,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
 static inline send_fsm_substates_t perform_receive_ack_round(microtcp_sock_t *_socket, fsm_context_t *_context)
 {
         DEBUG_SMART_ASSERT(_socket != NULL, _context != NULL);
-        DEBUG_SMART_ASSERT(_socket->state == ESTABLISHED, _context->buffer != NULL, !sq_is_empty(_socket->send_queue));
+        DEBUG_SMART_ASSERT(_socket->state == ESTABLISHED, _context->buffer != NULL);
 
         while (!sq_is_empty(_socket->send_queue))
         {
@@ -206,16 +207,14 @@ static send_fsm_substates_t execute_slow_start_substate(microtcp_sock_t *_socket
         DEBUG_SMART_ASSERT(_socket != NULL, _context != NULL);
         DEBUG_SMART_ASSERT(_socket->state == ESTABLISHED, _context->buffer != NULL, _socket->send_queue != NULL);
 
-        if (!sq_is_empty(_socket->send_queue)) /* Packets in Send-Queue, begin retransmissions. */
-        {
-                send_fsm_substates_t next_substate = perform_interleaved_retransmissions_round(_socket, _context);
-                if (next_substate != CONTINUE_SUBSTATE)
-                        return next_substate;
-        }
+        /* Retransmit (if-any) any remaining segments in send-queue, in interleaved send/receive fashion. */
+        send_fsm_substates_t next_substate = perform_interleaved_retransmissions_round(_socket, _context);
+        if (next_substate != CONTINUE_SUBSTATE)
+                return next_substate;
 
         while (_context->remaining != 0)
         {
-                send_fsm_substates_t next_substate = perform_send_data_round(_socket, _context);
+                next_substate = perform_send_data_round(_socket, _context);
                 if (next_substate != CONTINUE_SUBSTATE)
                         return next_substate;
                 next_substate = perform_receive_ack_round(_socket, _context);
@@ -227,12 +226,27 @@ static send_fsm_substates_t execute_slow_start_substate(microtcp_sock_t *_socket
         return EXIT_SUCCESS_SUBSTATE;
 }
 
+
+
 static send_fsm_substates_t execute_congestion_avoidance_substate(microtcp_sock_t *_socket, fsm_context_t *_context)
 {
-        printf("New state unlocked CA\n");
-        exit(10);
-        _context->duplicate_ack_count = 0;
-        return EXIT_FAILURE_SUBSTATE;
+        DEBUG_SMART_ASSERT(_socket != NULL, _context != NULL);
+        DEBUG_SMART_ASSERT(_socket->state == ESTABLISHED, _context->buffer != NULL, _socket->send_queue != NULL);
+
+        send_fsm_substates_t next_substate = perform_interleaved_retransmissions_round(_socket, _context);
+        if (next_substate != CONTINUE_SUBSTATE)
+                return next_substate;
+
+        while (_context->remaining != 0)
+        {
+                send_fsm_substates_t next_substate = perform_send_data_round(_socket, _context);
+                if (next_substate != CONTINUE_SUBSTATE)
+                        return next_substate;
+                next_substate = perform_receive_ack_round(_socket, _context);
+                if (next_substate != CONTINUE_SUBSTATE)
+                        return next_substate;
+        }
+        return EXIT_SUCCESS_SUBSTATE;
 }
 
 /* Argument check is for the most part redundant as FSM callers, have validated their input arguments. */
@@ -255,8 +269,7 @@ int microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer,
                         context.current_substate = execute_slow_start_substate(_socket, &context);
                         break;
                 case CONGESTION_AVOIDANCE_SUBSTATE:
-                        /* TODO remove rerouting!!! */
-                        context.current_substate = execute_slow_start_substate(_socket, &context);
+                        context.current_substate = execute_congestion_avoidance_substate(_socket, &context);
                         break;
                 case RECEIVED_FINACK_SUBSTATE:
                 case RECEIVED_RST_SUBSTATE:

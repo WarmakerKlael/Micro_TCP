@@ -20,7 +20,6 @@
 #include "microtcp_core_macros.h"
 #include "logging/microtcp_logger.h"
 
-static __always_inline uint32_t get_most_recent_ack(const uint32_t _ack1, const uint32_t _ack2);
 static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, _Bool _block);
 static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint16_t _required_control, _Bool _block);
 static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockaddr *const _address, const socklen_t _address_len, microtcp_segment_t *_segment);
@@ -34,6 +33,8 @@ static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const
 #define RECVFROM_SHUTDOWN 0
 #define RECVFROM_ERROR -1
 #define SENDTO_ERROR -1
+
+#define MAX_CONSECUTIVE_SEND_MISMATCH_ERRORS 100
 
 /* Declarations of static functions implemented in this file: */
 /**
@@ -69,7 +70,7 @@ ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct
 {
         /* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
         /* Every receive function returns special code if RST was received. So that's how you detect it... */
-        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, LISTEN | ESTABLISHED | CLOSING_BY_HOST | CLOSING_BY_PEER);
+        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ~INVALID);
 }
 
 ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
@@ -138,7 +139,7 @@ ssize_t receive_data_segment(microtcp_sock_t *const _socket, const _Bool _block)
 
         DEBUG_SMART_ASSERT(receive_segment_ret_val >= (ssize_t)MICROTCP_HEADER_SIZE);
 
-        LOG_INFO_RETURN(data_segment->header.data_len, "data segment received; seq_number = %lu, data_len = %lu",
+        LOG_INFO_RETURN(data_segment->header.data_len, "data segment received; seq_number = %u, data_len = %u",
                         data_segment->header.seq_number, data_segment->header.data_len);
 }
 
@@ -206,6 +207,7 @@ static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockad
 
 size_t send_data_segment(microtcp_sock_t *const _socket, const void *const _buffer, const size_t _segment_size, const uint32_t _seq_number)
 {
+
         DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL, _segment_size > 0);
 #ifdef DEBUG_MODE
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(SEND_SEGMENT_FATAL_ERROR, _socket, ESTABLISHED);
@@ -236,6 +238,7 @@ static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const
 
 static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockaddr *const _address, const socklen_t _address_len, microtcp_segment_t *_segment)
 {
+        static _Thread_local size_t consecutive_sendto_errors = 0;
         DEBUG_SMART_ASSERT(_socket != NULL, _address != NULL, _address_len == sizeof(struct sockaddr), _segment != NULL);
 
         /* Convert it to bytestream. */
@@ -252,16 +255,15 @@ static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockad
                 LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Sending %s segment failed. sendto() set errno(%d):%s.",
                                  segment_type, errno, strerror(errno));
         if (RARE_CASE(sendto_ret_val != segment_length))
-                LOG_WARNING_RETURN(SEND_SEGMENT_ERROR, "Sending %s segment failed; sendto() sent %d bytes, microtcp_segment was %d bytes",
-                                   segment_type, sendto_ret_val, segment_length);
+        {
+                LOG_WARNING("Sending %s segment failed; sendto() sent %d bytes, microtcp_segment was %d bytes",
+                            segment_type, sendto_ret_val, segment_length);
+                consecutive_sendto_errors++;
+                if (consecutive_sendto_errors > MAX_CONSECUTIVE_SEND_MISMATCH_ERRORS)
+                        LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Max consecutive send mismatch errors reached.");
+                return SEND_SEGMENT_ERROR;
+        }
+        consecutive_sendto_errors = 0;
         update_socket_sent_counters(_socket, sendto_ret_val);
         LOG_INFO_RETURN(sendto_ret_val, "%s segment sent.", segment_type);
-}
-
-/*-------------------UTILITY-------------------*/
-
-/* Function to determine if `_ack1` is newer than `_ack2` */
-static __always_inline uint32_t get_most_recent_ack(const uint32_t _ack1, const uint32_t _ack2)
-{
-        return (int32_t)(_ack1 - _ack2) > 0 ? _ack1 : _ack2;
 }

@@ -23,14 +23,12 @@
                 return (_return_value);                                                                            \
         } while (0)
 
-#define HANDLE_RST_RECEPTION_AND_RETURN(_return_value, _socket)                                                        \
-        do                                                                                                             \
-        {                                                                                                              \
-                (_socket)->state = RESET;                                                                              \
-                LOG_ERROR("Peer sent an RST. Socket enters %s state", get_microtcp_state_to_string((_socket)->state)); \
-                return (_return_value);                                                                                \
+#define HANDLE_RST_RECEPTION_AND_RETURN(_return_value, _socket)                                                                                \
+        do                                                                                                                                     \
+        {                                                                                                                                      \
+                (_socket)->state = RESET;                                                                                                      \
+                LOG_ERROR_RETURN((_return_value), "Peer sent an RST. Socket enters %s state", get_microtcp_state_to_string((_socket)->state)); \
         } while (0)
-
 
 /* _flags are validated by the caller. microtcp_recv() */
 ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, const size_t _length, const int _flags)
@@ -55,14 +53,10 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
                 case RECV_SEGMENT_RST_RECEIVED:
                         HANDLE_RST_RECEPTION_AND_RETURN(-1, _socket);
                 case RECV_SEGMENT_TIMEOUT:
+                        bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied); /* Pop any remaining bytes.*/
                         if (_flags & MSG_WAITALL)
                                 break;
-                        if (bytes_copied > 0 || _flags & MSG_DONTWAIT)
-                        {
-                                /* Pop any remaining bytes.*/
-                                bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied);
-                                return bytes_copied;
-                        }
+                        return bytes_copied;
                 default:
                 {
                         uint32_t appended_bytes = rrb_append(bytestream_rrb, _socket->segment_receive_buffer);

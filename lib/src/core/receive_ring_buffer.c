@@ -85,7 +85,7 @@ status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
  */
 uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t *const _segment)
 {
-        printf("RRB_CONTAINS %u bytes\n", rrb_size(_rrb));
+        printf("RRB_CONTAINS %u consumable bytes\n", rrb_consumable_bytes(_rrb));
         SMART_ASSERT(_rrb != NULL, _segment != NULL);
         if (RARE_CASE(!is_in_bounds(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number)))
                 LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
