@@ -32,7 +32,7 @@ struct receive_ring_buffer
 
 /* Inner helper functions. */
 static void rrb_block_list_destroy(rrb_block_t **_head_address);
-static inline _Bool is_in_bounds(uint32_t _rrb_last_consumed_seq_number, uint32_t _rrb_size, uint32_t _segment_seq_number);
+static inline _Bool is_in_bounds(uint32_t _rrb_begin_ex_bound, uint32_t _rrb_remaining_size, uint32_t _segment_seq_number);
 static inline uint32_t free_space(uint32_t _rrb_last_consumed_seq_number, uint32_t _rrb_size, uint32_t _segment_seq_number);
 static void rrb_block_list_insert(rrb_block_t **_head_address, uint32_t _seq_number, uint32_t _size);
 static uint32_t join_rrb_blocks(receive_ring_buffer_t *_rrb);
@@ -86,10 +86,13 @@ status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t *const _segment)
 {
         printf("RRB_CONTAINS %u consumable bytes\n", rrb_consumable_bytes(_rrb));
-        SMART_ASSERT(_rrb != NULL, _segment != NULL);
-        if (RARE_CASE(!is_in_bounds(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number)))
-                LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`last_consumed_seq_number` = %u, `buffer_size` = %u, `seq_number` = %u}.",
-                                   _rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
+        DEBUG_SMART_ASSERT(_rrb != NULL, _segment != NULL);
+        const uint32_t rrb_begin_ex_bound = _rrb->last_consumed_seq_number + _rrb->consumable_bytes;
+        const uint32_t rrb_remaining_size = _rrb->buffer_size - _rrb->consumable_bytes;
+
+        if (RARE_CASE(!is_in_bounds(rrb_begin_ex_bound, rrb_remaining_size, _segment->header.seq_number)))
+                LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`rrb_beggining_bound` = %u, `rrb_remaining_size` = %u, `seq_number` = %u}.",
+                                   rrb_begin_ex_bound, rrb_remaining_size, _segment->header.seq_number);
         const uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
         const uint32_t data_len = _segment->header.data_len;
         DEBUG_SMART_ASSERT(data_len <= available_space);                         /* SHOULD NOT receive packet, that doesnt fit.. sender should respect my receive_window */
@@ -117,7 +120,7 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
 
 uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const uint32_t _buffer_size)
 {
-        SMART_ASSERT(_rrb != NULL, _buffer != NULL, _buffer_size > 0);
+        DEBUG_SMART_ASSERT(_rrb != NULL, _buffer != NULL, _buffer_size > 0);
         const uint32_t bytes_to_copy = MIN(_rrb->consumable_bytes, _buffer_size);
         if (bytes_to_copy == 0)
                 return 0;
@@ -150,7 +153,7 @@ uint32_t rrb_last_consumed_seq_number(const receive_ring_buffer_t *const _rrb)
 
 static void rrb_block_list_destroy(rrb_block_t **const _head_address)
 {
-        SMART_ASSERT(_head_address != NULL); /* head pointer can be NULL, but not its address. */
+        DEBUG_SMART_ASSERT(_head_address != NULL); /* head pointer can be NULL, but not its address. */
 
 #define HEAD (*_head_address)
         while (HEAD != NULL)
@@ -162,9 +165,11 @@ static void rrb_block_list_destroy(rrb_block_t **const _head_address)
 #undef HEAD
 }
 
-static inline _Bool is_in_bounds(uint32_t _rrb_last_consumed_seq_number, uint32_t _rrb_size, uint32_t _segment_seq_number) // CHECK!!
+/** @deprecated */
+static inline _Bool __attribute__((deprecated, unused)) is_in_boundsOLD(uint32_t _rrb_last_consumed_seq_number, uint32_t _rrb_size, uint32_t _segment_seq_number)
 {
-        SMART_ASSERT(_rrb_size > 0, _rrb_size < INT32_MAX);
+        DEBUG_SMART_ASSERT(FALSE); /* remove deprecated and OLD flags before USE. */
+        DEBUG_SMART_ASSERT(_rrb_size > 0, _rrb_size < INT32_MAX);
 
         _Bool wrap_around_occurs = _rrb_last_consumed_seq_number > _rrb_last_consumed_seq_number + _rrb_size;
         /* Check if in first range: */
@@ -182,10 +187,27 @@ static inline _Bool is_in_bounds(uint32_t _rrb_last_consumed_seq_number, uint32_
 
         return FALSE;
 }
+static inline _Bool is_in_bounds(uint32_t _rrb_begin_ex_bound, uint32_t _rrb_remaining_size, uint32_t _segment_seq_number)
+{
+        _Bool wrap_around_occurs = _rrb_begin_ex_bound > _rrb_begin_ex_bound + _rrb_remaining_size;
+        /* Check if in first range: */
+        const uint32_t min1_ex = _rrb_begin_ex_bound;
+        const uint32_t max1_in = wrap_around_occurs ? UINT32_MAX : _rrb_begin_ex_bound + _rrb_remaining_size;
+
+        if (!wrap_around_occurs && _segment_seq_number > min1_ex && _segment_seq_number <= max1_in)
+                return TRUE;
+
+        /*Check wrap_arround.*/
+        const uint32_t min2_in = 0;
+        const uint32_t max2_in = _rrb_begin_ex_bound + _rrb_remaining_size;
+        if (wrap_around_occurs && ((_segment_seq_number > min1_ex && _segment_seq_number <= max1_in) || (_segment_seq_number >= min2_in && _segment_seq_number <= max2_in)))
+                return TRUE;
+        return FALSE;
+}
 
 static inline uint32_t free_space(const uint32_t _rrb_last_consumed_seq_number, const uint32_t _rrb_size, const uint32_t _segment_seq_number)
 {
-        SMART_ASSERT(is_in_bounds(_rrb_last_consumed_seq_number, _rrb_size, _segment_seq_number));
+        DEBUG_SMART_ASSERT(is_in_bounds(_rrb_last_consumed_seq_number, _rrb_size, _segment_seq_number));
 
         _Bool wrap_around_occurs = _rrb_last_consumed_seq_number > _rrb_last_consumed_seq_number + _rrb_size;
 

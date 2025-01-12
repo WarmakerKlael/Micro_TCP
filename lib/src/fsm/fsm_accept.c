@@ -166,9 +166,7 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
                 case EXIT_FAILURE_SUBSTATE:
                         return MICROTCP_ACCEPT_FAILURE;
                 default:
-                        LOG_ERROR("Accept() FSM entered an `undefined` substate = %s",
-                                  convert_substate_to_string(current_substate));
-                        current_substate = EXIT_FAILURE_SUBSTATE;
+                        FSM_DEFAULT_CASE_HANDLER(convert_substate_to_string, current_substate, EXIT_FAILURE_SUBSTATE);
                         break;
                 }
         }

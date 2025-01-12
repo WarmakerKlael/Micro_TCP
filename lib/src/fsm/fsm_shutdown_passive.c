@@ -159,9 +159,7 @@ int microtcp_shutdown_passive_fsm(microtcp_sock_t *const _socket, struct sockadd
                         log_errno_status(context.errno);
                         return MICROTCP_SHUTDOWN_FAILURE;
                 default:
-                        LOG_ERROR("shutdown_passive() FSM entered an `undefined` substate. Prior substate = %s",
-                                  convert_substate_to_string(current_substate));
-                        current_substate = EXIT_FAILURE_SUBSTATE;
+                        FSM_DEFAULT_CASE_HANDLER(convert_substate_to_string, current_substate, EXIT_FAILURE_SUBSTATE);
                         break;
                 }
         }

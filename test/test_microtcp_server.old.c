@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     printf("Server Connected\n");
 
     char buff[1000000] = {0};
-    microtcp_recv(&tcpsocket, buff, 1000000, 0);
+    microtcp_recv(&tcpsocket, buff, 1000000, MSG_WAITALL);
     printf("BUFF == |%100s|", buff);
     // while (TRUE)
     // {

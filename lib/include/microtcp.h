@@ -103,9 +103,7 @@ typedef struct
         /* During data transfering only receiver thread has access. */
         microtcp_segment_t *segment_receive_buffer;
         void *bytestream_receive_buffer;
-
         struct sockaddr *peer_address;
-
 } microtcp_sock_t;
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);

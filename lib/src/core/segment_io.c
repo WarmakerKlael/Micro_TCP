@@ -30,11 +30,11 @@ static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const
 #define NO_SENDTO_FLAGS 0
 #define NO_RECVFROM_FLAGS 0
 
-#define RECVFROM_SHUTDOWN 0
-#define RECVFROM_ERROR -1
-#define SENDTO_ERROR -1
-
 #define MAX_CONSECUTIVE_SEND_MISMATCH_ERRORS 100
+
+#define LOG_WARNING_RETURN_CONTROL_MISMATCH(_return_value, _received, _expected)                \
+        LOG_WARNING_RETURN((_return_value), "Control-field: Received = `%s`; Expected = `%s`.", \
+                           get_microtcp_control_to_string((_received)), get_microtcp_control_to_string((_expected)))
 
 /* Declarations of static functions implemented in this file: */
 /**
@@ -111,8 +111,10 @@ static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, st
         ssize_t receive_segment_ret_val = receive_segment(_socket, _address, _address_len, _required_control, TRUE);
         if (receive_segment_ret_val <= RECV_SEGMENT_EXCEPTION_THRESHOLD)
                 return receive_segment_ret_val;
-
         microtcp_segment_t *control_segment = _socket->segment_receive_buffer;
+        if (RARE_CASE((_required_control & SYN_BIT) && !(control_segment->header.control & SYN_BIT)))
+                LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_SYN_EXPECTED, control_segment->header.control, _required_control);
+
         if (control_segment->header.data_len != 0)
                 LOG_WARNING_RETURN(RECV_SEGMENT_CARRIES_DATA, "Received segment %s contains %d bytes of payload.",
                                    get_microtcp_control_to_string(control_segment->header.control), control_segment->header.data_len);
@@ -160,10 +162,6 @@ ssize_t receive_data_ack_segment(microtcp_sock_t *const _socket, const _Bool _bl
         LOG_INFO_RETURN(receive_segment_ret_val, "%s segment received.", get_microtcp_control_to_string(ACK_BIT));
 }
 
-#define LOG_WARNING_RETURN_CONTROL_MISMATCH(_return_value, _received, _expected)                \
-        LOG_WARNING_RETURN((_return_value), "Control-field: Received = `%s`; Expected = `%s`.", \
-                           get_microtcp_control_to_string((_received)), get_microtcp_control_to_string((_expected)))
-
 static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr *const _address, const socklen_t _address_len,
                                       const uint16_t _required_control, const _Bool _block)
 {
@@ -177,15 +175,13 @@ static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr 
 
         if (RARE_CASE(segment->header.control & RST_BIT)) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_RST_RECEIVED, segment->header.control, _required_control);
-        if (RARE_CASE((_required_control & SYN_BIT) && !(segment->header.control & SYN_BIT)))
-                LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_SYN_EXPECTED, segment->header.control, _required_control);
         if (RARE_CASE((segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT)))
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_FINACK_UNEXPECTED, segment->header.control, _required_control);
         if (RARE_CASE(segment->header.control != _required_control))
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_ERROR, segment->header.control, _required_control);
         return receive_bytestream_ret_val;
 }
-#undef LOG_CONTROL_MISMATCH_WARNING
+#undef LOG_WARNING_RETURN_CONTROL_MISMATCH
 
 static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len, const _Bool _block)
 {

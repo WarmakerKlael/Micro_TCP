@@ -8,6 +8,7 @@
 #include "microtcp_helper_macros.h"
 #include "smart_assert.h"
 #include "core/misc.h"
+#include "core/microtcp_recv_impl.h"
 #include <threads.h>
 #include "microtcp_helper_functions.h"
 
@@ -54,6 +55,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
                         HANDLE_RST_RECEPTION_AND_RETURN(-1, _socket);
                 case RECV_SEGMENT_TIMEOUT:
                         bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied); /* Pop any remaining bytes.*/
+                        _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb); /* Refresh host's Rwindow.*/
                         if (_flags & MSG_WAITALL)
                                 break;
                         return bytes_copied;
@@ -65,10 +67,10 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
                         _socket->ack_number = rrb_last_consumed_seq_number(bytestream_rrb) + rrb_consumable_bytes(bytestream_rrb) + 1; /* TODO: optimize... */
                         if (rrb_consumable_bytes(bytestream_rrb) == cached_rrb_size || rrb_consumable_bytes(bytestream_rrb) + bytes_copied >= _length)
                                 bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied);
-                        _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb); /* TODO: is this correct? Is it based on stored? or consumable? */
+                        _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb);
+                        send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)); /* If curr_win_size == 0, we still send ACK. */
                 }
                 }
-                send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)); /* If curr_win_size == 0, we still send ACK. */
         }
         return bytes_copied;
 }

@@ -3,6 +3,7 @@ add_subdirectory(settings)
 add_subdirectory(core)
 
 add_library(microtcp STATIC microtcp.c)
+set_source_files_properties(microtcp.c PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter")
 
 target_include_directories(microtcp PUBLIC ${CMAKE_SOURCE_DIR}/utils/include)
 

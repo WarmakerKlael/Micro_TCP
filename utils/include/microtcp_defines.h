@@ -73,4 +73,8 @@ typedef _Bool status_t;
 #define PROJECT_TOP_LEVEL_DIRECTORY ""
 #endif
 
+#define RECVFROM_SHUTDOWN (0)
+#define RECVFROM_ERROR (-1)
+#define SENDTO_ERROR (-1)
+
 #endif /* MICROTCP_DEFINES_H */

@@ -77,7 +77,7 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
         case RECV_SEGMENT_FATAL_ERROR:
                 return handle_fatal_error(_context);
         case RECV_SEGMENT_SYN_EXPECTED:
-                LOG_ERROR_RETURN(EXIT_FAILURE_SUBSTATE, "Server is not expecting to establish a connection.");
+                LOG_WARNING_RETURN(CLOSED_SUBSTATE, "Server is not expecting to establish a connection.");
 
         /* Actions on the following three cases are the same. */
         case RECV_SEGMENT_FINACK_UNEXPECTED:
@@ -167,9 +167,7 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         log_errno_status(context.errno);
                         return MICROTCP_CONNECT_FAILURE;
                 default:
-                        LOG_ERROR("connect() FSM entered an `undefined` substate = %s",
-                                  convert_substate_to_string(current_substate));
-                        current_substate = EXIT_FAILURE_SUBSTATE;
+                        FSM_DEFAULT_CASE_HANDLER(convert_substate_to_string, current_substate, EXIT_FAILURE_SUBSTATE);
                         break;
                 }
         }
