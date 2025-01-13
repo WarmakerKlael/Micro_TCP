@@ -94,7 +94,6 @@ int main(int argc, char **argv)
     for (int i = 0; i < ARRAY_SIZE; i++) /* DOUBLE OF `i` */
         array[i] = 'A' + (i % ('Z' - 'A' + 1));
 
-        array[70000] = '0';
 
     for (int i = 0; i < ARRAY_SIZE; i++)
         if (array[i] != chars[i])
