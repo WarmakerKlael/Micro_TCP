@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     //     printf("From server: %s\n", rbuff);
     // } while (strcmp(sbuff, "exit\n") != 0);
 
-#define ARRAY_SIZE 15000
+#define ARRAY_SIZE 1
     size_t *array = malloc(ARRAY_SIZE * sizeof(size_t));
     for (int i = 0; i < ARRAY_SIZE; i++) /* DOUBLE OF `i` */
         array[i] = 2 * i;
