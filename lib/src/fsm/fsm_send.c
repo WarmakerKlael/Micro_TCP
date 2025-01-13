@@ -45,7 +45,7 @@ typedef struct
 static const char *convert_substate_to_string(send_fsm_substates_t _substate);
 static __always_inline send_fsm_substates_t respond_to_triple_dup_ack(microtcp_sock_t *_socket, fsm_context_t *_context);
 static __always_inline void respond_to_timeout(microtcp_sock_t *_socket, fsm_context_t *_context);
-static __always_inline void handle_cwnd_increment(microtcp_sock_t *_socket, const fsm_context_t *_context, size_t _acked_segments);
+static __always_inline void handle_cwnd_increment(microtcp_sock_t *_socket, fsm_context_t *_context, size_t _acked_segments);
 static __always_inline void handle_seq_number_increment(microtcp_sock_t *_socket, uint32_t _received_ack_number, size_t _acked_segments);
 static __always_inline void handle_peer_win_size(microtcp_sock_t *_socket);
 static __always_inline uint32_t get_most_recent_ack(uint32_t _ack1, uint32_t _ack2);
@@ -95,12 +95,16 @@ static __always_inline void respond_to_timeout(microtcp_sock_t *const _socket, f
         _context->current_send_algorithm = ALGORITHM_SLOW_START;
 }
 
-static __always_inline void handle_cwnd_increment(microtcp_sock_t *const _socket, const fsm_context_t *const _context, const size_t _acked_segments)
+static __always_inline void handle_cwnd_increment(microtcp_sock_t *const _socket, fsm_context_t *const _context, const size_t _acked_segments)
 {
         DEBUG_SMART_ASSERT(_context->current_send_algorithm == ALGORITHM_SLOW_START ||
                            _context->current_send_algorithm == ALGORITHM_CONGESTION_AVOIDANCE);
         if (_context->current_send_algorithm == ALGORITHM_SLOW_START)
+        {
                 _socket->cwnd += _acked_segments * MICROTCP_MSS;
+                if (_socket->cwnd > _socket->ssthresh)
+                        _context->current_send_algorithm = ALGORITHM_CONGESTION_AVOIDANCE;
+        }
         else if (_context->current_send_algorithm == ALGORITHM_CONGESTION_AVOIDANCE)
                 for (size_t i = 0; i < _acked_segments; i++)
                         _socket->cwnd += MAX((MICROTCP_MSS * MICROTCP_MSS) / _socket->cwnd, 1); /* If CWND > MSS^2, increament by 1 byte (tahoe). */
@@ -264,7 +268,7 @@ static __always_inline ssize_t execute_finack_reception_substate(microtcp_sock_t
         DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
         _socket->state = CLOSING_BY_PEER;
         LOG_ERROR("%s reception during microtcp_send_fsm(): microtcp socket in %s state",
-                  get_microtcp_control_to_string(RST_BIT), get_microtcp_state_to_string(_socket->state));
+                  get_microtcp_control_to_string(FIN_BIT | ACK_BIT), get_microtcp_state_to_string(_socket->state));
         return (ssize_t)(_bytes_sent > 0 ? _bytes_sent : MICROTCP_SEND_FAILURE);
 }
 

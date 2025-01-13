@@ -82,15 +82,19 @@ int main(int argc, char **argv)
     microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Server Connected\n");
 
-    char buff[1000000] = {0};
-    microtcp_recv(&tcpsocket, buff, 1000000, MSG_WAITALL);
-    printf("BUFF == |%100s|", buff);
+#define ARRAY_SIZE 150000
+
+    char chars[ARRAY_SIZE] = {0};
+    microtcp_recv(&tcpsocket, chars, ARRAY_SIZE, MSG_WAITALL);
+
+    for (int i = 0; i < ARRAY_SIZE; i++)
+        printf("%d\t%c\n", i, chars[i]);
     // while (TRUE)
     // {
-        // int sleep_time_us = getRandomNumber();
-        // printf("Gonna Sleep for: %d\n", sleep_time_us);
-        // // usleep(sleep_time_us);
-        // send_ack_control_segment(&tcpsocket, tcpsocket.peer_address, sizeof(*tcpsocket.peer_address));
+    // int sleep_time_us = getRandomNumber();
+    // printf("Gonna Sleep for: %d\n", sleep_time_us);
+    // // usleep(sleep_time_us);
+    // send_ack_control_segment(&tcpsocket, tcpsocket.peer_address, sizeof(*tcpsocket.peer_address));
     // }
     // const char* rmsg = "Message received";
 

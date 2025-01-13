@@ -25,11 +25,11 @@
 
 /**
  * CS335 - Project Phase A
- * 
+ *
  * Ioannis Spyropoulos - csd5072
  * Georgios Evangelinos - csd4624
  * Niki Psoma - csd5038
-*/
+ */
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -41,13 +41,11 @@
 
 #define PORT 54321
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     // configure_microtcp_settings();
-    
+
     struct sockaddr_in servaddr;
-    
 
     microtcp_sock_t tcpsocket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -58,7 +56,7 @@ main(int argc, char **argv)
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     printf("Attemting to connect...\n");
-    microtcp_connect(&tcpsocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));
+    microtcp_connect(&tcpsocket, (const struct sockaddr *)&servaddr, sizeof(servaddr));
     printf("Client Connected\n");
 
     // char sbuff[1024];
@@ -72,14 +70,17 @@ main(int argc, char **argv)
     //     printf("From server: %s\n", rbuff);
     // } while (strcmp(sbuff, "exit\n") != 0);
 
+#define ARRAY_SIZE 128000
+    char *array = malloc(ARRAY_SIZE);
+    for (int i = 0; i < ARRAY_SIZE; i++) /* DOUBLE OF `i` */
+        array[i] = 'A' + (i % ('Z' - 'A' + 1));
 
-    char data12[5000000]="732424hhhhhhhhhhggg234978379324893728749832748472";
-
-    microtcp_send(&tcpsocket, data12, 5000000, 0);
+    microtcp_send(&tcpsocket, array, ARRAY_SIZE * sizeof(size_t), 0);
 
     printf("Closing connection...\n");
     microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     printf("Connection closed\n");
-    
+
+    free(array);
     return EXIT_SUCCESS;
 }
