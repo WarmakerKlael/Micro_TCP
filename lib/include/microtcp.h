@@ -21,7 +21,7 @@ typedef struct
         uint32_t seq_number;  /**< Sequence number */
         uint32_t ack_number;  /**< ACK number */
         uint16_t control;     /**< Control bits (e.g. SYN, ACK, FIN) */
-        uint16_t window;      /**< Window size in bytes */
+        uint32_t window;      /**< Window size in bytes */ /* REMOVE make it uint16_t TODO TODO TODO TODO, changed it for EC2. */
         uint32_t data_len;    /**< Data length in bytes (EXCLUDING header) */
         uint32_t future_use0; /**< 32-bits for future use */
         uint32_t future_use1; /**< 32-bits for future use */
@@ -36,7 +36,7 @@ typedef struct
 #define MICROTCP_ACK_TIMEOUT_US 200000
 #define MICROTCP_MSS 1400
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
-#define MICROTCP_RECVBUF_LEN 32768 /* DEFAULT IS 8192, changed it to measure speed on Amazons EC2. */
+#define MICROTCP_RECVBUF_LEN 131072 /* DEFAULT IS 8192, changed it to measure speed on Amazons EC2. */
 #define MICROTCP_WIN_SIZE MICROTCP_RECVBUF_LEN
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
