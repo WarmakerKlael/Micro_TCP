@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
-    servaddr.sin_addr.s_addr = inet_addr("51.20.3.211");
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
     printf("Attemting to connect...\n");
     microtcp_connect(&tcpsocket, (const struct sockaddr *)&servaddr, sizeof(servaddr));
