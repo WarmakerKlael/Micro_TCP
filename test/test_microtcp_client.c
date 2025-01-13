@@ -10,7 +10,7 @@
 #include "microtcp.h"
 #include "microtcp_settings.h"
 
-#define PORT 54321
+#define PORT 50503
 
 int
 main(int argc, char **argv)
@@ -23,7 +23,7 @@ main(int argc, char **argv)
 
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_addr.s_addr = inet_addr("51.20.3.211");
 
     printf("Attemting to connect...\n");
     int connect_ret_val = microtcp_connect(&tcpsocket, (const struct sockaddr*) &servaddr, sizeof(servaddr));

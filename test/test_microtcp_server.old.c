@@ -47,7 +47,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define PORT 54321
+#define PORT 50503
 #define TIME_100MS 100000
 
 int getRandomNumber()
@@ -87,10 +87,6 @@ int main(int argc, char **argv)
     size_t big_nums[ARRAY_SIZE] = {0};
     ssize_t read_bytes = microtcp_recv(&tcpsocket, big_nums, ARRAY_SIZE * sizeof(size_t), MSG_WAITALL);
 
-    for (int i = 0; i < ARRAY_SIZE; i++)
-        printf("%d\t%zu\n", i, big_nums[i]);
-
-    printf("MICROTCP_RECV read %zd bytes\n", read_bytes);
 
     if (tcpsocket.state == CLOSING_BY_PEER)
     {
@@ -125,5 +121,9 @@ int main(int argc, char **argv)
     // printf("recv finished, bytes read = %zd\n", bytes);
     // if (bytes == 0)
     // printf("ANOTHER HERE\n");
+    for (int i = 0; i < ARRAY_SIZE; i++)
+        printf("%d\t%zu\n", i, big_nums[i]);
+
+    printf("MICROTCP_RECV read %zd bytes\n", read_bytes);
     return EXIT_SUCCESS;
 }
