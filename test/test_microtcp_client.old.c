@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_addr.s_addr = inet_addr("51.20.3.211");
 
     printf("Attemting to connect...\n");
     microtcp_connect(&tcpsocket, (const struct sockaddr *)&servaddr, sizeof(servaddr));
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     //     printf("From server: %s\n", rbuff);
     // } while (strcmp(sbuff, "exit\n") != 0);
 
-#define ARRAY_SIZE 15000
+#define ARRAY_SIZE 500000
     size_t *array = malloc(ARRAY_SIZE * sizeof(size_t));
     for (int i = 0; i < ARRAY_SIZE; i++) /* DOUBLE OF `i` */
         array[i] = 2 * i;

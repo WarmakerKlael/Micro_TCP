@@ -82,7 +82,7 @@ int main(int argc, char **argv)
     microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Server Connected\n");
 
-#define ARRAY_SIZE 150000
+#define ARRAY_SIZE 500000
 
     size_t big_nums[ARRAY_SIZE] = {0};
     ssize_t read_bytes = microtcp_recv(&tcpsocket, big_nums, ARRAY_SIZE * sizeof(size_t), MSG_WAITALL);
@@ -97,6 +97,8 @@ int main(int argc, char **argv)
         printf("PEER ASKED TOCLOSE\n");
         microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     }
+    else
+        microtcp_shutdown(&tcpsocket, SHUT_RDWR);
 
     // while (TRUE)
     // {
