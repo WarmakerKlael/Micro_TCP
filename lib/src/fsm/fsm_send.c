@@ -148,6 +148,7 @@ static __always_inline send_fsm_substates_t handle_ack_reception(microtcp_sock_t
         const size_t acked_segments = sq_dequeue(_socket->send_queue, received_ack_number);
         const size_t post_dequeue_bytes = sq_stored_bytes(_socket->send_queue);
         _context->remaining -= (pre_dequeue_bytes - post_dequeue_bytes);
+        _context->buffer += (pre_dequeue_bytes - post_dequeue_bytes);
         handle_seq_number_increment(_socket, received_ack_number, acked_segments);
         handle_cwnd_increment(_socket, _context, acked_segments);
         handle_peer_win_size(_socket);

@@ -89,6 +89,17 @@ int main(int argc, char **argv)
 
     for (int i = 0; i < ARRAY_SIZE; i++)
         printf("%d\t%c\n", i, chars[i]);
+
+    char *array = malloc(ARRAY_SIZE);
+    for (int i = 0; i < ARRAY_SIZE; i++) /* DOUBLE OF `i` */
+        array[i] = 'A' + (i % ('Z' - 'A' + 1));
+
+        array[70000] = '0';
+
+    for (int i = 0; i < ARRAY_SIZE; i++)
+        if (array[i] != chars[i])
+            printf("(array[%d] = %c) != (chars[%d] = %c)\n", i, array[i], i, chars[i]);
+
     // while (TRUE)
     // {
     // int sleep_time_us = getRandomNumber();

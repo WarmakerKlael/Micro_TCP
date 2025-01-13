@@ -63,6 +63,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
                         uint32_t appended_bytes = rrb_append(bytestream_rrb, _socket->segment_receive_buffer);
                         if (RARE_CASE(appended_bytes == 0))
                                 break;
+
                         _socket->ack_number = rrb_last_consumed_seq_number(bytestream_rrb) + rrb_consumable_bytes(bytestream_rrb) + 1; /* TODO: optimize... */
                                                                                                                                        // if (rrb_consumable_bytes(bytestream_rrb) == cached_rrb_size || rrb_consumable_bytes(bytestream_rrb) + bytes_copied >= _length)
                         bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied);
