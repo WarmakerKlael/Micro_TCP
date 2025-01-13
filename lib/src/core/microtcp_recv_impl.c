@@ -12,16 +12,19 @@
 #include <threads.h>
 #include "microtcp_helper_functions.h"
 
-#define HANDLE_FINACK_RECEPTION_AND_RETURN(_return_value, _socket)                                                 \
-        do                                                                                                         \
-        {                                                                                                          \
-                const microtcp_segment_t *const finack_segment = (_socket)->segment_receive_buffer;                \
-                                                                                                                   \
-                if (finack_segment->header.seq_number == (_socket)->ack_number)                                    \
-                        (_socket)->state = CLOSING_BY_PEER;                                                        \
-                else                                                                                               \
-                        LOG_ERROR("Protocol lost sychronization, received FIN|ACK, with mismatched `seq_number`"); \
-                return (_return_value);                                                                            \
+#define HANDLE_FINACK_RECEPTION_AND_RETURN(_return_value, _socket)                                                                                         \
+        do                                                                                                                                                 \
+        {                                                                                                                                                  \
+                const microtcp_segment_t *const finack_segment = (_socket)->segment_receive_buffer;                                                        \
+                                                                                                                                                           \
+                if (finack_segment->header.seq_number == (_socket)->ack_number)                                                                            \
+                {                                                                                                                                          \
+                        (_socket)->state = CLOSING_BY_PEER;                                                                                                \
+                        (_socket)->ack_number++;                                                                                                           \
+                }                                                                                                                                          \
+                else                                                                                                                                       \
+                        LOG_WARNING("Protocol lost sychronization, received FIN|ACK, with mismatched `seq_number`; Could also be out-of-order (ignored)"); \
+                return (_return_value);                                                                                                                    \
         } while (0)
 
 #define HANDLE_RST_RECEPTION_AND_RETURN(_return_value, _socket)                                                                                \
@@ -69,6 +72,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
                         bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied);
                         _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb);
                         send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)); /* If curr_win_size == 0, we still send ACK. */
+                        printf("SENT ACK , ack_number sent == %u\n", _socket->ack_number);
                 }
                 }
         }

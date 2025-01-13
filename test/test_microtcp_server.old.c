@@ -82,22 +82,21 @@ int main(int argc, char **argv)
     microtcp_accept(&tcpsocket, (struct sockaddr *)&clientaddr, sizeof(clientaddr));
     printf("Server Connected\n");
 
-#define ARRAY_SIZE 150000
+#define ARRAY_SIZE 15001
 
-    char chars[ARRAY_SIZE] = {0};
-    microtcp_recv(&tcpsocket, chars, ARRAY_SIZE, MSG_WAITALL);
-
-    for (int i = 0; i < ARRAY_SIZE; i++)
-        printf("%d\t%c\n", i, chars[i]);
-
-    char *array = malloc(ARRAY_SIZE);
-    for (int i = 0; i < ARRAY_SIZE; i++) /* DOUBLE OF `i` */
-        array[i] = 'A' + (i % ('Z' - 'A' + 1));
-
+    size_t big_nums[ARRAY_SIZE] = {0};
+    ssize_t read_bytes = microtcp_recv(&tcpsocket, big_nums, ARRAY_SIZE * sizeof(size_t), MSG_WAITALL);
 
     for (int i = 0; i < ARRAY_SIZE; i++)
-        if (array[i] != chars[i])
-            printf("(array[%d] = %c) != (chars[%d] = %c)\n", i, array[i], i, chars[i]);
+        printf("%d\t%zu\n", i, big_nums[i]);
+
+    printf("MICROTCP_RECV read %zd bytes\n", read_bytes);
+
+    if (tcpsocket.state == CLOSING_BY_PEER)
+    {
+        printf("PEER ASKED TOCLOSE\n");
+        microtcp_shutdown(&tcpsocket, SHUT_RDWR);
+    }
 
     // while (TRUE)
     // {
@@ -125,7 +124,6 @@ int main(int argc, char **argv)
     // ssize_t bytes = microtcp_recv(&tcpsocket, ff, 2000, 0);
     // printf("recv finished, bytes read = %zd\n", bytes);
     // if (bytes == 0)
-    microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     // printf("ANOTHER HERE\n");
     return EXIT_SUCCESS;
 }

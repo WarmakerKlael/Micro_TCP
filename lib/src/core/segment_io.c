@@ -120,7 +120,7 @@ static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, st
                                    get_microtcp_control_to_string(control_segment->header.control), control_segment->header.data_len);
         /* IGNORE check if waiting to receive SYN (server side). */
         if (_required_control != SYN_BIT && control_segment->header.ack_number != _required_ack_number)
-                LOG_ERROR_RETURN(RECV_SEGMENT_ERROR, "ACK number mismatch occured. (Got = %d)|(Required = %d)",
+                LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "ACK number mismatch occured. (Got = %d)|(Required = %d)",
                                  control_segment->header.ack_number, _socket->seq_number + 1);
 
         _socket->peer_win_size = control_segment->header.window;
