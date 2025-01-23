@@ -120,27 +120,30 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
                 return FIN_WAIT_2_RECV_SUBSTATE;
         }
 }
+#define IS_VALID_CNTRL_TYPE(_cntrl_type)                                                                             \
+         ((sizeof(#_cntrl_type) == sizeof("ack") &&                                                                  \
+           #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') || \
+          (sizeof(#_cntrl_type) == sizeof("finack") &&                                                               \
+           #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' &&   \
+           #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'))
 
 /**
  * @brief Purpose of macro is to remove boiler-plate code from
  * function `execute_fin_double_substate`.
  * @note Support only sending ack and finack.
  */
-#define TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, _cntrl_type)                                                                                                                                                       \
-        do                                                                                                                                                                                                                                                 \
-        {                                                                                                                                                                                                                                                  \
-                _Static_assert(                                                                                                                                                                                                                            \
-                    (sizeof(#_cntrl_type) == sizeof("ack") && #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') ||                                                                                    \
-                        (sizeof(#_cntrl_type) == sizeof("finack") && #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' && #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'), \
-                    "Invalid _cntrl_type: must be 'ack' or 'finack'");                                                                                                                                                                                     \
-                                                                                                                                                                                                                                                           \
-                (_context)->send_##_cntrl_type##_ret_val = send_##_cntrl_type##_control_segment((_socket), (_address), (_address_len));                                                                                                                    \
-                                                                                                                                                                                                                                                           \
-                if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_FATAL_ERROR)                                                                                                                                                                  \
-                        return handle_fatal_error(_context);                                                                                                                                                                                               \
-                if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_ERROR)                                                                                                                                                                        \
-                        return FIN_DOUBLE_SUBSTATE;                                                                                                                                                                                                        \
-                                                                                                                                                                                                                                                           \
+#define TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, _cntrl_type)                                    \
+        do                                                                                                                              \
+        {                                                                                                                               \
+                _Static_assert(IS_VALID_CNTRL_TYPE(_cntrl_type), "Invalid _cntrl_type: must be 'ack' or 'finack'");                     \
+                                                                                                                                        \
+                (_context)->send_##_cntrl_type##_ret_val = send_##_cntrl_type##_control_segment((_socket), (_address), (_address_len)); \
+                                                                                                                                        \
+                if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_FATAL_ERROR)                                               \
+                        return handle_fatal_error(_context);                                                                            \
+                if ((_context)->send_##_cntrl_type##_ret_val == SEND_SEGMENT_ERROR)                                                     \
+                        return FIN_DOUBLE_SUBSTATE;                                                                                     \
+                                                                                                                                        \
         } while (0)
 
 static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,

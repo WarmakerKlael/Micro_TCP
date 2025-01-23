@@ -30,14 +30,14 @@ extern pthread_mutex_t *mutex_logger;
  * @note Thread safety relies on a mutex, and failure to initialize
  *       the mutex results in termination.
  */
-__attribute__((constructor(LOGGER_CONSTRUCTOR_PRIORITY))) static void logger_constructor();
+__attribute__((constructor(LOGGER_CONSTRUCTOR_PRIORITY))) static void logger_constructor(void);
 
 /**
  * @brief Deinitializes the logging system.
  *
  * Releases resources allocated for logging. Logs a warning if cleanup is incomplete.
  */
-__attribute__((destructor(LOGGER_DESTRUCTOR_PRIORITY))) static void logger_destructor();
+__attribute__((destructor(LOGGER_DESTRUCTOR_PRIORITY))) static void logger_destructor(void);
 
 /**
  * @brief Outputs a formatted log message to the log stream. Includes file,

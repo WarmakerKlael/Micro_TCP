@@ -36,7 +36,7 @@ typedef enum
 
 typedef struct
 {
-        const void *buffer;
+        const uint8_t *buffer;
         size_t remaining;
         uint8_t duplicate_ack_count;
         send_algorithm_t current_send_algorithm;
@@ -63,7 +63,7 @@ static __always_inline ssize_t error_tolerant_send_data(microtcp_sock_t *_socket
         }
 }
 
-static inline void handle_zero_peer_window()
+static inline void handle_zero_peer_window(void)
 {
         /* TODO: With current setup peer_window can never be 0. */
         /* As microtcp_recv reads bytes into rrb, only when, */

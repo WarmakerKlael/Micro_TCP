@@ -5,7 +5,7 @@
 #add_executable(test_microtcp_client test_microtcp_client.c)
 
 add_executable(test_microtcp_client.out test_microtcp_client.old.c)
-add_executable(test_microtcp_server.out test_microtcp_server.old.c)
+add_executable(test_microtcp_server.out test_microtcp_server.c)
 
 target_include_directories(test_microtcp_server.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
 target_include_directories(test_microtcp_client.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)

@@ -167,3 +167,8 @@ for "up to those bytes". Of course you must update you receive window too.
 31)
 huffman encoding and bitpacking.
 
+
+
+32) TODO:  SECURITY UPDATE check that a received packet does not alter peer's address...
+
+33) TODO: Return on the multithreaded IDEA.. 1 thread sends, while the other receives...

@@ -23,7 +23,7 @@ struct rrb_block
 /* `receive_ring_bufffer_t` is defined in equivilant header_file. */
 struct receive_ring_buffer
 {
-        void *buffer;
+        uint8_t *buffer;
         uint32_t buffer_size;
         uint32_t last_consumed_seq_number;
         uint32_t consumable_bytes;
@@ -128,7 +128,7 @@ uint32_t rrb_pop(receive_ring_buffer_t *const _rrb, void *const _buffer, const u
         const uint32_t bytes_on_right_side = MIN(bytes_to_copy, _rrb->buffer_size - begin_pos);
         const uint32_t bytes_on_left_size = bytes_to_copy - bytes_on_right_side;
         memcpy(_buffer, _rrb->buffer + begin_pos, bytes_on_right_side);
-        memcpy(_buffer + bytes_on_right_side, _rrb->buffer, bytes_on_left_size);
+        memcpy((uint8_t *)_buffer + bytes_on_right_side, _rrb->buffer, bytes_on_left_size);
         _rrb->consumable_bytes -= bytes_to_copy;
         _rrb->last_consumed_seq_number += bytes_to_copy;
         return bytes_to_copy;

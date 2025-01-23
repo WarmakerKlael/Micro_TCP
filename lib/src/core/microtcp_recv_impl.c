@@ -42,7 +42,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
         size_t bytes_copied = 0;
         const _Bool block = !(_flags & MSG_DONTWAIT);
 
-        bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied); /* Pop any leftover bytes in RRB. */
+        bytes_copied += rrb_pop(bytestream_rrb, (uint8_t *)_buffer + bytes_copied, _length - bytes_copied); /* Pop any leftover bytes in RRB. */
         while (bytes_copied != _length)
         {
                 ssize_t receive_data_ret_val = receive_data_segment(_socket, block);
@@ -57,7 +57,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
                 case RECV_SEGMENT_RST_RECEIVED:
                         HANDLE_RST_RECEPTION_AND_RETURN(-1, _socket);
                 case RECV_SEGMENT_TIMEOUT:
-                        bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied); /* Pop any remaining bytes.*/
+                        bytes_copied += rrb_pop(bytestream_rrb, (uint8_t *)_buffer + bytes_copied, _length - bytes_copied); /* Pop any remaining bytes.*/
                         if (_flags & MSG_WAITALL)
                                 break;
                         return bytes_copied;
@@ -69,7 +69,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, void *const _buffer, 
 
                         _socket->ack_number = rrb_last_consumed_seq_number(bytestream_rrb) + rrb_consumable_bytes(bytestream_rrb) + 1; /* TODO: optimize... */
                                                                                                                                        // if (rrb_consumable_bytes(bytestream_rrb) == cached_rrb_size || rrb_consumable_bytes(bytestream_rrb) + bytes_copied >= _length)
-                        bytes_copied += rrb_pop(bytestream_rrb, _buffer + bytes_copied, _length - bytes_copied);
+                        bytes_copied += rrb_pop(bytestream_rrb, (uint8_t *)_buffer + bytes_copied, _length - bytes_copied);
                         _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb);
                         send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)); /* If curr_win_size == 0, we still send ACK. */
                         printf("SENT ACK , ack_number sent == %u\n", _socket->ack_number);

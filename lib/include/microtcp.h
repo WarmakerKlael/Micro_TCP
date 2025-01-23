@@ -16,19 +16,27 @@ typedef struct send_queue send_queue_t;
  * microTCP header structure
  * NOTE: DO NOT CHANGE!
  */
+// clang-format off
 typedef struct
 {
-        uint32_t seq_number;  /**< Sequence number */
-        uint32_t ack_number;  /**< ACK number */
-        uint16_t control;     /**< Control bits (e.g. SYN, ACK, FIN) */
-        uint32_t window;      /**< Window size in bytes */ /* REMOVE make it uint16_t TODO TODO TODO TODO, changed it for EC2. */
-        uint32_t data_len;    /**< Data length in bytes (EXCLUDING header) */
+        uint32_t seq_number; /**< Sequence number */
+        uint32_t ack_number; /**< ACK number */
+        uint16_t control;    /**< Control bits (e.g. SYN, ACK, FIN) */
+#ifdef UNORTHODOX_MODE
+        uint32_t window; /**< Window size in bytes (offers higher throughput) */
+#else
+        uint16_t window; /**< Window size in bytes */
+#endif /* UNORTHODOX_MODE */
+        uint32_t data_len; /**< Payload length in bytes */
+#ifndef UNORTHODOX_MODE
         uint32_t future_use0; /**< 32-bits for future use */
         uint32_t future_use1; /**< 32-bits for future use */
         uint32_t future_use2; /**< 32-bits for future use */
-        uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
+#endif /* UNORTHODOX_MODE */
+
+        uint32_t checksum; /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
-#define MICROTCP_HEADER_SIZE sizeof(microtcp_header_t)
+#define MICROTCP_HEADER_SIZE (sizeof(microtcp_header_t))
 
 /*
  * Several useful constants
@@ -36,12 +44,19 @@ typedef struct
 #define MICROTCP_ACK_TIMEOUT_US 200000
 #define MICROTCP_MSS 1400
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
-#define MICROTCP_RECVBUF_LEN 131072 /* DEFAULT IS 8192, changed it to measure speed on Amazons EC2. */
+
+#ifdef UNORTHODOX_MODE
+#define MICROTCP_RECVBUF_LEN 33554432 /* 32 MBytes (offers higher throughput) */
+#else
+#define MICROTCP_RECVBUF_LEN 8192 /* 8 KBytes. */
+#endif /* UNORTHODOX_MODE */
+
 #define MICROTCP_WIN_SIZE MICROTCP_RECVBUF_LEN
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
 
 _Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_LEN) " must be a power of 2 number");
+// clang-format on
 
 /**
  * Possible states of the microTCP socket
@@ -100,7 +115,7 @@ typedef struct
         void *bytestream_build_buffer;
         send_queue_t *send_queue;
 
-        /* During data transfering only receiver thread has access. */
+        /* During data transfering only receiver thread has access. (deprecated IDEA) */
         microtcp_segment_t *segment_receive_buffer;
         void *bytestream_receive_buffer;
         struct sockaddr *peer_address;
@@ -134,6 +149,6 @@ ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length
 
 ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags);
 
-void microtcp_close_socket(microtcp_sock_t *socket);
+void microtcp_close(microtcp_sock_t *socket);
 
 #endif /* LIB_MICROTCP_H_ */

@@ -20,7 +20,7 @@
 #include "microtcp_core_macros.h"
 #include "logging/microtcp_logger.h"
 
-static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, _Bool _block);
+static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, int _recvfrom_flgas);
 static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint16_t _required_control, _Bool _block);
 static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockaddr *const _address, const socklen_t _address_len, microtcp_segment_t *_segment);
 static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len,
@@ -121,7 +121,7 @@ static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, st
         /* IGNORE check if waiting to receive SYN (server side). */
         if (_required_control != SYN_BIT && control_segment->header.ack_number != _required_ack_number)
                 LOG_WARNING_RETURN(RECV_SEGMENT_ERROR, "ACK number mismatch occured. (Got = %d)|(Required = %d)",
-                                 control_segment->header.ack_number, _socket->seq_number + 1);
+                                   control_segment->header.ack_number, _socket->seq_number + 1);
 
         _socket->peer_win_size = control_segment->header.window;
         LOG_INFO_RETURN(receive_segment_ret_val, "%s segment received.", get_microtcp_control_to_string(_required_control));
@@ -165,7 +165,8 @@ ssize_t receive_data_ack_segment(microtcp_sock_t *const _socket, const _Bool _bl
 static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr *const _address, const socklen_t _address_len,
                                       const uint16_t _required_control, const _Bool _block)
 {
-        ssize_t receive_bytestream_ret_val = receive_bytestream(_socket, _address, _address_len, _block);
+        const int recvfrom_flags = _block ? 0 : MSG_DONTWAIT;
+        ssize_t receive_bytestream_ret_val = receive_bytestream(_socket, _address, _address_len, recvfrom_flags);
         if (receive_bytestream_ret_val <= RECV_SEGMENT_EXCEPTION_THRESHOLD)
                 return receive_bytestream_ret_val;
 
@@ -183,12 +184,12 @@ static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr 
 }
 #undef LOG_WARNING_RETURN_CONTROL_MISMATCH
 
-static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len, const _Bool _block)
+static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockaddr *const _address, socklen_t _address_len, int _recvfrom_flags)
 {
         void *const bytestream_buffer = _socket->bytestream_receive_buffer;
-        const int recvfrom_flags = MSG_TRUNC | (_block ? 0 : MSG_DONTWAIT);
+        _recvfrom_flags |= MSG_TRUNC; /* Appending MSG_TRUNC flag, too catch large than MicroTCP allowed packets, and discard them. */
 
-        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MTU, recvfrom_flags, _address, &_address_len);
+        ssize_t recvfrom_ret_val = recvfrom(_socket->sd, bytestream_buffer, MICROTCP_MTU, _recvfrom_flags, _address, &_address_len);
         DEBUG_SMART_ASSERT(_address_len == sizeof(struct sockaddr));
         DEBUG_SMART_ASSERT(recvfrom_ret_val != RECVFROM_SHUTDOWN); /* Underlying protocol is UDP, this should be impossible. */
         if (recvfrom_ret_val == RECVFROM_ERROR && errno == EWOULDBLOCK)

@@ -8,7 +8,7 @@ set_source_files_properties(microtcp.c PROPERTIES COMPILE_FLAGS "-Wno-unused-par
 target_include_directories(microtcp PUBLIC ${CMAKE_SOURCE_DIR}/utils/include)
 
 target_link_libraries(microtcp microtcp_logger)
-target_link_libraries(microtcp microtcp_helpers)
+target_link_libraries(microtcp microtcp_misc_utils)
 target_link_libraries(microtcp microtcp_fsm)
 target_link_libraries(microtcp microtcp_settings)
 

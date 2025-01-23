@@ -23,10 +23,13 @@ microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint32_
         new_segment->header.control = _control;
         new_segment->header.window = _socket->curr_win_size; /* As sender we advertise our receive window, so opposite host wont overflow us .*/
         new_segment->header.data_len = _payload.size;
-        new_segment->header.future_use0 = 0; /* TBD in Phase B */
-        new_segment->header.future_use1 = 0; /* TBD in Phase B */
-        new_segment->header.future_use2 = 0; /* TBD in Phase B */
-        new_segment->header.checksum = 0;    /* CRC32 checksum is calculated after linearizing this packet. */
+#ifndef UNORTHODOX_MODE
+        new_segment->header.future_use0 = 0;
+        new_segment->header.future_use1 = 0;
+        new_segment->header.future_use2 = 0;
+#endif /* UNORTHODOX_MODE */
+
+        new_segment->header.checksum = 0; /* CRC32 checksum is calculated after linearizing this packet. */
 
         /* Set the payload pointer. We do not do deep copy, to avoid wasting memory.
          * MicroTCP will have to create a bitstream, where header and payload will have
@@ -55,7 +58,7 @@ void *serialize_microtcp_segment(microtcp_sock_t *const _socket, microtcp_segmen
         void *bytestream_buffer = _socket->bytestream_build_buffer;
 
         memcpy(bytestream_buffer, &(_segment->header), header_length);
-        memcpy(bytestream_buffer + header_length, _segment->raw_payload_bytes, payload_length);
+        memcpy((uint8_t *)bytestream_buffer + header_length, _segment->raw_payload_bytes, payload_length);
 
         /* Calculate crc32 checksum: */
         const uint32_t checksum_result = crc32(bytestream_buffer, bytestream_buffer_length);
@@ -95,5 +98,5 @@ void extract_microtcp_segment(microtcp_segment_t **_segment_buffer, void *_bytes
 
         memcpy(&((*_segment_buffer)->header), _bytestream_buffer, sizeof(microtcp_header_t));
 
-        (*_segment_buffer)->raw_payload_bytes = (payload_size > 0 ? _bytestream_buffer + header_size : NULL);
+        (*_segment_buffer)->raw_payload_bytes = (payload_size > 0 ? (uint8_t *)_bytestream_buffer + header_size : NULL);
 }

@@ -28,7 +28,7 @@ microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol)
 
         if (set_socket_recvfrom_timeout(&new_socket, get_microtcp_ack_timeout()) == POSIX_SETSOCKOPT_FAILURE)
         {
-                microtcp_close_socket(&new_socket);
+                microtcp_close(&new_socket);
                 LOG_ERROR_RETURN(new_socket, "Failed to set timeout on socket descriptor.");
         }
 
@@ -51,7 +51,7 @@ int microtcp_bind(microtcp_sock_t *_socket, const struct sockaddr *_address, soc
                 LOG_ERROR_RETURN(MICROTCP_BIND_FAILURE, "Unknown error occurred on POSIX's bind()");
 
         _socket->state = LISTEN; /* Socket successfully binded to sockaddr */
-        LOG_INFO_RETURN(bind_result, "Bind operation succeeded.");
+        LOG_INFO_RETURN(bind_result, "Bind operation succeeded. (sd = %d)", _socket->sd);
 }
 
 /**
@@ -164,7 +164,7 @@ ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _length, i
         return microtcp_recv_impl(_socket, _buffer, _length, _flags);
 }
 
-void microtcp_close_socket(microtcp_sock_t *_socket)
+void microtcp_close(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
 
