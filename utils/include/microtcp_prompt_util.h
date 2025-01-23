@@ -7,7 +7,7 @@
 
 void handle_eof(void);
 void handle_empty_line(void);
-void clean_line(void);
+void clear_line(void);
 int count_format_specifiers(const char *_format);
 extern FILE *error_stream;
 extern FILE *prompt_stream;

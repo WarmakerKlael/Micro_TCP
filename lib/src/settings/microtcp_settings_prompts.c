@@ -22,7 +22,7 @@ void prompt_set_rrb_length(void)
                 PROMPT_WITH_READLINE(prompt, "%ld", &rrb_size);
                 if (rrb_size > 0 && rrb_size < UINT32_MAX && IS_POWER_OF_2(rrb_size))
                         break;
-                clean_line();
+                clear_line();
         }
         set_bytestream_rrb_size(rrb_size);
 }
@@ -35,7 +35,7 @@ void prompt_set_ack_timeout(void)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld%ld", &ack_timeout_interval.tv_sec, &ack_timeout_interval.tv_usec);
                 if (ack_timeout_interval.tv_sec < 0 || ack_timeout_interval.tv_usec < 0)
-                        clean_line();
+                        clear_line();
         } while (ack_timeout_interval.tv_sec < 0 || ack_timeout_interval.tv_usec < 0);
         set_microtcp_ack_timeout(ack_timeout_interval);
 }
@@ -48,7 +48,7 @@ void prompt_set_connect_retries(void)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld", &retries);
                 if (retries < 0)
-                        clean_line();
+                        clear_line();
         } while (retries < 0);
         set_connect_rst_retries(retries);
 }
@@ -61,7 +61,7 @@ void prompt_set_accept_retries(void)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld", &retries);
                 if (retries < 0)
-                        clean_line();
+                        clear_line();
         } while (retries < 0);
         set_accept_synack_retries(retries);
 }
@@ -74,7 +74,7 @@ void prompt_set_shutdown_retries(void)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld", &retries);
                 if (retries < 0)
-                        clean_line();
+                        clear_line();
         } while (retries < 0);
         set_shutdown_finack_retries(retries);
 }
@@ -87,7 +87,7 @@ void prompt_set_shutdown_time_wait_period(void)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld%ld", &time_wait_period.tv_sec, &time_wait_period.tv_usec);
                 if (time_wait_period.tv_sec < 0 || time_wait_period.tv_usec < 0)
-                        clean_line();
+                        clear_line();
         } while (time_wait_period.tv_sec < 0 || time_wait_period.tv_usec < 0);
         set_shutdown_time_wait_period(time_wait_period);
 }

@@ -37,7 +37,7 @@ void handle_empty_line(void)
         printf("\033[1F");
 }
 
-void clean_line(void)
+void clear_line(void)
 {
         printf("\033[1F");
         printf("\033[1G\033[2K");

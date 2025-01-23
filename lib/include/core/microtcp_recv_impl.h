@@ -11,6 +11,6 @@
         (waitall && dontwait ? FAILURE : SUCCESS);                                                        \
 })
 
-ssize_t microtcp_recv_impl(microtcp_sock_t *_socket, void *_buffer, size_t _length, int _flags);
+ssize_t microtcp_recv_impl(microtcp_sock_t *_socket, uint8_t *_buffer, size_t _length, int _flags);
 
 #endif /* CORE_RECV_IMPL_H */
