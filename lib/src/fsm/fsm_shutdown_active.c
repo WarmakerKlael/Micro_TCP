@@ -294,7 +294,7 @@ int microtcp_shutdown_active_fsm(microtcp_sock_t *const _socket, struct sockaddr
         _socket->state = CLOSING_BY_HOST;
 
         shutdown_active_fsm_substates_t current_substate = CONNECTION_ESTABLISHED_SUBSTATE; /* Initial state in shutdown_active. */
-        while (TRUE)
+        while (true)
         {
                 LOG_FSM_SHUTDOWN("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)

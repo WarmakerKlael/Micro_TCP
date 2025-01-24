@@ -135,7 +135,7 @@ int microtcp_shutdown_passive_fsm(microtcp_sock_t *const _socket, struct sockadd
 
         /* If we are in shutdown()'s passive FSM, that means that microtcp intercepted a FIN-ACK packet. */
         shutdown_passive_fsm_substates_t current_substate = FINACK_RECEIVED_SUBSTATE; /* Initial state in shutdown. */
-        while (TRUE)
+        while (true)
         {
                 LOG_FSM_SHUTDOWN("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)

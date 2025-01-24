@@ -21,7 +21,7 @@ extern FILE *prompt_stream;
         do                                                                                                                                                                              \
         {                                                                                                                                                                               \
                 size_t line_length = 0;                                                                                                                                                 \
-                while (TRUE)                                                                                                                                                            \
+                while (true)                                                                                                                                                            \
                 {                                                                                                                                                                       \
                         fprintf(prompt_stream, "%s>> %s%s", COLOR_ASCII_FG_MAGENTA, (_prompt), SGR_RESET); /* Passing _prompt as argument, as _prompt is variable (compiler warning) */ \
                         int getline_ret = getline(&(_string_line), &line_length, stdin);                                                                                                \
@@ -59,7 +59,7 @@ extern FILE *prompt_stream;
                                                                                                                                                                                         \
                 char *line = NULL;                                                                                                                                                      \
                 size_t line_length = 0;                                                                                                                                                 \
-                while (TRUE)                                                                                                                                                            \
+                while (true)                                                                                                                                                            \
                 {                                                                                                                                                                       \
                         fprintf(prompt_stream, "%s>> %s%s", COLOR_ASCII_FG_MAGENTA, (_prompt), SGR_RESET); /* Passing _prompt as argument, as _prompt is variable (compiler warning) */ \
                         int getline_ret = getline(&line, &line_length, stdin);                                                                                                          \

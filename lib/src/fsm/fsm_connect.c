@@ -141,7 +141,7 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                                  .errno = NO_ERROR};
 
         connect_fsm_substates_t current_substate = CLOSED_SUBSTATE;
-        while (TRUE)
+        while (true)
         {
                 LOG_FSM_CONNECT("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)

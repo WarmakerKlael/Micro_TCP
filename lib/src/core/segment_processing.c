@@ -73,7 +73,7 @@ _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, const ssize_t _byte
 {
         DEBUG_SMART_ASSERT(_bytestream_buffer != NULL);
         if (RARE_CASE(_bytestream_length < (ssize_t)sizeof(microtcp_header_t) || _bytestream_length > (ssize_t)MICROTCP_MTU))
-                LOG_ERROR_RETURN(FALSE, "Invalid bytestream due to `_bytestream_length` = %zd", _bytestream_length);
+                LOG_ERROR_RETURN(false, "Invalid bytestream due to `_bytestream_length` = %zd", _bytestream_length);
 
         uint32_t extracted_checksum = ((microtcp_header_t *)_bytestream_buffer)->checksum;
 

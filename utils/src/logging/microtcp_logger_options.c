@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include "microtcp_defines.h"
 #include "logging/logger_options.h"
+#include <stdbool.h>
+#include <stdbool.h>
+#include <stdbool.h>
+#include <stdbool.h>
 #include <pthread.h>
 
 /**
@@ -11,11 +15,11 @@ FILE *microtcp_log_stream;
 pthread_mutex_t *mutex_logger = NULL;
 /* ---------------- */
 
-_Bool logger_enabled = FALSE;
-_Bool logger_info_enabled = FALSE;
-_Bool logger_warning_enabled = FALSE;
-_Bool logger_error_enabled = FALSE;
-_Bool logger_allocator_enabled = FALSE;
+_Bool logger_enabled = false;
+_Bool logger_info_enabled = false;
+_Bool logger_warning_enabled = false;
+_Bool logger_error_enabled = false;
+_Bool logger_allocator_enabled = false;
 
 /* Logger Option Getters: */
 _Bool logger_is_enabled(void)

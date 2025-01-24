@@ -25,3 +25,4 @@
 #install(TARGETS bandwidth_test DESTINATION bin)
 
 add_subdirectory(demo1)
+add_subdirectory(mini_redis_demo)

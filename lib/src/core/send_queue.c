@@ -89,7 +89,7 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
                 LOG_ERROR_RETURN(dequeued_node_counter, "out-of-sync: No match for ACK number = %u", _ack_number);
 
         /* ACK number matched. */
-        while (TRUE)
+        while (true)
         {
                 uint32_t calculated_ack_number = _sq->front->seq_number + _sq->front->segment_size;
                 send_queue_node_t *old_front = _sq->front;

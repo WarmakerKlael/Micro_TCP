@@ -10,6 +10,7 @@
 #include "microtcp_core_macros.h"
 #include "settings/microtcp_settings.h"
 #include "smart_assert.h"
+#include "status.h"
 
 /* Declarations of static functions implemented in this file: */
 static microtcp_segment_t *allocate_segment_build_buffer(microtcp_sock_t *_socket);
@@ -78,7 +79,7 @@ status_t deallocate_post_handshake_buffers(microtcp_sock_t *_socket)
 void release_and_reset_connection_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state)
 {
         SMART_ASSERT(_socket != NULL, _rollback_state != ESTABLISHED);
-        _Bool graceful_operation = TRUE;
+        _Bool graceful_operation = true;
 
         /* Reset connection if established (its not this function's job to terminate gracefully).
          * We dont check if RST_BIT is actually received; Its a best effort to warn client,
@@ -92,7 +93,7 @@ void release_and_reset_connection_resources(microtcp_sock_t *_socket, mircotcp_s
         if (deallocate_post_handshake_buffers(_socket) == FAILURE)
         {
                 LOG_ERROR("Deallocation of post handshake buffers failed!");
-                graceful_operation = FALSE;
+                graceful_operation = false;
         }
         if (set_socket_recvfrom_timeout(_socket, get_microtcp_ack_timeout()) == POSIX_SETSOCKOPT_FAILURE)
                 LOG_ERROR("Failed resetting socket's timeout period.");

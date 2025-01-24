@@ -27,7 +27,7 @@ static inline const char *request_file_to_send(void)
     const char *prompt = "Enter path to file: ";
     char *filepath = NULL;
 
-    while (TRUE)
+    while (true)
     {
         PROMPT_WITH_READ_STRING(prompt, filepath);
         FILE *file = fopen(filepath, "rb");

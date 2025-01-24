@@ -31,8 +31,8 @@ int main(void)
     microtcp_sock_t utcp_socket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     microtcp_bind(&utcp_socket, (const struct sockaddr *)&server_listening_address, sizeof(server_listening_address));
     microtcp_accept(&utcp_socket, (struct sockaddr *)&client_address, sizeof(client_address));
-#define FILE_BUFFER_SIZE 200000
-    char file_buffer[FILE_BUFFER_SIZE]; // 200KB
+#define FILE_BUFFER_SIZE 1000000 /* 1MB */
+    char file_buffer[FILE_BUFFER_SIZE]; 
     ssize_t bytes = microtcp_recv(&utcp_socket, file_buffer, FILE_BUFFER_SIZE, MSG_WAITALL);
     write_file((uint8_t *)file_buffer, bytes);
     microtcp_shutdown(&utcp_socket, SHUT_RDWR);

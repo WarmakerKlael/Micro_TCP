@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "microtcp_defines.h"
+#include "status.h"
 
 typedef struct send_queue_node send_queue_node_t;
 struct send_queue_node

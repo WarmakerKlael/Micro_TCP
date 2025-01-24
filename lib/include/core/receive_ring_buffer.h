@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "microtcp_defines.h"
 #include "microtcp.h"
+#include "status.h"
 
 typedef struct receive_ring_buffer receive_ring_buffer_t;
 typedef struct microtcp_segment microtcp_segment_t;

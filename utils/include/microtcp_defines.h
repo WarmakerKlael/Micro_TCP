@@ -10,13 +10,6 @@
 
 #define DATA_SEGMENT_CONTROL_FLAGS ACK_BIT
 
-#define TRUE 1
-#define FALSE 0
-
-#define SUCCESS 1
-#define FAILURE 0
-typedef _Bool status_t; 
-
 /* In TCP, segments containing control flags (e.g., SYN, FIN),
  * other than pure ACKs, are treated as carrying a virtual payload. 
  * That is the reason for the +1 increment. 

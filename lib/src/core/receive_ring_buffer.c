@@ -9,6 +9,9 @@
 #include "microtcp_helper_functions.h"
 #include "microtcp_helper_macros.h"
 #include "core/receive_ring_buffer.h"
+#include "core/receive_ring_buffer.h"
+#include <stdbool.h>
+#include <status.h>
 #include "microtcp_defines.h"
 #include "core/segment_processing.h"
 
@@ -165,28 +168,6 @@ static void rrb_block_list_destroy(rrb_block_t **const _head_address)
 #undef HEAD
 }
 
-/** @deprecated */
-static inline _Bool __attribute__((deprecated, unused)) is_in_boundsOLD(uint32_t _rrb_last_consumed_seq_number, uint32_t _rrb_size, uint32_t _segment_seq_number)
-{
-        DEBUG_SMART_ASSERT(FALSE); /* remove deprecated and OLD flags before USE. */
-        DEBUG_SMART_ASSERT(_rrb_size > 0, _rrb_size < INT32_MAX);
-
-        _Bool wrap_around_occurs = _rrb_last_consumed_seq_number > _rrb_last_consumed_seq_number + _rrb_size;
-        /* Check if in first range: */
-        const uint32_t min1_ex = _rrb_last_consumed_seq_number;
-        const uint32_t max1_in = wrap_around_occurs ? UINT32_MAX : _rrb_last_consumed_seq_number + _rrb_size;
-
-        if (!wrap_around_occurs && _segment_seq_number > min1_ex && _segment_seq_number <= max1_in)
-                return TRUE;
-
-        /*Check wrap_arround.*/
-        const uint32_t min2_in = 0;
-        const uint32_t max2_in = _rrb_last_consumed_seq_number + _rrb_size;
-        if (wrap_around_occurs && ((_segment_seq_number > min1_ex && _segment_seq_number <= max1_in) || (_segment_seq_number >= min2_in && _segment_seq_number <= max2_in)))
-                return TRUE;
-
-        return FALSE;
-}
 static inline _Bool is_in_bounds(uint32_t _rrb_begin_ex_bound, uint32_t _rrb_remaining_size, uint32_t _segment_seq_number)
 {
         _Bool wrap_around_occurs = _rrb_begin_ex_bound > _rrb_begin_ex_bound + _rrb_remaining_size;
@@ -195,14 +176,14 @@ static inline _Bool is_in_bounds(uint32_t _rrb_begin_ex_bound, uint32_t _rrb_rem
         const uint32_t max1_in = wrap_around_occurs ? UINT32_MAX : _rrb_begin_ex_bound + _rrb_remaining_size;
 
         if (!wrap_around_occurs && _segment_seq_number > min1_ex && _segment_seq_number <= max1_in)
-                return TRUE;
+                return true;
 
         /*Check wrap_arround.*/
         const uint32_t min2_in = 0;
         const uint32_t max2_in = _rrb_begin_ex_bound + _rrb_remaining_size;
         if (wrap_around_occurs && ((_segment_seq_number > min1_ex && _segment_seq_number <= max1_in) || (_segment_seq_number >= min2_in && _segment_seq_number <= max2_in)))
-                return TRUE;
-        return FALSE;
+                return true;
+        return false;
 }
 
 static inline uint32_t free_space(const uint32_t _rrb_last_consumed_seq_number, const uint32_t _rrb_size, const uint32_t _segment_seq_number)
@@ -230,7 +211,7 @@ static void rrb_block_list_insert(rrb_block_t **const _head_address, const uint3
 
         rrb_block_t *curr_node = HEAD;
         rrb_block_t *prev_node = NULL;
-        _Bool flag = FALSE;
+        _Bool flag = false;
         rrb_block_t *flag_prev_node = NULL;
         rrb_block_t *flag_curr_node = NULL;
         while (curr_node != NULL)
@@ -247,10 +228,10 @@ static void rrb_block_list_insert(rrb_block_t **const _head_address, const uint3
                         merge_with_right(prev_node, curr_node, _seq_number, _size);
                         return;
                 }
-                if (flag == FALSE && _seq_number < curr_node->seq_number)
+                if (flag == false && _seq_number < curr_node->seq_number)
                 {
 
-                        flag = TRUE;
+                        flag = true;
                         flag_prev_node = prev_node;
                         flag_curr_node = curr_node;
                 }
@@ -258,7 +239,7 @@ static void rrb_block_list_insert(rrb_block_t **const _head_address, const uint3
                 curr_node = curr_node->next;
         }
         /* Case 3: Insert before the current block (less than, no merge) */
-        if (flag == TRUE && _seq_number < flag_curr_node->seq_number)
+        if (flag == true && _seq_number < flag_curr_node->seq_number)
         {
                 rrb_block_t *new_block = create_rrb_block(_seq_number, _size, flag_curr_node);
                 if (flag_prev_node == NULL) /* Means curr_node == HEAD. */
@@ -276,10 +257,10 @@ static uint32_t join_rrb_blocks(receive_ring_buffer_t *const _rrb)
         uint32_t growth_counter = 0;
         rrb_block_t *prev_node = NULL;
         rrb_block_t *curr_node = _rrb->rrb_block_list_head;
-        _Bool found_match = FALSE;
+        _Bool found_match = false;
         do
         {
-                found_match = FALSE;
+                found_match = false;
                 for (; curr_node != NULL; curr_node = curr_node->next)
                 {
                         if (_rrb->last_consumed_seq_number + _rrb->consumable_bytes + 1 == curr_node->seq_number)
@@ -295,8 +276,8 @@ static uint32_t join_rrb_blocks(receive_ring_buffer_t *const _rrb)
                         prev_node->next = curr_node->next;
                 growth_counter += curr_node->size;
                 FREE_NULLIFY_LOG(curr_node);
-                found_match = TRUE;
-        } while (found_match == TRUE);
+                found_match = true;
+        } while (found_match == true);
         return growth_counter;
 }
 

@@ -9,6 +9,7 @@
 
 #include "microtcp.h"
 #include "microtcp_prompt_util.h"
+#include <stdbool.h>
 #include "settings/microtcp_settings_prompts.h"
 
 static inline void print_welcome_message(void)
@@ -21,7 +22,7 @@ static inline uint16_t request_listening_port(void)
 {
     long port_number = -1; /* Default invalid port. */
     const char *prompt = "Enter server's listening port number: ";
-    while (TRUE)
+    while (true)
     {
         PROMPT_WITH_READLINE(prompt, "%ld", &port_number);
         if (port_number >= 0 && port_number <= UINT16_MAX)
@@ -36,7 +37,7 @@ static inline struct in_addr request_listening_ipv4(void)
     char *ip_line = NULL;
     struct in_addr ipv4_address;
     const char *prompt = "Enter server's listening IPv4 address (ANY = 0): ";
-    while (TRUE)
+    while (true)
     {
         PROMPT_WITH_READ_STRING(prompt, ip_line);
         if (inet_pton(AF_INET, ip_line, &ipv4_address) == INET_PTON_SUCCESS)

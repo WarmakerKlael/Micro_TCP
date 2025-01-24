@@ -1,5 +1,8 @@
 #include "logging/microtcp_logger.h"
 #include <stdarg.h>
+#include <stdbool.h>
+#include <stdbool.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,15 +71,15 @@ static const char *get_colored_log_tag_string(enum log_tag _log_tag);
 static void logger_constructor(void)
 {
 #ifdef DEBUG_MODE
-	logger_set_allocator_enabled(TRUE);
-	logger_set_info_enabled(TRUE);
+	logger_set_allocator_enabled(true);
+	logger_set_info_enabled(true);
 #endif /* DEBUG_MODE  */
 #ifdef VERBOSE_MODE
-	logger_set_info_enabled(TRUE);
+	logger_set_info_enabled(true);
 #endif /* VERBOSE_MODE  */
-	logger_set_enabled(TRUE);
-	logger_set_warning_enabled(TRUE);
-	logger_set_error_enabled(TRUE);
+	logger_set_enabled(true);
+	logger_set_warning_enabled(true);
+	logger_set_error_enabled(true);
 
 #define PTHREAD_MUTEX_INIT_SUCCESS 0 /* Specified in man pages. */
 	microtcp_log_stream = stdout;

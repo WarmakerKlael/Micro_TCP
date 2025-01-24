@@ -16,6 +16,9 @@
 #include "microtcp_helper_functions.h"
 #include "microtcp_helper_macros.h"
 #include "smart_assert.h"
+#include "status.h"
+#include <stdbool.h>
+#include "status.h"
 
 __attribute__((constructor(RNG_CONSTRUCTOR_PRIORITY))) static void seed_random_number_generator(void)
 {
@@ -97,12 +100,12 @@ microtcp_sock_t initialize_microtcp_socket(void)
 void cleanup_microtcp_socket(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
-        _Bool graceful_operation = TRUE;
+        _Bool graceful_operation = true;
         deallocate_pre_handshake_buffers(_socket);
         if (deallocate_post_handshake_buffers(_socket) == FAILURE)
         {
                 LOG_ERROR("Cleanup of microtcp partial failure: couldn't deallocate post handshake buffers.");
-                graceful_operation = FALSE;
+                graceful_operation = false;
         }
 
         if (_socket->sd != POSIX_SOCKET_FAILURE_VALUE)

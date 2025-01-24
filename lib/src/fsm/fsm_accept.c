@@ -142,7 +142,7 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
         fsm_context_t context = {.synack_retries_counter = get_accept_synack_retries()};
 
         accept_fsm_substates_t current_substate = LISTEN_SUBSTATE;
-        while (TRUE)
+        while (true)
         {
                 LOG_FSM_ACCEPT("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)

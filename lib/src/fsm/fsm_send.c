@@ -52,7 +52,7 @@ static __always_inline uint32_t get_most_recent_ack(uint32_t _ack1, uint32_t _ac
 
 static __always_inline ssize_t error_tolerant_send_data(microtcp_sock_t *_socket, const void *const _buffer, size_t _segment_size, uint32_t _seq_number)
 {
-        while (TRUE)
+        while (true)
         {
                 ssize_t segment_bytes_sent = send_data_segment(_socket, _buffer, _segment_size, _seq_number);
                 if (RARE_CASE(segment_bytes_sent == SEND_SEGMENT_FATAL_ERROR))
@@ -69,7 +69,7 @@ static inline void handle_zero_peer_window(void)
         /* As microtcp_recv reads bytes into rrb, only when, */
         /* User of microtcp_recv requests so... Thus there is a buffer to copy.. */
         ;
-        SMART_ASSERT(FALSE);
+        SMART_ASSERT(false);
 }
 
 /* FAST_RETRANSMIT: response to 3 dup ACK. */
@@ -192,7 +192,7 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
         case RECV_SEGMENT_CARRIES_DATA:
                 break;
         case RECV_SEGMENT_TIMEOUT:
-                if (_block == TRUE) /* If in block, timeout timer expired. */
+                if (_block == true) /* If in block, timeout timer expired. */
                 {
                         respond_to_timeout(_socket, _context);
                         LOG_WARNING("Timeout occured!"); /* TIMEOUT */ /* TODO: REMOVE */
@@ -218,7 +218,7 @@ static inline send_fsm_substates_t execute_recv_ack_round_substate(microtcp_sock
 
         while (!sq_is_empty(_socket->send_queue))
         {
-                const send_fsm_substates_t next_substate = receive_and_process_ack(_socket, _context, TRUE);
+                const send_fsm_substates_t next_substate = receive_and_process_ack(_socket, _context, true);
                 if (next_substate != CONTINUE_SUBSTATE)
                         return next_substate;
         }
@@ -239,7 +239,7 @@ static inline send_fsm_substates_t execute_retransmissions_substate(microtcp_soc
                         return EXIT_FAILURE_SUBSTATE;
 
                 const size_t stored_segments_pre_ack = sq_stored_segments(_socket->send_queue);
-                const send_fsm_substates_t next_substate = receive_and_process_ack(_socket, _context, FALSE);
+                const send_fsm_substates_t next_substate = receive_and_process_ack(_socket, _context, false);
                 if (next_substate != CONTINUE_SUBSTATE)
                         return next_substate;
                 if (stored_segments_pre_ack == sq_stored_segments(_socket->send_queue)) /* No ACK, or ACK didn't match. SEND-NEXT */
@@ -291,7 +291,7 @@ ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buf
                                  .current_send_algorithm = ALGORITHM_SLOW_START};
 
         send_fsm_substates_t current_substate = SEND_DATA_ROUND_SUBSTATE;
-        while (TRUE)
+        while (true)
         {
                 LOG_FSM_SEND("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)

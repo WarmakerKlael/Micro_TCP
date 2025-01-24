@@ -108,7 +108,7 @@ static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, st
         RETURN_ERROR_IF_SOCKADDR_INVALID(RECV_SEGMENT_FATAL_ERROR, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(RECV_SEGMENT_FATAL_ERROR, _address_len, sizeof(struct sockaddr));
 
-        ssize_t receive_segment_ret_val = receive_segment(_socket, _address, _address_len, _required_control, TRUE);
+        ssize_t receive_segment_ret_val = receive_segment(_socket, _address, _address_len, _required_control, true);
         if (receive_segment_ret_val <= RECV_SEGMENT_EXCEPTION_THRESHOLD)
                 return receive_segment_ret_val;
         microtcp_segment_t *control_segment = _socket->segment_receive_buffer;

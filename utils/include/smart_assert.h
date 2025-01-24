@@ -1,6 +1,7 @@
 #ifndef SMART_ASSERT_H
 #define SMART_ASSERT_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -9,9 +10,6 @@
 #ifndef __FILENAME__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif /* __FILENAME__ */
-
-#define _TRUE 1
-#define _FALSE 0
 
 static inline int _get_nth_comma_position(const char *_string, int _target_comma_count)
 {
@@ -50,12 +48,12 @@ static inline int _get_leading_spaces(const char *_string)
                 const _Bool assertions[] = {__VA_ARGS__};                                                                                                   \
                 const int assertion_count = sizeof(assertions);                                                                                             \
                 _Static_assert(sizeof(assertions) != 0, "SMART_ASSERT() empty parameter list. At least one condition required");                            \
-                _Bool assert_failure = _FALSE;                                                                                                              \
+                _Bool assert_failure = false;                                                                                                              \
                 for (int assertion_index = 0; assertion_index < assertion_count; assertion_index++)                                                         \
                 {                                                                                                                                           \
-                        if (assertions[assertion_index] == _TRUE)                                                                                           \
+                        if (assertions[assertion_index] == true)                                                                                           \
                                 continue;                                                                                                                   \
-                        assert_failure = _TRUE;                                                                                                             \
+                        assert_failure = true;                                                                                                             \
                         if (assertion_count == 1)                                                                                                           \
                         {                                                                                                                                   \
                                 _PRINT_SMART_ASSERT("Condition `%s` failed.", assertion_text);                                                              \
@@ -83,21 +81,13 @@ static inline int _get_leading_spaces(const char *_string)
                         const char *assertion_address = assertion_text + prefix_comma_position + 1 + leading_spaces;                                        \
                         _PRINT_SMART_ASSERT("Condition %d: `%.*s` failed.", assertion_index + 1, condition_string_size, assertion_address);                 \
                 }                                                                                                                                           \
-                if (assert_failure == _TRUE)                                                                                                                \
+                if (assert_failure == true)                                                                                                                \
                         abort();                                                                                                                            \
         } while (0)
 #ifdef DEBUG_MODE
 #define DEBUG_SMART_ASSERT(...) SMART_ASSERT(__VA_ARGS__)
 #else
-#define DEBUG_SMART_ASSERT(...) /* Nothing */
+#define DEBUG_SMART_ASSERT(...) (__VA_ARGS__) /* Might produce dead code (compiler removes it), but in case of functions it executes them. */
 #endif /* DEBUG_MODE */
-
-
-/* Clear global namespace. */
-// #undef _TRUE
-// #undef _FALSE
-// #undef _GET_NTH_COMMA_POSITION
-// #undef _GET_LEADING_SPACES
-// #undef _PRINT_SMART_ASSERT
 
 #endif /* SMART_ASSERT_H */
