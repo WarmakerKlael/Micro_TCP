@@ -6,3 +6,4 @@ target_include_directories(mini_redis_server.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/
 
 target_link_libraries(mini_redis_server.out microtcp)
 target_link_libraries(mini_redis_server.out registry)
+target_link_libraries(mini_redis_server.out microtcp_settings)

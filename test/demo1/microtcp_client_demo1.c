@@ -71,7 +71,9 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    send_file(&tcpsocket, request_file_to_send());
+    const char *const file_to_send = request_file_to_send();
+    send_file(&tcpsocket, file_to_send);
+    free(file_to_send);
 
     int shutdown_ret_val = microtcp_shutdown(&tcpsocket, SHUT_RDWR);
     if (shutdown_ret_val == MICROTCP_SHUTDOWN_FAILURE)

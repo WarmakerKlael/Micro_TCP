@@ -16,6 +16,7 @@ extern FILE *prompt_stream;
  * @brief This macro prints a prompt, then repeatedly reads and parses user input
  *        according to the given format string. If the format contains no valid specifiers,
  *        it may cause the macro to become stuck in a loop waiting for valid input
+ * @warning Need to free() `_string_line`. 
  */
 #define PROMPT_WITH_READ_STRING(_prompt, _string_line)                                                                                                                                  \
         do                                                                                                                                                                              \

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "allocator/allocator_macros.h"
+#include <errno.h>
 #include "logging/microtcp_logger.h"
 #include "smart_assert.h"
 #include <sys/stat.h>
@@ -13,8 +14,8 @@ typedef struct
         char *file_name; /* Node KEY */
         size_t file_size;
         size_t download_count;
-        time_t time_of_storage;
-        _Bool cached;
+        time_t arrival_time;
+        uint8_t *cache_buffer;
 } registry_node_t;
 
 struct registry
@@ -22,12 +23,14 @@ struct registry
         registry_node_t *node_array;
         size_t size;
         size_t capacity;
+        size_t cached_bytes;
+        size_t cache_size_limit;
 };
 
 static status_t registry_expand(registry_t *_registry);
 static __always_inline void initialize_registry_node(registry_node_t *_registry_node, const char *_file_name);
 
-registry_t *registry_create(const size_t _capacity)
+registry_t *registry_create(const size_t _capacity, const size_t _cache_size_limit)
 {
         registry_t *registry = MALLOC_LOG(registry, sizeof(registry_t));
         if (registry == NULL)
@@ -39,21 +42,30 @@ registry_t *registry_create(const size_t _capacity)
                 return NULL;
         }
         registry->capacity = _capacity;
+        registry->cache_size_limit = _cache_size_limit;
         registry->size = 0;
+        registry->cached_bytes = 0;
 
         return registry;
 }
 
-void registry_destroy(registry_t **_registry_address)
+void registry_destroy(registry_t **const _registry_address)
 {
         SMART_ASSERT(_registry_address != NULL);
 #define REGISTRY (*_registry_address)
+
+        size_t registry_size = REGISTRY->size;
+        for (size_t i = 0; i < registry_size; i++)
+        {
+                FREE_NULLIFY_LOG(REGISTRY->node_array[i].file_name);
+                FREE_NULLIFY_LOG(REGISTRY->node_array[i].cache_buffer);
+        }
         FREE_NULLIFY_LOG(REGISTRY->node_array);
         FREE_NULLIFY_LOG(REGISTRY);
 #undef REGISTRY
 }
 
-status_t registry_append(registry_t *_registry, const char *const _file_name)
+status_t registry_append(registry_t *const _registry, const char *const _file_name)
 {
         if (access(_file_name, F_OK) != 0) /* File doesn't exist. */
         {
@@ -68,14 +80,74 @@ status_t registry_append(registry_t *_registry, const char *const _file_name)
         return SUCCESS;
 }
 
+status_t registry_pop(registry_t *_registry, const char *const _file_name)
+{
+
+        registry_node_t *registry_node_array = _registry->node_array;
+        size_t registry_size = _registry->size;
+        for (size_t i = 0; i < registry_size; i++)
+        {
+                registry_node_t *curr_node = registry_node_array + i;
+                if (strcmp(curr_node->file_name, _file_name) != 0)
+                        continue;
+                FREE_NULLIFY_LOG(curr_node->file_name);
+                FREE_NULLIFY_LOG(curr_node->cache_buffer);
+
+                /* Swap with last node (works even with same nodes). */
+                registry_node_t *last_node = registry_node_array + _registry->size - 1;
+                curr_node->file_name = last_node->file_name;
+                curr_node->file_size = last_node->file_size;
+                curr_node->download_count = last_node->download_count;
+                curr_node->arrival_time = last_node->arrival_time;
+                curr_node->cache_buffer = last_node->cache_buffer;
+
+                _registry->size--;
+                return SUCCESS;
+        }
+        LOG_WARNING_RETURN(FAILURE, "File: `%s` not found.", _file_name);
+}
+
+status_t registry_cache(registry_t *const _registry, const char *const _file_name)
+{
+        registry_node_t *registry_node_array = _registry->node_array;
+        size_t registry_size = _registry->size;
+        for (size_t i = 0; i < registry_size; i++)
+        {
+                registry_node_t *curr_node = (registry_node_array + i);
+                if (strcmp(curr_node->file_name, _file_name) != 0)
+                        continue;
+                if (curr_node->cache_buffer != NULL)
+                        LOG_WARNING_RETURN(FAILURE, "File: `%s` already cached.", _file_name);
+                if (curr_node->file_size + _registry->cached_bytes > _registry->cache_size_limit)
+                        LOG_WARNING_RETURN(FAILURE, "File: `%s` can not be cached, not enough cache space.", _file_name);
+
+                /*If here, we found file, and we can cache it. */
+                FILE *file = fopen(_file_name, "rb");
+                if (file == NULL)
+                        LOG_ERROR_RETURN(FAILURE, "File: `%s` failed to open. errno(%d): %s", _file_name, errno, strerror(errno));
+
+                /* We proceed with caching. */
+                curr_node->cache_buffer = MALLOC_LOG(curr_node->cache_buffer, curr_node->file_size);
+                size_t read_size = fread(curr_node->cache_buffer, 1, curr_node->file_size, file);
+                fclose(file);
+                if (read_size != curr_node->file_size)
+                {
+                        FREE_NULLIFY_LOG(curr_node->cache_buffer);
+                        LOG_ERROR_RETURN(FAILURE, "File: `%s` failed load into cache.");
+                }
+                LOG_INFO_RETURN(SUCCESS, "File: `%s` succeeded load into cache.");
+        }
+        LOG_WARNING_RETURN(FAILURE, "File `%s` not found in registry.");
+}
+
 static __always_inline void initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)
 {
         struct stat stat_buffer;
         DEBUG_SMART_ASSERT(stat(_file_name, &stat_buffer) == 0);
 
-        _registry_node->cached = false;
         _registry_node->download_count = 0;
-        _registry_node->time_of_storage = time(NULL);
+        _registry_node->cache_buffer = NULL;
+        _registry_node->arrival_time = time(NULL);
         _registry_node->file_size = stat_buffer.st_size;
 
         /* Allocate memory to save file_name string. */
