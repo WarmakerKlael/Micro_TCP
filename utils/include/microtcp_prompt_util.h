@@ -16,7 +16,41 @@ extern FILE *prompt_stream;
  * @brief This macro prints a prompt, then repeatedly reads and parses user input
  *        according to the given format string. If the format contains no valid specifiers,
  *        it may cause the macro to become stuck in a loop waiting for valid input
- * @warning Need to free() `_string_line`. 
+ * @warning Need to free() `_string_line`.
+ */
+#define PROMPT_WITH_YES_NO(_prompt, _default, _string_line)                                                                                                                                  \
+        do                                                                                                                                                                              \
+        {                                                                                                                                                                               \
+                _Static_assert((_default) == 'Y' || (_default) == 'y' ||                                                                                                                \
+                                   (_default) == 'N' || (_default) == 'n',                                                                                                              \
+                               "Given default for YES/NO prompt is nether YES nor NO.");                                                                                                \
+                size_t line_length = 0;                                                                                                                                                 \
+                while (true)                                                                                                                                                            \
+                {                                                                                                                                                                       \
+                        fprintf(prompt_stream, "%s>> %s%s", COLOR_ASCII_FG_MAGENTA, (_prompt), SGR_RESET); /* Passing _prompt as argument, as _prompt is variable (compiler warning) */ \
+                        int getline_ret = getline(&(_string_line), &line_length, stdin);                                                                                                \
+                        if (getline_ret == -1 && feof(stdin))                                                                                                                           \
+                        {                                                                                                                                                               \
+                                handle_eof();                                                                                                                                           \
+                                continue;                                                                                                                                               \
+                        }                                                                                                                                                               \
+                        else if (getline_ret == 1)                                                                                                                                      \
+                        {                                                                                                                                                               \
+                                if ((_string_line) == NULL)                                                                                                                             \
+                                        (_string_line) = CALLOC_LOG((_string_line), 2);                                                                                                 \
+                                (_string_line)[0] = ((_default));                                                                                                                       \
+                                (_string_line)[1] = '\0';                                                                                                                               \
+                                break;                                                                                                                                                  \
+                        }                                                                                                                                                               \
+                        _string_line[strcspn(_string_line, "\n")] = '\0'; /* Remove trailing \n (captured by scanf). */                                                                 \
+                        break;                                                                                                                                                          \
+                }                                                                                                                                                                       \
+        } while (0)
+/**
+ * @brief This macro prints a prompt, then repeatedly reads and parses user input
+ *        according to the given format string. If the format contains no valid specifiers,
+ *        it may cause the macro to become stuck in a loop waiting for valid input
+ * @warning Need to free() `_string_line`.
  */
 #define PROMPT_WITH_READ_STRING(_prompt, _string_line)                                                                                                                                  \
         do                                                                                                                                                                              \

@@ -233,7 +233,7 @@ static inline send_fsm_substates_t execute_retransmissions_substate(microtcp_soc
         {
                 if (bytes_resent + curr_node->segment_size > _socket->cwnd) /* Hit transmission limit. */
                         break;
-                update_socket_lost_counters(_socket, curr_node->segment_size);
+                update_socket_lost_counters(_socket, curr_node->segment_size + MICROTCP_HEADER_SIZE);
                 ssize_t send_dat_ret_val = error_tolerant_send_data(_socket, curr_node->buffer, curr_node->segment_size, curr_node->seq_number);
                 if (RARE_CASE(send_dat_ret_val == SEND_SEGMENT_FATAL_ERROR))
                         return EXIT_FAILURE_SUBSTATE;

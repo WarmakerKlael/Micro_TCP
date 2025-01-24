@@ -155,11 +155,12 @@ ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _len
 
 ssize_t microtcp_recv(microtcp_sock_t *_socket, void *_buffer, size_t _length, int _flags)
 {
+        _Static_assert(MICROTCP_RECV_TIMEOUT == 0, "DEFAULT value altered");
+        _Static_assert(MICROTCP_RECV_FAILURE == -1, "DEFAULT value altered");
         SMART_ASSERT(_buffer != NULL, _length != 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
         if (!ARE_VALID_MICROTCP_RECV_FLAGS(_flags))
-                return -1;
-        printf("Entered recev\n");
+                return MICROTCP_RECV_FAILURE;
 
         return microtcp_recv_impl(_socket, _buffer, _length, _flags);
 }

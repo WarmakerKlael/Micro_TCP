@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <time.h>
 #include "status.h"
-#include "registry.h"
+#include "mini_redis_demo/registry.h"
 
 typedef struct
 {

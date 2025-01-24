@@ -24,5 +24,7 @@
 
 #install(TARGETS bandwidth_test DESTINATION bin)
 
-add_subdirectory(demo1)
-add_subdirectory(mini_redis_demo)
+# Set the output directory for executables
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/executable")
+
+add_subdirectory(src)

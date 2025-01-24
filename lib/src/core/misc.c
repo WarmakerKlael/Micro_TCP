@@ -75,7 +75,6 @@ microtcp_sock_t initialize_microtcp_socket(void)
         microtcp_sock_t new_socket = {
             .sd = POSIX_SOCKET_FAILURE_VALUE,   /* We assume socket descriptor contains FAILURE value; Should change from POSIX's socket() */
             .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
-            .init_win_size = MICROTCP_WIN_SIZE, /* Our initial window size. */
             .curr_win_size = MICROTCP_WIN_SIZE, /* Our window size. */
             .peer_win_size = 0,                 /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
             .bytestream_rrb = NULL,             /* Receive-Ring-Buffer gets allocated in 3-way handshake. */
@@ -93,7 +92,8 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .bytestream_build_buffer = NULL,
             .send_queue = NULL,
             .bytestream_receive_buffer = NULL,
-            .peer_address = NULL};
+            .peer_address = NULL,
+            .data_reception_with_finack = false};
         return new_socket;
 }
 
@@ -113,6 +113,7 @@ void cleanup_microtcp_socket(microtcp_sock_t *_socket)
         _socket->sd = POSIX_SOCKET_FAILURE_VALUE;
         _socket->state = INVALID;
         _socket->peer_address = NULL;
+        _socket->data_reception_with_finack = false;
         if (graceful_operation)
                 LOG_INFO("MicroTCP socket, successfully cleaned its resources.");
 }

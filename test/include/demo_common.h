@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -15,16 +16,18 @@
 #include "microtcp_prompt_util.h"
 #include "settings/microtcp_settings_prompts.h"
 
-static inline void print_welcome_message(void)
+
+
+static inline void display_startup_message(const char *const _startup_message)
 {
         CLEAR_SCREEN();
-        printf("==== Server-Side MicroTCP Demo #1 ====\n");
+        printf(">>>> %s <<<<\n", _startup_message);
 }
 
 /**
  * @note Already converted to network byte-order. (htons())
  */
-static inline uint16_t request_listening_port(void)
+static inline uint16_t request_server_port(void)
 {
         long port_number = -1; /* Default invalid port. */
         const char *prompt = "Enter server's listening port number: ";
@@ -37,12 +40,12 @@ static inline uint16_t request_listening_port(void)
         }
 }
 
-static inline struct in_addr request_listening_ipv4(void)
+static inline struct in_addr request_server_ipv4(void)
 {
 #define INET_PTON_SUCCESS (1)
         char *ip_line = NULL;
         struct in_addr ipv4_address;
-        const char *prompt = "Enter server's listening IPv4 address (ANY = 0): ";
+        const char *prompt = "Enter server's listening IPv4 address (ANY = 0.0.0.0): ";
         while (true)
         {
                 PROMPT_WITH_READ_STRING(prompt, ip_line);
@@ -55,4 +58,9 @@ static inline struct in_addr request_listening_ipv4(void)
 #undef INET_PTON_SUCCESS
 }
 
+static inline void to_lowercase(char *str)
+{
+        for (int i = 0; str[i] != '\0'; i++)
+                str[i] = tolower((unsigned char)str[i]);
+}
 #endif /* DEMO1_COMMON_H */

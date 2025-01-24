@@ -10,7 +10,7 @@
 #include "microtcp.h"
 #include "microtcp_prompt_util.h"
 #include "settings/microtcp_settings_prompts.h"
-#include "demo1_common.h"
+#include "demo_common.h"
 
 static inline void write_file(const uint8_t *const input_buffer, size_t buffer_size)
 {
@@ -21,12 +21,11 @@ static inline void write_file(const uint8_t *const input_buffer, size_t buffer_s
 
 int main(void)
 {
-    print_welcome_message();
     // configure_microtcp_settings();
 
     struct sockaddr_in server_listening_address = {.sin_family = AF_INET,
-                                                   .sin_addr = request_listening_ipv4(),
-                                                   .sin_port = request_listening_port()};
+                                                   .sin_addr = request_server_ipv4(),
+                                                   .sin_port = request_server_port()};
     struct sockaddr_in client_address; /* Acquired by microtcp_accept() internally (by recvfrom()). */
     microtcp_sock_t utcp_socket = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     microtcp_bind(&utcp_socket, (const struct sockaddr *)&server_listening_address, sizeof(server_listening_address));

@@ -89,6 +89,7 @@ void release_and_reset_connection_resources(microtcp_sock_t *_socket, mircotcp_s
 
         _socket->state = _rollback_state;
         _socket->peer_address = NULL;
+        _socket->data_reception_with_finack = false;
         deallocate_pre_handshake_buffers(_socket);
         if (deallocate_post_handshake_buffers(_socket) == FAILURE)
         {
@@ -161,26 +162,30 @@ static void deallocate_segment_build_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
-        FREE_NULLIFY_LOG(_socket->segment_build_buffer);
+        if (_socket->segment_build_buffer != NULL)
+                FREE_NULLIFY_LOG(_socket->segment_build_buffer);
 }
 
 static void deallocate_bytestream_build_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
-        FREE_NULLIFY_LOG(_socket->bytestream_build_buffer);
+        if (_socket->bytestream_build_buffer != NULL)
+                FREE_NULLIFY_LOG(_socket->bytestream_build_buffer);
 }
 
 static void deallocate_bytestream_receive_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
-        FREE_NULLIFY_LOG(_socket->bytestream_receive_buffer);
+        if (_socket->bytestream_receive_buffer != NULL)
+                FREE_NULLIFY_LOG(_socket->bytestream_receive_buffer);
 }
 
 static void deallocate_segment_extraction_buffer(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state != ESTABLISHED);
-        FREE_NULLIFY_LOG(_socket->segment_receive_buffer);
+        if (_socket->segment_receive_buffer != NULL)
+                FREE_NULLIFY_LOG(_socket->segment_receive_buffer);
 }

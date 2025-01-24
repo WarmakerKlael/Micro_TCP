@@ -85,7 +85,6 @@ typedef struct
 {
         int sd;                     /* The underline UDP socket descriptor. */
         mircotcp_state_t state;     /* The state of the microTCP socket. */
-        const size_t init_win_size; /* The window size advertised at the 3-way handshake. */
         size_t curr_win_size;       /* The current window size. */
         size_t peer_win_size;
 
@@ -119,6 +118,7 @@ typedef struct
         microtcp_segment_t *segment_receive_buffer;
         void *bytestream_receive_buffer;
         struct sockaddr *peer_address;
+        _Bool data_reception_with_finack;
 } microtcp_sock_t;
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);
