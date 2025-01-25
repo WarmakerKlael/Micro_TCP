@@ -1,6 +1,8 @@
 #ifndef MICROTCP_DEFINES_H
 #define MICROTCP_DEFINES_H
 
+#include "microtcp_helper_macros.h"
+
 #define PROJECT_NAME "μTCP"
 
 #define ACK_BIT (1 << 12)
@@ -11,8 +13,8 @@
 #define DATA_SEGMENT_CONTROL_FLAGS ACK_BIT
 
 /* In TCP, segments containing control flags (e.g., SYN, FIN),
- * other than pure ACKs, are treated as carrying a virtual payload. 
- * That is the reason for the +1 increment. 
+ * other than pure ACKs, are treated as carrying a virtual payload.
+ * That is the reason for the +1 increment.
  */
 #define SYN_SEQ_NUMBER_INCREMENT 1
 #define FIN_SEQ_NUMBER_INCREMENT 1
@@ -70,3 +72,6 @@
 #define SENDTO_ERROR (-1)
 
 #endif /* MICROTCP_DEFINES_H */
+
+_Static_assert(MICROTCP_RECV_TIMEOUT == 0, "Unexpected return value(" STRINGIFY_EXPANDED(MICROTCP_RECV_TIMEOUT) ") for timeout in microtcp_recv().");
+_Static_assert(MICROTCP_RECV_FAILURE == -1, "Unexpected return value(" STRINGIFY_EXPANDED(MICROTCP_RECV_FAILURE) ") for failure in microtcp_recv().");
