@@ -18,11 +18,16 @@
 #include "common_source_code.h"
 #define STAGING_FILE_NAME ".__filepart__.dat" /* Hiddden, internal filename until stored in `_registry`. */
 
-/* INLINE HELPERS: */
+/* INLINE HELPERS for `perform_set()`. */
 static __always_inline char *receive_file_name(microtcp_sock_t *_socket, size_t _file_name_size);
 static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *_socket, FILE *_file_ptr, const char *_file_name,
                                                             uint8_t *_file_buffer, size_t _file_part_size);
 static __always_inline status_t finalize_file(FILE **_file_ptr_address, const char *_staging_file_name, const char *_export_file_name);
+static __always_inline void perform_set_resource_cleanup(FILE **const _file_ptr_address,
+                                                         uint8_t **const _file_buffer_address,
+                                                         char **const _file_name_address);
+
+/* Other INLINE HELPERS. */
 static __always_inline void miniredis_request_distributor(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
 
 static inline status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address)
@@ -49,8 +54,6 @@ static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket)
         return SUCCESS;
 }
 
-//     cleanup_resources: Handles cleanup for the buffer, file pointer, and staging file.
-
 static inline void perform_set(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *const _request_header)
 {
         DEBUG_SMART_ASSERT(_request_header->command_code == CMND_SET_CODE,
@@ -62,39 +65,32 @@ static inline void perform_set(microtcp_sock_t *_socket, registry_t *_registry, 
         char *file_name = NULL;      /* Requires cleanup. */
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
-                LOG_APP_ERROR_GOTO(perform_set_cleanup, "Failed receiving filename.");
+                LOG_APP_ERROR_GOTO(cleanup_label, "Failed receiving filename.");
         if ((file_ptr = fopen(STAGING_FILE_NAME, "wb")) == NULL)
-                LOG_APP_ERROR_GOTO(perform_set_cleanup, "File: %s failed write-open, errno(%d): %s.", file_name, errno, strerror(errno));
+                LOG_APP_ERROR_GOTO(cleanup_label, "File: %s failed write-open, errno(%d): %s.", file_name, errno, strerror(errno));
         if ((file_buffer = MALLOC_LOG(file_buffer, MAX_FILE_CHUNK)) == NULL)
-                LOG_APP_ERROR_GOTO(perform_set_cleanup, "Failed allocating memory for writing file.");
+                LOG_APP_ERROR_GOTO(cleanup_label, "Failed allocating memory for writing file.");
 
         size_t total_written_bytes = 0;
         while (total_written_bytes != _request_header->file_size)
         {
                 const size_t required_file_part_size = MIN(_request_header->file_size - total_written_bytes, MAX_FILE_CHUNK);
                 if (receive_and_write_file_part(_socket, file_ptr, file_name, file_buffer, required_file_part_size) == FAILURE)
-                        goto perform_set_cleanup;
+                        goto cleanup_label;
                 total_written_bytes += required_file_part_size;
                 LOG_APP_INFO("File: %s, (%zu/%zu bytes received)", file_name, total_written_bytes, _request_header->file_size);
         }
 
         if (finalize_file(&file_ptr, STAGING_FILE_NAME, file_name) == FAILURE)
-                goto perform_set_cleanup;
+                goto cleanup_label;
         if (registry_append(_registry, file_name) == FAILURE)
-                LOG_APP_ERROR_GOTO(perform_set_cleanup, "Failed appending %s to `registry`.", file_name);
+                LOG_APP_ERROR_GOTO(cleanup_label, "Failed appending %s to `registry`.", file_name);
         _request_header->operation_status = SUCCESS; /* Update operation status (to end back to client).*/
         LOG_APP_INFO("Server stored and registered %s.", file_name);
 
-perform_set_cleanup:
-        if (file_ptr != NULL)
-                fclose(file_ptr);
-        FREE_NULLIFY_LOG(file_buffer);
-
-        if (access(STAGING_FILE_NAME, F_OK) == 0)
-                if (remove(STAGING_FILE_NAME) != 0) /* We remove `staging_file_name` file. */
-                        LOG_APP_ERROR("Failed to remove() %s (in cleanup_state), errno(%d): %s.", STAGING_FILE_NAME, errno, strerror(errno));
+cleanup_label:
+        perform_set_resource_cleanup(&file_ptr, &file_buffer, &file_name);
         microtcp_send(_socket, _request_header, sizeof(*_request_header), 0); /* Send operation status response. */
-        FREE_NULLIFY_LOG(file_name);
 }
 
 static inline void perform_get(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header)
@@ -200,6 +196,20 @@ static __always_inline status_t finalize_file(FILE **const _file_ptr_address, co
                 LOG_APP_ERROR_RETURN(FAILURE, "Failed renaming from %s to %s, errno(%d): %s.",
                                      _staging_file_name, _export_file_name, errno, strerror(errno));
         return SUCCESS;
+}
+
+static __always_inline void perform_set_resource_cleanup(FILE **const _file_ptr_address,
+                                                         uint8_t **const _file_buffer_address,
+                                                         char **const _file_name_address)
+{
+        if (*_file_ptr_address != NULL)
+                fclose(*_file_ptr_address);
+        FREE_NULLIFY_LOG(*_file_buffer_address);
+
+        if (access(STAGING_FILE_NAME, F_OK) == 0)
+                if (remove(STAGING_FILE_NAME) != 0) /* We remove `staging_file_name` file. */
+                        LOG_APP_ERROR("Failed to remove() %s (in cleanup_state), errno(%d): %s.", STAGING_FILE_NAME, errno, strerror(errno));
+        FREE_NULLIFY_LOG(*_file_name_address);
 }
 
 static __always_inline void miniredis_request_distributor(microtcp_sock_t *const _socket, registry_t *const _registry, miniredis_header_t *const _request_header)
