@@ -3,7 +3,9 @@
 
 enum miniredis_commands
 {
-        CMND_QUIT_CODE = 0,
+        FIRST_PLACEHOLDER_COMMAND_CODE = 0,
+
+        CMND_QUIT_CODE,
 #define CMND_QUIT_NAME "QUIT"
 #define CMND_QUIT_ARGS 1
 
@@ -35,9 +37,11 @@ enum miniredis_commands
 #define CMND_INFO_NAME "INFO"
 #define CMND_INFO_ARGS 2
 
-        CMND_SIZE_CODE
+        CMND_SIZE_CODE,
 #define CMND_SIZE_NAME "SIZE"
 #define CMND_SIZE_ARGS 2
+
+        LAST_PLACEHOLDER_COMMAND_CODE
 };
 
 #endif /* MINIREDIS_COMMANDS_H */

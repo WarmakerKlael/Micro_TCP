@@ -10,6 +10,10 @@
 #include <errno.h>
 #include "allocator/allocator_macros.h"
 #include "common_source_code.h"
+#include "smart_assert.h"
+
+static __always_inline FILE *open_file_for_binary_reading(const char *_file_name);
+static __always_inline miniredis_header_t *create_miniredis_header(enum miniredis_commands _command_code, const char *_file_name);
 
 static inline status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_server_address)
 {
@@ -29,66 +33,69 @@ static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket)
         return SUCCESS;
 }
 
-static void execute_set(microtcp_sock_t *_socket, const char *const _file_name)
+static __always_inline status_t send_header_and_filename(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+                                                         const miniredis_header_t *const _header_ptr, const char *const _file_name)
 {
-        uint8_t *message_buffer = NULL; /* Initiliazing first thing, so that free() in cleanup: wont lead to undefined. */
-        FILE *file_ptr = NULL;          /* Same here. */
-
-        if (access(_file_name, F_OK) != 0)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s not found, errno(%d): %s.", _file_name, errno, strerror(errno));
-        if (access(_file_name, R_OK) != 0)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s read-permission missing, errno(%d): %s.", _file_name, errno, strerror(errno));
-
-        file_ptr = fopen(_file_name, "rb");
-        if (file_ptr == NULL)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s failed read-open, errno(%d): %s.", _file_name, errno, strerror(errno));
-
-        struct stat file_stats;
-        if (stat(_file_name, &file_stats) != 0)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s failed stats-read, errno(%d): %s.", _file_name, errno, strerror(errno));
-
-        miniredis_header_t header = {
-            .command_code = CMND_SET_CODE,
-            .operation_status = FAILURE, /* We successful reception and storing by server, we expect this header returned, but operation status == SUCCESS. */
-            .message_size = 0,
-            .file_name_size = strlen(_file_name),
-            .file_size = file_stats.st_size};
-
-        message_buffer = MALLOC_LOG(message_buffer, MAX_FILE_CHUNK);
-        if (message_buffer == NULL)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Failed allocating memory for reading file.");
+        size_t packed_bytes_count = 0;
 
         /* Firstly, copy miniredis header. */
-        memcpy(message_buffer, &header, sizeof(header));
-        size_t message_buffer_bytes = sizeof(header);
+        memcpy(_message_buffer, _header_ptr, sizeof(*_header_ptr));
+        packed_bytes_count += sizeof(*_header_ptr);
+
         /* Secondly, copy filename. */
-        memcpy(message_buffer + message_buffer_bytes, _file_name, strlen(_file_name));
-        message_buffer_bytes += strlen(_file_name);
+        memcpy(_message_buffer + packed_bytes_count, _file_name, strlen(_file_name));
+        packed_bytes_count += strlen(_file_name);
+        ssize_t send_ret_val = microtcp_send(_socket, _message_buffer, packed_bytes_count, 0);
 
-        size_t file_bytes_sent = 0;
-        size_t bytes_read = 0;
-        while ((bytes_read = fread(message_buffer + message_buffer_bytes, 1, MAX_FILE_CHUNK - message_buffer_bytes, file_ptr)) > 0)
+        return send_ret_val == packed_bytes_count ? SUCCESS : FAILURE;
+}
+
+static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+                                          FILE *const _file_ptr, const char *const _file_name)
+{
+        size_t file_bytes_sent_count = 0;
+        size_t file_bytes_read;
+        while ((file_bytes_read = fread(_message_buffer, 1, MAX_FILE_PART, _file_ptr)) > 0)
         {
-                message_buffer_bytes += bytes_read;
-                if (microtcp_send(_socket, message_buffer, message_buffer_bytes, 0) == MICROTCP_SEND_FAILURE)
-                        LOG_APP_ERROR_GOTO(execute_set_cleanup, "microtcp_send() failed sending file-chunk, aborting.");
-                file_bytes_sent += bytes_read;
-                message_buffer_bytes = 0;
-                LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", _file_name, file_bytes_sent, file_stats.st_size);
+                if (microtcp_send(_socket, _message_buffer, file_bytes_read, 0) != file_bytes_read)
+                        LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-chunk, aborting.");
+                file_bytes_sent_count += file_bytes_read;
+                LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", _file_name, file_bytes_sent_count, file_stats.st_size);
         }
-        if (ferror(file_ptr))
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Error while reading file: %s", _file_name);
+        if (ferror(_file_ptr))
+                LOG_APP_ERROR_RETURN(FAILURE, "Error occurred while reading file '%s', errno(%d): %s", _file_name, errno, strerror(errno));
+        LOG_APP_INFO_RETURN(SUCCESS, "File `%s` sent.", _file_name);
+}
 
-        if (microtcp_recv(_socket, &header, sizeof(header), MSG_WAITALL) == MICROTCP_RECV_FAILURE)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Failed receive operation status from server.");
-        if (header.operation_status == FAILURE)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Server was unable to %s %s.", CMND_SET_NAME, _file_name);
+static void execute_set(microtcp_sock_t *_socket, const char *const _file_name)
+{
+        FILE *file_ptr = NULL;                 /* Requires deallocation */
+        uint8_t *message_buffer = NULL;        /* Requires deallocation */
+        miniredis_header_t *header_ptr = NULL; /* Requires deallocation */
+
+        if ((file_ptr = open_file_for_binary_reading(_file_name)) == NULL)
+                goto cleanup_label;
+        if ((header_ptr = create_miniredis_header(CMND_SET_CODE, _file_name)) == NULL)
+                goto cleanup_label;
+        if ((message_buffer = MALLOC_LOG(message_buffer, MAX_FILE_PART)) == NULL)
+                LOG_APP_ERROR_GOTO(cleanup_label, "Failed allocating memory for reading file.");
+
+        if (send_header_and_filename(_socket, header_ptr, _file_name, message_buffer) == FAILURE)
+                goto cleanup_label;
+        if (send_file(_socket, message_buffer, file_ptr, _file_name) == FAILURE)
+                goto cleanup_label;
+
+        if (microtcp_recv(_socket, header_ptr, sizeof(*header_ptr), MSG_WAITALL) == MICROTCP_RECV_FAILURE)
+                LOG_APP_ERROR_GOTO(cleanup_label, "Failed receive operation status from server.");
+        if (header_ptr->operation_status == FAILURE)
+                LOG_APP_ERROR_GOTO(cleanup_label, "Server was unable to %s %s.", CMND_SET_NAME, _file_name);
         LOG_APP_INFO("Server was able to %s %s.", CMND_SET_NAME, _file_name);
 
-execute_set_cleanup:
+cleanup_label:
         if (file_ptr != NULL)
                 fclose(file_ptr);
-        free(message_buffer);
+        FREE_NULLIFY_LOG(header_ptr);
+        FREE_NULLIFY_LOG(message_buffer);
 }
 
 static status_t miniredis_client_manager(void)
@@ -132,4 +139,38 @@ int main(void)
         prompt_to_configure_microtcp();
         miniredis_client_manager();
         return EXIT_SUCCESS;
+}
+
+static __always_inline FILE *open_file_for_binary_reading(const char *const _file_name)
+{
+        if (access(_file_name, F_OK) != 0)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s not found, errno(%d): %s.", _file_name, errno, strerror(errno));
+        if (access(_file_name, R_OK) != 0)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s read-permission missing, errno(%d): %s.", _file_name, errno, strerror(errno));
+
+        FILE *file_ptr = fopen(_file_name, "rb");
+        if (file_ptr == NULL)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s failed read-open, errno(%d): %s.", _file_name, errno, strerror(errno));
+        return file_ptr;
+}
+
+static __always_inline miniredis_header_t *create_miniredis_header(const enum miniredis_commands _command_code, const char *const _file_name)
+{
+        DEBUG_SMART_ASSERT(_command_code > FIRST_PLACEHOLDER_COMMAND_CODE,
+                           _command_code < LAST_PLACEHOLDER_COMMAND_CODE,
+                           _file_name != NULL);
+
+        struct stat file_stats;
+        if (stat(_file_name, &file_stats) != 0)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s failed stats-read, errno(%d): %s.", _file_name, errno, strerror(errno));
+
+        miniredis_header_t *header_ptr = MALLOC_LOG(header_ptr, sizeof(miniredis_header_t));
+
+        header_ptr->command_code = _command_code;
+        header_ptr->operation_status = FAILURE;
+        header_ptr->message_size = 0;
+        header_ptr->file_name_size = strlen(_file_name);
+        header_ptr->file_size = file_stats.st_size;
+
+        return header_ptr;
 }

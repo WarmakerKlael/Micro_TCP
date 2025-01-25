@@ -54,33 +54,39 @@ static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket)
         return SUCCESS;
 }
 
+static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+                                             FILE *const _file_ptr, const size_t _file_size, const char *const _file_name)
+{
+        size_t written_bytes_count = 0;
+        while (written_bytes_count != _file_size)
+        {
+                const size_t file_part_size = MIN(_file_size - written_bytes_count, MAX_FILE_PART);
+                if (receive_and_write_file_part(_socket, _file_ptr, _file_name, _message_buffer, file_part_size) == FAILURE)
+                        return FAILURE;
+                written_bytes_count += file_part_size;
+                LOG_APP_INFO("File: %s, (%zu/%zu bytes received)", _file_name, written_bytes_count, _file_size);
+        }
+        return SUCCESS;
+}
+
 static inline void perform_set(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *const _request_header)
 {
         DEBUG_SMART_ASSERT(_request_header->command_code == CMND_SET_CODE,
                            _request_header->operation_status == FAILURE,
                            _request_header->message_size == 0,
                            _request_header->file_name_size <= MAX_COMMAND_ARGUMENT_SIZE);
-        uint8_t *file_buffer = NULL; /* Initiliazing first thing, so that free() in cleanup: wont lead to undefined. */
-        FILE *file_ptr = NULL;       /* Requires cleanup. */
-        char *file_name = NULL;      /* Requires cleanup. */
+        uint8_t *message_buffer = NULL; /* Requires deallocation. */
+        FILE *file_ptr = NULL;          /* Requires deallocation. */
+        char *file_name = NULL;         /* Requires deallocation. */
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 LOG_APP_ERROR_GOTO(cleanup_label, "Failed receiving filename.");
         if ((file_ptr = fopen(STAGING_FILE_NAME, "wb")) == NULL)
                 LOG_APP_ERROR_GOTO(cleanup_label, "File: %s failed write-open, errno(%d): %s.", file_name, errno, strerror(errno));
-        if ((file_buffer = MALLOC_LOG(file_buffer, MAX_FILE_CHUNK)) == NULL)
+        if ((message_buffer = MALLOC_LOG(message_buffer, MAX_FILE_PART)) == NULL)
                 LOG_APP_ERROR_GOTO(cleanup_label, "Failed allocating memory for writing file.");
-
-        size_t total_written_bytes = 0;
-        while (total_written_bytes != _request_header->file_size)
-        {
-                const size_t required_file_part_size = MIN(_request_header->file_size - total_written_bytes, MAX_FILE_CHUNK);
-                if (receive_and_write_file_part(_socket, file_ptr, file_name, file_buffer, required_file_part_size) == FAILURE)
-                        goto cleanup_label;
-                total_written_bytes += required_file_part_size;
-                LOG_APP_INFO("File: %s, (%zu/%zu bytes received)", file_name, total_written_bytes, _request_header->file_size);
-        }
-
+        if (receive_file(_socket, message_buffer, file_ptr, _request_header->file_size, file_name) == FAILURE)
+                goto cleanup_label;
         if (finalize_file(&file_ptr, STAGING_FILE_NAME, file_name) == FAILURE)
                 goto cleanup_label;
         if (registry_append(_registry, file_name) == FAILURE)
@@ -89,7 +95,7 @@ static inline void perform_set(microtcp_sock_t *_socket, registry_t *_registry, 
         LOG_APP_INFO("Server stored and registered %s.", file_name);
 
 cleanup_label:
-        perform_set_resource_cleanup(&file_ptr, &file_buffer, &file_name);
+        perform_set_resource_cleanup(&file_ptr, &message_buffer, &file_name);
         microtcp_send(_socket, _request_header, sizeof(*_request_header), 0); /* Send operation status response. */
 }
 

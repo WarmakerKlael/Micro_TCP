@@ -7,13 +7,13 @@
 #include "microtcp_helper_macros.h"
 
 /* TODO: SET to UINT16_MAX not 2 */
-#define MAX_FILE_CHUNK (2 * MICROTCP_MSS)
+#define MAX_FILE_PART (2 * MICROTCP_MSS)
 
 #define MAX_COMMAND_SIZE 20
 #define MAX_COMMAND_ARGUMENT_SIZE 400
 #define MAX_REQUEST_SIZE (MAX_COMMAND_SIZE + (2 * MAX_COMMAND_ARGUMENT_SIZE))
 
-_Static_assert(MAX_FILE_CHUNK > MAX_REQUEST_SIZE, "Helps avoid dynamic memory allocation for  filename buffers. JUST DO IT.");
+_Static_assert(MAX_FILE_PART > MAX_REQUEST_SIZE, "Helps avoid dynamic memory allocation for  filename buffers. JUST DO IT.");
 
 // clang-format off
 static const char sscanf_command_format[] = "%" STRINGIFY_EXPANDED(MAX_COMMAND_SIZE) "s "
