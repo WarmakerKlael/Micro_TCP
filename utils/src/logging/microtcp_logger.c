@@ -15,6 +15,7 @@
 
 extern FILE *microtcp_log_stream;
 extern pthread_mutex_t *mutex_logger;
+#define LOGGER_TAG "LOGGER"
 
 /* Declarations of static functions implemented in this file: */
 
@@ -55,18 +56,10 @@ __attribute__((destructor(LOGGER_DESTRUCTOR_PRIORITY))) static void logger_destr
  *
  * @note Outputs messages only if the log level is enabled.
  */
-static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list);
+static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list);
 
-/**
- * @brief Returns a color-coded string representation of a log tag.
- *
- * @param _log_tag The log tag (`LOG_INFO`, `LOG_WARNING`, `LOG_ERROR`).
- *
- * @return A string containing the color-coded log tag with the project name.
- *         For unrecognized tags, returns a default color-coded string
- *         with `"??LOG??"`.
- */
-static const char *get_colored_log_tag_string(enum log_tag _log_tag);
+static const char *get_tag_color(enum log_tag _log_tag);
+static const char *get_string_tag(enum log_tag _log_tag);
 
 static void logger_constructor(void)
 {
@@ -86,10 +79,10 @@ static void logger_constructor(void)
 	mutex_logger = CALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_ERROR, "Logger failed to initialize.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_ERROR, LOGGER_TAG, "Logger failed to initialize.");
 		exit(EXIT_FAILURE);
 	}
-	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, "Logger initialized.");
+	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG, "Logger initialized.");
 }
 
 static void logger_destructor(void)
@@ -99,32 +92,32 @@ static void logger_destructor(void)
 	{
 		free(mutex_logger);
 		mutex_logger = NULL;
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, "Logger destroyed.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG, "Logger destroyed.");
 	}
 	else
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING, "Logger could not be destroyed.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING, LOGGER_TAG, "Logger could not be destroyed.");
 	fprintf(microtcp_log_stream, SGR_RESET); /* Reset print style to system's default. */
 }
 
-void log_message_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, ...)
+void log_message_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, ...)
 {
 	va_list args;
 	va_start(args, _format_message);
 	pthread_mutex_lock(mutex_logger);
-	log_message_forward_non_thread_safe(_log_tag, _file, _line, _func, _format_message, args);
+	log_message_forward_non_thread_safe(_log_tag, _project_name, _file, _line, _func, _format_message, args);
 	pthread_mutex_unlock(mutex_logger);
 	va_end(args);
 }
 
-void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, ...)
+void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, ...)
 {
 	va_list args;
 	va_start(args, _format_message);
-	log_message_forward_non_thread_safe(_log_tag, _file, _line, _func, _format_message, args);
+	log_message_forward_non_thread_safe(_log_tag, TRANSPORT_PROTOCOL_NAME, _file, _line, _func, _format_message, args);
 	va_end(args);
 }
 
-static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list)
+static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list)
 {
 	static struct timespec tv;
 	clock_gettime(CLOCK_REALTIME, &tv);
@@ -139,9 +132,13 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 	if (!logger_is_error_enabled() && _log_tag == LOG_ERROR)
 		return;
 
-	const char *colored_string_log_tag = get_colored_log_tag_string(_log_tag);
 	fprintf(microtcp_log_stream, LOG_DEFAULT_COLOR); /* Set DEFAULT logging color. */
-	fprintf(microtcp_log_stream, "[%s][%s:%d][%s()][%lddu]: ", colored_string_log_tag, _file, _line, _func, milliseconds);
+	fprintf(microtcp_log_stream, "[%s%s %s%s][%s:%d][%s()][%lddu]: ",
+		get_tag_color(_log_tag), _project_name, get_string_tag(_log_tag), LOG_DEFAULT_COLOR, /* 1st brackets. */
+		_file, _line,									     /* 2nd brackets. */
+		_func,										     /* 3rd brackets. */
+		milliseconds);									     /* 4th brackets. */
+
 	fprintf(microtcp_log_stream, LOG_MESSAGE_COLOR); /* Set logging message color. */
 	vfprintf(microtcp_log_stream, _format_message, arg_list);
 	fprintf(microtcp_log_stream, "%s\n", LOG_DEFAULT_COLOR); /* Reset to DEFAULT logging color. */
@@ -149,14 +146,24 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 }
 
 // clang-format off
-static const char *get_colored_log_tag_string(enum log_tag _log_tag)
+static const char *get_string_tag(enum log_tag _log_tag)
 {
 	switch (_log_tag)
 	{
-	case LOG_INFO:		return LOG_INFO_COLOR	        PROJECT_NAME " " "INFO"		LOG_DEFAULT_COLOR;
-	case LOG_WARNING:	return LOG_WARNING_COLOR        PROJECT_NAME " " "WARNING"	LOG_DEFAULT_COLOR;
-	case LOG_ERROR:		return LOG_ERROR_COLOR 	        PROJECT_NAME " " "ERROR" 	LOG_DEFAULT_COLOR;
-	default:		return LOG_DEFAULT_COLOR	PROJECT_NAME " " "??LOG??"	LOG_DEFAULT_COLOR;
+	case LOG_INFO:		return "INFO";
+	case LOG_WARNING:	return "WARNING";
+	case LOG_ERROR:		return "ERROR";
+	default:		return "??LOG??";
+	}
+}
+static const char *get_tag_color(enum log_tag _log_tag)
+{
+	switch (_log_tag)
+	{
+	case LOG_INFO:		return LOG_INFO_COLOR;
+	case LOG_WARNING:	return LOG_WARNING_COLOR;
+	case LOG_ERROR:		return LOG_ERROR_COLOR;
+	default:		return LOG_DEFAULT_COLOR;
 	}
 }
 // clang-format on

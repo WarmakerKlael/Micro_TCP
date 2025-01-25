@@ -10,7 +10,9 @@
 
 #define MAX_COMMAND_SIZE 20
 #define MAX_COMMAND_ARGUMENT_SIZE 400
-#define MAX_MINI_REDIS_REQUEST_SIZE (MAX_COMMAND_SIZE + (2 * MAX_COMMAND_ARGUMENT_SIZE))
+#define MAX_REQUEST_SIZE (MAX_COMMAND_SIZE + (2 * MAX_COMMAND_ARGUMENT_SIZE))
+
+_Static_assert(MAX_FILE_CHUNK > MAX_REQUEST_SIZE, "Helps avoid dynamic memory allocation for  filename buffers. JUST DO IT.");
 
 // clang-format off
 static const char sscanf_command_format[] = "%" STRINGIFY_EXPANDED(MAX_COMMAND_SIZE) "s "

@@ -17,6 +17,10 @@
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif /* __FILENAME__ */
 
+#ifndef APPLICATION_NAME
+#define APPLICATION_NAME "??APPLICATION_NAME??"
+#endif /* APPLICATION_NAME */
+
 enum log_tag
 {
 	LOG_INFO,
@@ -37,7 +41,7 @@ enum log_tag
  * @note This function ensures thread-safe logging by locking a mutex during
  *       the log operation.
  */
-void log_message_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, ...);
+void log_message_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, ...);
 
 /**
  * @brief Outputs a formatted log message without thread safety.
@@ -52,7 +56,7 @@ void log_message_thread_safe(enum log_tag _log_tag, const char *_file, int _line
  * @note This function does not ensure thread safety. Use `log_message_thread_safe`
  *       if concurrent access to the logger is possible.
  */
-void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _line, const char *_func, const char *_format_message, ...);
+void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, ...);
 
 /**
  * @brief Logs a message without thread safety, adding file, line, and function context.
@@ -68,8 +72,8 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro does not ensure thread safety. Use a thread-safe alternative
  *       for logging in multi-threaded environments.
  */
-#define LOG_MESSAGE_NON_THREAD_SAFE(_log_tag, _format_message, ...) \
-	log_message_non_thread_safe(_log_tag, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
+#define LOG_MESSAGE_NON_THREAD_SAFE(_log_tag, _project_name, _format_message, ...) \
+	log_message_non_thread_safe(_log_tag, _project_name, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
 
 /**
  * @brief Logs a message with thread safety, adding file, line, and function context.
@@ -85,7 +89,9 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro ensures thread safety, making it suitable for multi-threaded environments.
  */
 #define LOG_MESSAGE(_log_tag, _format_message, ...) \
-	log_message_thread_safe(_log_tag, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
+	log_message_thread_safe(_log_tag, TRANSPORT_PROTOCOL_NAME, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
+#define LOG_APP_MESSAGE(_log_tag, _format_message, ...) \
+	log_message_thread_safe(_log_tag, APPLICATION_NAME, __FILENAME__, __LINE__, __func__, _format_message, ##__VA_ARGS__)
 
 #if defined(DEBUG_MODE) || defined(VERBOSE_MODE)
 /**
@@ -100,9 +106,11 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_INFO(_format_message, ...) LOG_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__);
+#define LOG_APP_INFO(_format_message, ...) LOG_APP_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__);
 #else
-#define LOG_INFO(_format_message, ...) /* Logging disabled in release */
-#endif /* DEBUG_MODE || VERBOSE_MODE */
+#define LOG_INFO(_format_message, ...)	   /* Logging disabled in release */
+#define LOG_APP_INFO(_format_message, ...) /* Logging disabled in release */
+#endif					   /* DEBUG_MODE || VERBOSE_MODE */
 
 /**
  * @brief Logs a warning message.
@@ -116,6 +124,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_WARNING(_format_message, ...) LOG_MESSAGE(LOG_WARNING, _format_message, ##__VA_ARGS__)
+#define LOG_APP_WARNING(_format_message, ...) LOG_APP_MESSAGE(LOG_WARNING, _format_message, ##__VA_ARGS__)
 
 /**
  * @brief Logs an error message.
@@ -129,6 +138,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_ERROR(_format_message, ...) LOG_MESSAGE(LOG_ERROR, _format_message, ##__VA_ARGS__)
+#define LOG_APP_ERROR(_format_message, ...) LOG_APP_MESSAGE(LOG_ERROR, _format_message, ##__VA_ARGS__)
 
 /**
  * @brief Logs an informational message and returns a specified value.
@@ -150,6 +160,13 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 		return _return_value;                        \
 	} while (0)
 
+#define LOG_APP_INFO_RETURN(_return_value, _format_message, ...) \
+	do                                                       \
+	{                                                        \
+		LOG_APP_INFO(_format_message, ##__VA_ARGS__);    \
+		return _return_value;                            \
+	} while (0)
+
 /**
  * @brief Logs a warning message and returns a specified value.
  *
@@ -169,6 +186,13 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 		LOG_WARNING(_format_message, ##__VA_ARGS__);    \
 		return _return_value;                           \
 	} while (0)
+
+#define LOG_APP_WARNING_RETURN(_return_value, _format_message, ...) \
+	do                                                          \
+	{                                                           \
+		LOG_APP_WARNING(_format_message, ##__VA_ARGS__);    \
+		return _return_value;                               \
+	} while (0)
 /**
  * @brief Logs an error message and returns a specified value.
  *
@@ -187,6 +211,13 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_file, int _
 	{                                                     \
 		LOG_ERROR(_format_message, ##__VA_ARGS__);    \
 		return _return_value;                         \
+	} while (0)
+
+#define LOG_APP_ERROR_RETURN(_return_value, _format_message, ...) \
+	do                                                        \
+	{                                                         \
+		LOG_APP_ERROR(_format_message, ##__VA_ARGS__);    \
+		return _return_value;                             \
 	} while (0)
 
 #endif /* MICROTCP_LOGGER_H */

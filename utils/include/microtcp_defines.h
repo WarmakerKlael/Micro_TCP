@@ -3,7 +3,7 @@
 
 #include "microtcp_helper_macros.h"
 
-#define PROJECT_NAME "μTCP"
+#define TRANSPORT_PROTOCOL_NAME "μTCP"
 
 #define ACK_BIT (1 << 12)
 #define RST_BIT (1 << 13)

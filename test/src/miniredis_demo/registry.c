@@ -69,7 +69,7 @@ status_t registry_append(registry_t *const _registry, const char *const _file_na
 {
         if (access(_file_name, F_OK) != 0) /* File doesn't exist. */
         {
-                LOG_ERROR("Unable to access `_file_name`, append failed.");
+                LOG_APP_ERROR("File: %s not found.");
                 return FAILURE;
         }
 
@@ -104,7 +104,7 @@ status_t registry_pop(registry_t *_registry, const char *const _file_name)
                 _registry->size--;
                 return SUCCESS;
         }
-        LOG_WARNING_RETURN(FAILURE, "File: `%s` not found.", _file_name);
+        LOG_APP_WARNING_RETURN(FAILURE, "File: `%s` not found.", _file_name);
 }
 
 status_t registry_cache(registry_t *const _registry, const char *const _file_name)
@@ -117,14 +117,14 @@ status_t registry_cache(registry_t *const _registry, const char *const _file_nam
                 if (strcmp(curr_node->file_name, _file_name) != 0)
                         continue;
                 if (curr_node->cache_buffer != NULL)
-                        LOG_WARNING_RETURN(FAILURE, "File: `%s` already cached.", _file_name);
+                        LOG_APP_WARNING_RETURN(FAILURE, "File: `%s` already cached.", _file_name);
                 if (curr_node->file_size + _registry->cached_bytes > _registry->cache_size_limit)
-                        LOG_WARNING_RETURN(FAILURE, "File: `%s` can not be cached, not enough cache space.", _file_name);
+                        LOG_APP_WARNING_RETURN(FAILURE, "File: `%s` can not be cached, not enough cache space.", _file_name);
 
                 /*If here, we found file, and we can cache it. */
                 FILE *file = fopen(_file_name, "rb");
                 if (file == NULL)
-                        LOG_ERROR_RETURN(FAILURE, "File: `%s` failed to open. errno(%d): %s", _file_name, errno, strerror(errno));
+                        LOG_APP_ERROR_RETURN(FAILURE, "File: `%s` failed to open. errno(%d): %s", _file_name, errno, strerror(errno));
 
                 /* We proceed with caching. */
                 curr_node->cache_buffer = MALLOC_LOG(curr_node->cache_buffer, curr_node->file_size);
@@ -133,11 +133,11 @@ status_t registry_cache(registry_t *const _registry, const char *const _file_nam
                 if (read_size != curr_node->file_size)
                 {
                         FREE_NULLIFY_LOG(curr_node->cache_buffer);
-                        LOG_ERROR_RETURN(FAILURE, "File: `%s` failed load into cache.");
+                        LOG_APP_ERROR_RETURN(FAILURE, "File: `%s` failed load into cache.");
                 }
-                LOG_INFO_RETURN(SUCCESS, "File: `%s` succeeded load into cache.");
+                LOG_APP_INFO_RETURN(SUCCESS, "File: `%s` succeeded load into cache.");
         }
-        LOG_WARNING_RETURN(FAILURE, "File `%s` not found in registry.");
+        LOG_APP_WARNING_RETURN(FAILURE, "File `%s` not found in registry.");
 }
 
 static __always_inline void initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)

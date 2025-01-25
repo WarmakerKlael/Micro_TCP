@@ -25,5 +25,12 @@ static inline void prompt_to_configure_microtcp(void)
         free(prompt_answer_buffer);
 }
 
+#define LOG_APP_ERROR_GOTO(_goto_label, _format_message, ...)  \
+        do                                                     \
+        {                                                      \
+                LOG_APP_ERROR(_format_message, ##__VA_ARGS__); \
+                goto _goto_label;                              \
+        } while (0)
+
 
 #endif /* MINIREDIS_COMMON_SOURCE_COD_H */

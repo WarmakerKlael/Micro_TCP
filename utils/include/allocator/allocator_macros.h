@@ -5,6 +5,8 @@
 #include "logging/microtcp_logger.h"
 #include "logging/logger_options.h"
 
+#define ALLOCATOR_TAG "MEMORY"
+
 /**
  * @brief Allocates memory and logs the allocation result.
  *
@@ -18,14 +20,14 @@
  *
  * @note Logs are output only if the allocator logger is enabled.
  */
-#define MALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                                             \
-        void *malloc_result_ptr = malloc((_size_in_bytes));                                                           \
-        const char *message = "Allocation of %d bytes to '%s'; %s";                                                   \
-        enum log_tag log_tag = malloc_result_ptr ? LOG_INFO : LOG_ERROR;                                              \
-        const char *message_suffix = malloc_result_ptr ? "SUCCEEDED" : "FAILED";                                      \
-        if (logger_is_allocator_enabled())                                                                            \
-                LOG_MESSAGE_NON_THREAD_SAFE(log_tag, message, (_size_in_bytes), #_passed_memory_ptr, message_suffix); \
-        ((_passed_memory_ptr) = malloc_result_ptr);                                                                   \
+#define MALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                                                            \
+        void *malloc_result_ptr = malloc((_size_in_bytes));                                                                          \
+        const char *message = "Allocation of %d bytes to '%s'; %s";                                                                  \
+        enum log_tag log_tag = malloc_result_ptr ? LOG_INFO : LOG_ERROR;                                                             \
+        const char *message_suffix = malloc_result_ptr ? "SUCCEEDED" : "FAILED";                                                     \
+        if (logger_is_allocator_enabled())                                                                                           \
+                LOG_MESSAGE_NON_THREAD_SAFE(log_tag, ALLOCATOR_TAG, message, (_size_in_bytes), #_passed_memory_ptr, message_suffix); \
+        ((_passed_memory_ptr) = malloc_result_ptr);                                                                                  \
 })
 
 /**
@@ -41,14 +43,14 @@
  *
  * @note Logs are output only if the allocator logger is enabled.
  */
-#define CALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                                             \
-        void *calloc_result_ptr = calloc((_size_in_bytes), 1);                                                        \
-        const char *message = "Allocation of %d bytes to '%s'; %s";                                                   \
-        enum log_tag log_tag = calloc_result_ptr ? LOG_INFO : LOG_ERROR;                                              \
-        const char *message_suffix = calloc_result_ptr ? "SUCCEEDED" : "FAILED";                                      \
-        if (logger_is_allocator_enabled())                                                                            \
-                LOG_MESSAGE_NON_THREAD_SAFE(log_tag, message, (_size_in_bytes), #_passed_memory_ptr, message_suffix); \
-        (_passed_memory_ptr = calloc_result_ptr);                                                                     \
+#define CALLOC_LOG(_passed_memory_ptr, _size_in_bytes) ({                                                                            \
+        void *calloc_result_ptr = calloc((_size_in_bytes), 1);                                                                       \
+        const char *message = "Allocation of %d bytes to '%s'; %s";                                                                  \
+        enum log_tag log_tag = calloc_result_ptr ? LOG_INFO : LOG_ERROR;                                                             \
+        const char *message_suffix = calloc_result_ptr ? "SUCCEEDED" : "FAILED";                                                     \
+        if (logger_is_allocator_enabled())                                                                                           \
+                LOG_MESSAGE_NON_THREAD_SAFE(log_tag, ALLOCATOR_TAG, message, (_size_in_bytes), #_passed_memory_ptr, message_suffix); \
+        (_passed_memory_ptr = calloc_result_ptr);                                                                                    \
 })
 
 /**
@@ -61,18 +63,18 @@
  *
  * @note Logs are output only if the allocator logger is enabled.
  */
-#define FREE_NULLIFY_LOG(_memory_ptr)                                                                    \
-        do                                                                                               \
-        {                                                                                                \
-                if (logger_is_allocator_enabled() && (_memory_ptr) == NULL)                              \
-                        LOG_WARNING("Attempting to free() '%s'; %s = NULL", #_memory_ptr, #_memory_ptr); \
-                else                                                                                     \
-                {                                                                                        \
-                        free((_memory_ptr));                                                             \
-                        (_memory_ptr) = NULL;                                                            \
-                        if (logger_is_allocator_enabled())                                               \
-                                LOG_INFO("Successful free() on '%s'; Pointer zeroed.", #_memory_ptr);    \
-                }                                                                                        \
+#define FREE_NULLIFY_LOG(_memory_ptr)                                                                                                                \
+        do                                                                                                                                           \
+        {                                                                                                                                            \
+                if (logger_is_allocator_enabled() && (_memory_ptr) == NULL)                                                                          \
+                        LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING, ALLOCATOR_TAG, "Attempting to free() '%s'; %s = NULL", #_memory_ptr, #_memory_ptr); \
+                else                                                                                                                                 \
+                {                                                                                                                                    \
+                        free((_memory_ptr));                                                                                                         \
+                        (_memory_ptr) = NULL;                                                                                                        \
+                        if (logger_is_allocator_enabled())                                                                                           \
+                                LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, ALLOCATOR_TAG, "Successful free() on '%s'; Pointer zeroed.", #_memory_ptr);    \
+                }                                                                                                                                    \
         } while (0)
 
 #endif /* ALLOCATOR_H */
