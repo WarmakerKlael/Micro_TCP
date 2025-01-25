@@ -6,7 +6,8 @@
 #include <stdio.h>
 #include "microtcp_helper_macros.h"
 
-#define MAX_FILE_CHUNK (UINT16_MAX * MICROTCP_MSS)
+/* TODO: SET to UINT16_MAX not 2 */
+#define MAX_FILE_CHUNK (2 * MICROTCP_MSS)
 
 #define MAX_COMMAND_SIZE 20
 #define MAX_COMMAND_ARGUMENT_SIZE 400
@@ -52,7 +53,7 @@ typedef struct __attribute__((packed))
     int8_t command_code;
     status_t operation_status;
     size_t message_size;
-    size_t filename_size;
+    size_t file_name_size;
     size_t file_size;
 } miniredis_header_t;
 

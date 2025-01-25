@@ -29,29 +29,29 @@ static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket)
         return SUCCESS;
 }
 
-static void execute_set(microtcp_sock_t *_socket, const char *const file_name)
+static void execute_set(microtcp_sock_t *_socket, const char *const _file_name)
 {
         uint8_t *message_buffer = NULL; /* Initiliazing first thing, so that free() in cleanup: wont lead to undefined. */
         FILE *file_ptr = NULL;          /* Same here. */
 
-        if (access(file_name, F_OK) != 0)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s not found, errno(%d): %s.", file_name, errno, strerror(errno));
-        if (access(file_name, R_OK) != 0)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s read-permission missing, errno(%d): %s.", file_name, errno, strerror(errno));
+        if (access(_file_name, F_OK) != 0)
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s not found, errno(%d): %s.", _file_name, errno, strerror(errno));
+        if (access(_file_name, R_OK) != 0)
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s read-permission missing, errno(%d): %s.", _file_name, errno, strerror(errno));
 
-        file_ptr = fopen(file_name, "rb");
+        file_ptr = fopen(_file_name, "rb");
         if (file_ptr == NULL)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s failed read-open, errno(%d): %s.", file_name, errno, strerror(errno));
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s failed read-open, errno(%d): %s.", _file_name, errno, strerror(errno));
 
         struct stat file_stats;
-        if (stat(file_name, &file_stats) != 0)
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s failed stats-read, errno(%d): %s.", file_name, errno, strerror(errno));
+        if (stat(_file_name, &file_stats) != 0)
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "File: %s failed stats-read, errno(%d): %s.", _file_name, errno, strerror(errno));
 
         miniredis_header_t header = {
-            .command_code = CMND_GET_CODE,
-            .operation_status = SUCCESS,
+            .command_code = CMND_SET_CODE,
+            .operation_status = FAILURE, /* We successful reception and storing by server, we expect this header returned, but operation status == SUCCESS. */
             .message_size = 0,
-            .filename_size = strlen(file_name),
+            .file_name_size = strlen(_file_name),
             .file_size = file_stats.st_size};
 
         message_buffer = MALLOC_LOG(message_buffer, MAX_FILE_CHUNK);
@@ -62,8 +62,8 @@ static void execute_set(microtcp_sock_t *_socket, const char *const file_name)
         memcpy(message_buffer, &header, sizeof(header));
         size_t message_buffer_bytes = sizeof(header);
         /* Secondly, copy filename. */
-        memcpy(message_buffer + message_buffer_bytes, file_name, strlen(file_name));
-        message_buffer_bytes += strlen(file_name);
+        memcpy(message_buffer + message_buffer_bytes, _file_name, strlen(_file_name));
+        message_buffer_bytes += strlen(_file_name);
 
         size_t file_bytes_sent = 0;
         size_t bytes_read = 0;
@@ -74,10 +74,16 @@ static void execute_set(microtcp_sock_t *_socket, const char *const file_name)
                         LOG_APP_ERROR_GOTO(execute_set_cleanup, "microtcp_send() failed sending file-chunk, aborting.");
                 file_bytes_sent += bytes_read;
                 message_buffer_bytes = 0;
-                LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", file_name, file_bytes_sent, file_stats.st_size);
+                LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", _file_name, file_bytes_sent, file_stats.st_size);
         }
         if (ferror(file_ptr))
-                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Error while reading file: %s", file_name);
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Error while reading file: %s", _file_name);
+
+        if (microtcp_recv(_socket, &header, sizeof(header), MSG_WAITALL) == MICROTCP_RECV_FAILURE)
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Failed receive operation status from server.");
+        if (header.operation_status == FAILURE)
+                LOG_APP_ERROR_GOTO(execute_set_cleanup, "Server was unable to %s %s.", CMND_SET_NAME, _file_name);
+        LOG_APP_INFO("Server was able to %s %s.", CMND_SET_NAME, _file_name);
 
 execute_set_cleanup:
         if (file_ptr != NULL)

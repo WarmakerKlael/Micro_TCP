@@ -69,7 +69,7 @@ status_t registry_append(registry_t *const _registry, const char *const _file_na
 {
         if (access(_file_name, F_OK) != 0) /* File doesn't exist. */
         {
-                LOG_APP_ERROR("File: %s not found.");
+                LOG_APP_ERROR("File: %s not found.", _file_name);
                 return FAILURE;
         }
 
