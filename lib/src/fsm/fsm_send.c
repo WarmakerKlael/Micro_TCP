@@ -143,7 +143,7 @@ static __always_inline send_fsm_substates_t handle_ack_reception(microtcp_sock_t
                 return CONTINUE_SUBSTATE;
         }
         _context->duplicate_ack_count = 0;
-        _socket->ack_number = get_most_recent_ack(_socket->ack_number, control_segment->header.seq_number/*+1*/); /*TODO: CRITICAL:DETERMINE if +1 is required. */
+        _socket->ack_number = get_most_recent_ack(_socket->ack_number, control_segment->header.seq_number);
         const size_t pre_dequeue_bytes = sq_stored_bytes(_socket->send_queue);
         const size_t acked_segments = sq_dequeue(_socket->send_queue, received_ack_number);
         const size_t post_dequeue_bytes = sq_stored_bytes(_socket->send_queue);
