@@ -12,9 +12,9 @@
 #include "smart_assert.h"
 #include "microtcp_prompt_util.h"
 
-void prompt_set_rrb_length(void)
+void prompt_set_microtcp_rrb_length(void)
 {
-        const char *prompt = "Specify the Receive-Ring-Buffer size (uint32_t, power of 2, in bytes, default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
+        const char *prompt = "Specify MicroTCP's Receive-Ring-Buffer size (uint32_t, power of 2, in bytes default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
 
         long rrb_size = 0;
         while (1)
@@ -27,9 +27,9 @@ void prompt_set_rrb_length(void)
         set_microtcp_bytestream_rrb_size(rrb_size);
 }
 
-void prompt_set_ack_timeout(void)
+void prompt_set_microtcp_ack_timeout(void)
 {
-        const char *prompt = "Specify the ACK timeout interval (Default: " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_SEC) " seconds " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_USEC) " microseconds): ";
+        const char *prompt = "Specify MicroTCP's ACK timeout interval, (default: " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_SEC) " seconds " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_USEC) " microseconds): ";
         struct timeval ack_timeout_interval = {0};
         do
         {
@@ -38,6 +38,19 @@ void prompt_set_ack_timeout(void)
                         clear_line();
         } while (ack_timeout_interval.tv_sec < 0 || ack_timeout_interval.tv_usec < 0);
         set_microtcp_ack_timeout(ack_timeout_interval);
+}
+
+void prompt_set_microtcp_stall_time_limit(void)
+{
+        const char *prompt = "Specify MicroTCP's stall time limit, (default: " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_SEC) " seconds " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_USEC) " microseconds): ";
+        struct timeval stall_time_limit = {0};
+        do
+        {
+                PROMPT_WITH_READLINE(prompt, "%ld%ld", &stall_time_limit.tv_sec, &stall_time_limit.tv_usec);
+                if (stall_time_limit.tv_sec < 0 || stall_time_limit.tv_usec < 0)
+                        clear_line();
+        } while (stall_time_limit.tv_sec < 0 || stall_time_limit.tv_usec < 0);
+        set_microtcp_stall_time_limit(stall_time_limit);
 }
 
 void prompt_set_connect_retries(void)
@@ -94,8 +107,9 @@ void prompt_set_shutdown_time_wait_period(void)
 
 void configure_microtcp_settings(void)
 {
-        prompt_set_rrb_length();
-        prompt_set_ack_timeout();
+        prompt_set_microtcp_rrb_length();
+        prompt_set_microtcp_ack_timeout();
+        prompt_set_microtcp_stall_time_limit();
         prompt_set_connect_retries();
         prompt_set_accept_retries();
         prompt_set_shutdown_retries();

@@ -2,7 +2,7 @@
 #define MICROTCP_SETTINGS_PROMPTS_H
 
 void prompt_set_rrb_size(void);
-void prompt_set_ack_timeout(void);
+void prompt_set_microtcp_ack_timeout(void);
 void prompt_set_connect_retries(void);
 void prompt_set_accept_retries(void);
 void prompt_set_shutdown_retries(void);

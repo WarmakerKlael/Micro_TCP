@@ -12,7 +12,7 @@
 /* ----------------------------------------- MicroTCP general configuration variables ----------------------------------------- */
 static size_t microtcp_bytestream_rrb_size = MICROTCP_RECVBUF_LEN;
 static struct timeval microtcp_ack_timeout = DEFAULT_MICROTCP_ACK_TIMEOUT;
-static struct timeval microtcp_invalid_response_time_limit = DEFAULT_MICROTCP_INVALID_RESPONSE_TIME_LIMIT;
+static struct timeval microtcp_stall_time_limit = DEFAULT_MICROTCP_STALL_TIME_LIMIT;
 
 /* ----------------------------------------- Connect()'s FSM configuration variables ------------------------------------------ */
 static size_t connect_rst_retries = DEFAULT_CONNECT_RST_RETRIES; /* Default. Can be changed from following "API". */
@@ -64,20 +64,20 @@ void set_microtcp_ack_timeout(struct timeval _ack_timeout_tv)
         microtcp_ack_timeout = _ack_timeout_tv;
 }
 
-void set_microtcp_invalid_response_time_limit(const struct timeval _time_limit)
+void set_microtcp_stall_time_limit(const struct timeval _time_limit)
 {
         if (timeval_to_us(_time_limit) <= timeval_to_us(get_microtcp_ack_timeout()))
         {
-                LOG_ERROR("MicroTCP's response time limit must be greater than MicroTCP's timeout. Response time limit remains unchanged.");
+                LOG_ERROR("MicroTCP's stall time limit must be greater than MicroTCP's timeout. Stall time limit remains at default.");
                 return;
         }
-        microtcp_invalid_response_time_limit = _time_limit;
-        LOG_INFO("MIcroTCP response time limit updated to [%lldsec, %lldusec].", _time_limit.tv_sec, _time_limit.tv_usec);
+        microtcp_stall_time_limit = _time_limit;
+        LOG_INFO("MIcroTCP stall time limit updated to [%lldsec, %lldusec].", _time_limit.tv_sec, _time_limit.tv_usec);
 }
 
-struct timeval get_microtcp_invalid_response_time_limit(void)
+struct timeval get_microtcp_stall_time_limit(void)
 {
-        return microtcp_invalid_response_time_limit;
+        return microtcp_stall_time_limit;
 }
 
 /* ----------------------------------------- Connect()'s FSM configurators ------------------------------------------ */

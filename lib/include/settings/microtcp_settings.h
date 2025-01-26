@@ -12,8 +12,8 @@ void set_microtcp_ack_timeout(struct timeval _tv);
 size_t get_microtcp_bytestream_rrb_size(void);
 void set_microtcp_bytestream_rrb_size(size_t _length);
 
-struct timeval get_microtcp_invalid_response_time_limit(void);
-void set_microtcp_invalid_response_time_limit(struct timeval _time_limit);
+void set_microtcp_stall_time_limit(struct timeval _time_limit);
+struct timeval get_microtcp_stall_time_limit(void);
 
 /* Connect()'s FSM configurators. */
 size_t get_connect_rst_retries(void);

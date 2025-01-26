@@ -8,7 +8,7 @@
 #define DEFAULT_MICROTCP_ACK_TIMEOUT_USEC MICROTCP_ACK_TIMEOUT_US
 #define DEFAULT_MICROTCP_ACK_TIMEOUT ((struct timeval){.tv_sec = DEFAULT_MICROTCP_ACK_TIMEOUT_SEC, \
                                                        .tv_usec = DEFAULT_MICROTCP_ACK_TIMEOUT_USEC})
-#define DEFAULT_MICROTCP_INVALID_RESPONSE_TIME_LIMIT ((struct timeval){.tv_sec = 10, .tv_usec = 0})
+#define DEFAULT_MICROTCP_STALL_TIME_LIMIT ((struct timeval){.tv_sec = 10, .tv_usec = 0})
 
 #define DEFAULT_CONNECT_RST_RETRIES 3
 #define LINUX_DEFAULT_ACCEPT_TIMEOUTS 5
