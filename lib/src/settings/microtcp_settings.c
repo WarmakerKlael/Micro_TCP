@@ -12,27 +12,28 @@
 /* ----------------------------------------- MicroTCP general configuration variables ----------------------------------------- */
 static size_t microtcp_bytestream_rrb_size = MICROTCP_RECVBUF_LEN;
 static struct timeval microtcp_ack_timeout = DEFAULT_MICROTCP_ACK_TIMEOUT;
+static struct timeval microtcp_invalid_response_time_limit = DEFAULT_MICROTCP_INVALID_RESPONSE_TIME_LIMIT;
 
 /* ----------------------------------------- Connect()'s FSM configuration variables ------------------------------------------ */
 static size_t connect_rst_retries = DEFAULT_CONNECT_RST_RETRIES; /* Default. Can be changed from following "API". */
 
 /* ------------------------------------------ Accept()'s FSM configuration variables ------------------------------------------ */
-static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS+100000; /* Default. Can be changed from following "API". */
+static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS + 100000; /* Default. Can be changed from following "API". */
 
 /* ----------------------------------------- Shutdown()'s FSM configuration variables ----------------------------------------- */
 static struct timeval shutdown_time_wait_period = {.tv_sec = DEFAULT_SHUTDOWN_TIME_WAIT_SEC, .tv_usec = DEFAULT_SHUTDOWN_TIME_WAIT_USEC};
-static size_t shutdown_finack_retries = TCP_RETRIES2+100000; /* Default. Can be changed from following "API". */
+static size_t shutdown_finack_retries = TCP_RETRIES2 + 100000; /* Default. Can be changed from following "API". */
 
 /* ___________________________________________________________________________________________________________________________ */
 /* ___________________________________________________________________________________________________________________________ */
 
 /* ----------------------------------------- MicroTCP socket configurators ------------------------------------------ */
-size_t get_bytestream_rrb_size(void)
+size_t get_microtcp_bytestream_rrb_size(void)
 {
         return microtcp_bytestream_rrb_size;
 }
 
-void set_bytestream_rrb_size(size_t _bytstream_rrb_size)
+void set_microtcp_bytestream_rrb_size(size_t _bytstream_rrb_size)
 {
         SMART_ASSERT(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), IS_POWER_OF_2(_bytstream_rrb_size));
         if (_bytstream_rrb_size != MICROTCP_RECVBUF_LEN)
@@ -61,6 +62,22 @@ void set_microtcp_ack_timeout(struct timeval _ack_timeout_tv)
                          _ack_timeout_tv.tv_sec, _ack_timeout_tv.tv_usec);
 
         microtcp_ack_timeout = _ack_timeout_tv;
+}
+
+void set_microtcp_invalid_response_time_limit(const struct timeval _time_limit)
+{
+        if (timeval_to_us(_time_limit) <= timeval_to_us(get_microtcp_ack_timeout()))
+        {
+                LOG_ERROR("MicroTCP's response time limit must be greater than MicroTCP's timeout. Response time limit remains unchanged.");
+                return;
+        }
+        microtcp_invalid_response_time_limit = _time_limit;
+        LOG_INFO("MIcroTCP response time limit updated to [%lldsec, %lldusec].", _time_limit.tv_sec, _time_limit.tv_usec);
+}
+
+struct timeval get_microtcp_invalid_response_time_limit(void)
+{
+        return microtcp_invalid_response_time_limit;
 }
 
 /* ----------------------------------------- Connect()'s FSM configurators ------------------------------------------ */

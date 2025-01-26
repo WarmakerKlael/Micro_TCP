@@ -220,4 +220,12 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
 		return _return_value;                             \
 	} while (0)
 
+#define LOG_APP_ERROR_GOTO(_goto_label, _format_message, ...)  \
+        do                                                     \
+        {                                                      \
+                LOG_APP_ERROR(_format_message, ##__VA_ARGS__); \
+                goto _goto_label;                              \
+        } while (0)
+
+
 #endif /* MICROTCP_LOGGER_H */

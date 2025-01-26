@@ -11,11 +11,10 @@
 #include "core/microtcp_recv_impl.h"
 #include <threads.h>
 #include "microtcp_helper_functions.h"
+#include "settings/microtcp_settings.h"
 
 static __always_inline ssize_t handle_finack_reception(microtcp_sock_t *const _socket, const size_t _bytes_received)
 {
-        const microtcp_segment_t *const finack_segment = _socket->segment_receive_buffer;
-
         _socket->ack_number++;
         if (_bytes_received == 0)
         {
@@ -23,7 +22,7 @@ static __always_inline ssize_t handle_finack_reception(microtcp_sock_t *const _s
                 return MICROTCP_RECV_FAILURE;
         }
         _socket->data_reception_with_finack = true;
-        DEBUG_SMART_ASSERT(_bytes_received < SIZE_MAX / 2);
+        DEBUG_SMART_ASSERT(_bytes_received < ((size_t)-1) >> 1);
         return (ssize_t)_bytes_received;
 }
 
@@ -84,5 +83,41 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                 }
                 }
         }
+        return bytes_received;
+}
+
+ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const _buffer,
+                                 const size_t _length, const struct timeval _max_idle_time)
+{
+
+        const time_t microtcp_recv_timeout_usec = timeval_to_us(get_microtcp_ack_timeout());
+        const time_t max_idle_time_usec = timeval_to_us(_max_idle_time);
+        DEBUG_SMART_ASSERT(_length > 0, max_idle_time_usec > 0);
+
+        if (max_idle_time_usec > microtcp_recv_timeout_usec)
+                LOG_WARNING("Argument `%s` [%lldusec] < timeout of `%s()` [%lldusec], `%s()` will be respected.",
+                            STRINGIFY(_max_idle_time), max_idle_time_usec,
+                            STRINGIFY(microtcp_recv), microtcp_recv_timeout_usec,
+                            STRINGIFY(microtcp_recv));
+
+        time_t current_idle_time_usec = 0;
+        size_t bytes_received = 0;
+        while (bytes_received != _length)
+        {
+                ssize_t recv_ret_val = microtcp_recv_impl(_socket, _buffer + bytes_received, _length - bytes_received, 0);
+                if (RARE_CASE(recv_ret_val == MICROTCP_RECV_FAILURE))
+                        return bytes_received > 0 ? bytes_received : MICROTCP_RECV_FAILURE;
+                if (RARE_CASE(recv_ret_val == MICROTCP_RECV_TIMEOUT))
+                {
+                        current_idle_time_usec += microtcp_recv_timeout_usec;
+                        if (current_idle_time_usec >= max_idle_time_usec) /* Max time reached (or exceeded). */
+                                return bytes_received;
+                        continue;
+                }
+                DEBUG_SMART_ASSERT(recv_ret_val > 0);
+                bytes_received += recv_ret_val;
+                current_idle_time_usec = 0; /* Reset idle time counter. */
+        }
+        DEBUG_SMART_ASSERT(bytes_received <= _length); /* We should never received more bytes than asked... (Just a final silly check). */
         return bytes_received;
 }

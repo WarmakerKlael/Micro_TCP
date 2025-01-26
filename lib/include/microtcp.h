@@ -83,9 +83,9 @@ typedef enum
  */
 typedef struct
 {
-        int sd;                     /* The underline UDP socket descriptor. */
-        mircotcp_state_t state;     /* The state of the microTCP socket. */
-        size_t curr_win_size;       /* The current window size. */
+        int sd;                 /* The underline UDP socket descriptor. */
+        mircotcp_state_t state; /* The state of the microTCP socket. */
+        size_t curr_win_size;   /* The current window size. */
         size_t peer_win_size;
 
         receive_ring_buffer_t *bytestream_rrb; /* a.k.a `recvbuf`, used to store and reassmble bytes of incoming packets. */
@@ -148,6 +148,9 @@ int microtcp_shutdown(microtcp_sock_t *socket, int how);
 ssize_t microtcp_send(microtcp_sock_t *socket, const void *buffer, size_t length, int flags);
 
 ssize_t microtcp_recv(microtcp_sock_t *socket, void *buffer, size_t length, int flags);
+
+/* Part of the extended API(). */
+ssize_t microtcp_recv_timed(microtcp_sock_t *_socket, void *_buffer, size_t _length, struct timeval _max_idle_time);
 
 void microtcp_close(microtcp_sock_t *socket);
 

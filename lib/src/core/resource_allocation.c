@@ -60,7 +60,7 @@ status_t allocate_post_handshake_buffers(microtcp_sock_t *_socket)
         SMART_ASSERT(_socket != NULL);
         SMART_ASSERT(_socket->state == ESTABLISHED, _socket->send_queue == NULL, _socket->bytestream_rrb == NULL);
         _socket->send_queue = sq_create();
-        if ((_socket->bytestream_rrb = rrb_create(get_bytestream_rrb_size(), _socket->ack_number - 1)) == NULL)
+        if ((_socket->bytestream_rrb = rrb_create(get_microtcp_bytestream_rrb_size(), _socket->ack_number - 1)) == NULL)
                 goto failure_cleanup;
         return SUCCESS;
 

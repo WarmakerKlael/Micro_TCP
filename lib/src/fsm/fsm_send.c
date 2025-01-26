@@ -30,6 +30,7 @@ typedef enum
         FINACK_RECEPTION_SUBSTATE,
         RST_RECEPTION_SUBSTATE,
         EXIT_SUCCESS_SUBSTATE,
+        EXIT_STALLED_SUBSTATE,
         EXIT_FAILURE_SUBSTATE,
         CONTINUE_SUBSTATE,
 } send_fsm_substates_t;
@@ -39,6 +40,7 @@ typedef struct
         const uint8_t *buffer;
         size_t remaining;
         uint8_t duplicate_ack_count;
+        struct timeval last_ack_timeval;
         send_algorithm_t current_send_algorithm;
 } fsm_context_t;
 
@@ -65,6 +67,8 @@ static __always_inline ssize_t error_tolerant_send_data(microtcp_sock_t *_socket
 
 static inline void handle_zero_peer_window(void)
 {
+
+        HERE
         /* TODO: With current setup peer_window can never be 0. */
         /* As microtcp_recv reads bytes into rrb, only when, */
         /* User of microtcp_recv requests so... Thus there is a buffer to copy.. */
@@ -149,10 +153,12 @@ static __always_inline send_fsm_substates_t handle_ack_reception(microtcp_sock_t
         const size_t post_dequeue_bytes = sq_stored_bytes(_socket->send_queue);
         _context->remaining -= (pre_dequeue_bytes - post_dequeue_bytes);
         _context->buffer += (pre_dequeue_bytes - post_dequeue_bytes);
+        if (COMMON_CASE(acked_segments))
+                _context->last_ack_timeval = get_current_timeval();
         handle_seq_number_increment(_socket, received_ack_number, acked_segments);
         handle_cwnd_increment(_socket, _context, acked_segments);
         handle_peer_win_size(_socket);
-        if (RARE_CASE(_socket->segment_receive_buffer->header.window == 0)) /* IMPOSSIBLE_CASE ACTUALLY...*/
+        if (RARE_CASE(_socket->segment_receive_buffer->header.window == 0)) /* IMPOSSIBLE_CASE ACTUALLY... (in single thread setup). */
                 handle_zero_peer_window();
         return CONTINUE_SUBSTATE;
 }
@@ -282,17 +288,34 @@ static __always_inline ssize_t execute_rst_reception_substate(microtcp_sock_t *c
         return (ssize_t)(_bytes_sent > 0 ? _bytes_sent : MICROTCP_SEND_FAILURE);
 }
 
+static __always_inline ssize_t execute_exit_stalled_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
+{
+        DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        sq_flush(_socket->send_queue);
+        LOG_ERROR_RETURN((ssize_t)_bytes_sent, "Send FSM stalled, couldn't receive valid ACKs, socket's->send_queue flushed.");
+        return (ssize_t)_bytes_sent;
+}
+
+static __always_inline _Bool is_send_fsm_stalled(const struct timeval _last_ack_timeval, const time_t _stall_time_threshhold)
+{
+        return elapsed_time_us(_last_ack_timeval) > _stall_time_threshhold;
+}
+
 ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer, const size_t _length)
 {
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SEND_FAILURE, _socket, ESTABLISHED);
         fsm_context_t context = {.buffer = _buffer,
                                  .remaining = _length,
+                                 .last_ack_timeval = get_current_timeval(),
                                  .duplicate_ack_count = 0,
                                  .current_send_algorithm = ALGORITHM_SLOW_START};
+        const time_t invalid_response_time_limit_usec = timeval_to_us(get_microtcp_invalid_response_time_limit());
 
         send_fsm_substates_t current_substate = SEND_DATA_ROUND_SUBSTATE;
         while (true)
         {
+                if (is_send_fsm_stalled(context.last_ack_timeval, invalid_response_time_limit_usec))
+                        current_substate = EXIT_STALLED_SUBSTATE;
                 LOG_FSM_SEND("Entering %s", convert_substate_to_string(current_substate));
                 switch (current_substate)
                 {
@@ -315,6 +338,8 @@ ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buf
                         return execute_rst_reception_substate(_socket, _length - context.remaining);
                 case EXIT_FAILURE_SUBSTATE:
                         return execute_exit_failure_substate(_socket, _length - context.remaining);
+                case EXIT_STALLED_SUBSTATE:
+                        return execute_exit_stalled_substate(_socket, _length - context.remaining);
                 case EXIT_SUCCESS_SUBSTATE:
                         return execute_exit_success_substate(_length - context.remaining);
                 default:
@@ -335,6 +360,7 @@ static const char *convert_substate_to_string(const send_fsm_substates_t _substa
         case FINACK_RECEPTION_SUBSTATE: return STRINGIFY(FINACK_RECEPTION_SUBSTATE);
         case RST_RECEPTION_SUBSTATE:    return STRINGIFY(RST_RECEPTION_SUBSTATE);
         case EXIT_SUCCESS_SUBSTATE:     return STRINGIFY(EXIT_SUCCESS_SUBSTATE);
+        case EXIT_STALLED_SUBSTATE:     return STRINGIFY(EXIT_STALLED_SUBSTATE);
         case EXIT_FAILURE_SUBSTATE:     return STRINGIFY(EXIT_FAILURE_SUBSTATE);
         case CONTINUE_SUBSTATE:         return STRINGIFY(CONTINUE_SUBSTATE);
         default:                        return "??CONNECT_SUBSTATE??";

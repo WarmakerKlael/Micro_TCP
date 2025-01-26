@@ -24,7 +24,7 @@ void prompt_set_rrb_length(void)
                         break;
                 clear_line();
         }
-        set_bytestream_rrb_size(rrb_size);
+        set_microtcp_bytestream_rrb_size(rrb_size);
 }
 
 void prompt_set_ack_timeout(void)

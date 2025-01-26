@@ -108,6 +108,18 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
         return dequeued_node_counter;
 }
 
+void sq_flush(send_queue_t *const _sq)
+{
+        DEBUG_SMART_ASSERT(_sq != NULL);
+        if (_sq->front == NULL)
+                return;
+        sq_dequeue(_sq, _sq->rear->seq_number + _sq->rear->segment_size);
+        DEBUG_SMART_ASSERT(_sq->front == NULL,
+                           _sq->rear == NULL,
+                           _sq->stored_bytes == 0,
+                           _sq->stored_segments == 0);
+}
+
 size_t sq_stored_segments(send_queue_t *const _sq)
 {
         DEBUG_SMART_ASSERT(_sq != NULL);

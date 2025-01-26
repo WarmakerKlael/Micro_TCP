@@ -4,7 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include "microtcp_helper_macros.h"
+#include "miniredis_demo/miniredis_commands.h"
 
 /* TODO: SET to UINT16_MAX not 2 */
 #define MAX_FILE_PART (2 * MICROTCP_MSS)
@@ -15,6 +17,9 @@
 
 #define REGISTRY_INITIAL_ENTRIES_CAPACITY (100)
 #define REGISTRY_CACHE_SIZE_LIMIT (500000)
+#define MAX_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 10, .tv_usec = 0})
+
+#define STAGING_FILE_NAME ".__filepart__.dat" /* Hiddden, internal filename until stored in `_registry`. */
 
 _Static_assert(MAX_FILE_PART > MAX_REQUEST_SIZE, "Helps avoid dynamic memory allocation for  filename buffers. JUST DO IT.");
 
@@ -53,11 +58,32 @@ static inline void display_help(void)
 
 typedef struct __attribute__((packed))
 {
-    int8_t command_code;
-    status_t operation_status;
-    size_t message_size;
+    enum miniredis_command_codes command_code;
+    status_t response_status;
+    size_t response_message_size;
     size_t file_name_size;
     size_t file_size;
 } miniredis_header_t;
+
+#define STARTUP_CLIENT_LOGO "\
+Oo      oO ooOoOOo o.     O ooOoOOo `OooOOo.  o.OOoOoo o.OOOo.   ooOoOOo .oOOOo.             .oOOOo.   o      ooOoOOo o.OOoOoo o.     O oOoOOoOOo \n\
+O O    o o    O    Oo     o    O     o     `o  O        O    `o     O    o     o            .O     o  O          O     O       Oo     o     o     \n\
+o  o  O  O    o    O O    O    o     O      O  o        o      O    o    O.                 o         o          o     o       O O    O     o     \n\
+O   Oo   O    O    O  o   o    O     o     .O  ooOO     O      o    O     `OOoo.            o         o          O     ooOO    O  o   o     O     \n\
+O        o    o    O   o  O    o     OOooOO'   O        o      O    o          `O           o         O          o     O       O   o  O     o     \n\
+o        O    O    o    O O    O     o    o    o        O      o    O           o           O         O          O     o       o    O O     O     \n\
+o        O    O    o     Oo    O     O     O   O        o    .O'    O    O.    .O           `o     .o o     .    O     O       o     Oo     O     \n\
+O        o ooOOoOo O     `o ooOOoOo  O      o ooOooOoO  OooOO'   ooOOoOo  `oooO'             `OoooO'  OOoOooO ooOOoOo ooOooOoO O     `o     o'    \n\
+"
+#define STARTUP_SERVER_LOGO "\
+Oo      oO ooOoOOo o.     O ooOoOOo `OooOOo.  o.OOoOoo o.OOOo.   ooOoOOo .oOOOo.            .oOOOo.  o.OOoOoo `OooOOo.  o      'O o.OOoOoo `OooOOo.  \n\
+O O    o o    O    Oo     o    O     o     `o  O        O    `o     O    o     o            o     o   O        o     `o O       o  O        o     `o \n\
+o  o  O  O    o    O O    O    o     O      O  o        o      O    o    O.                 O.        o        O      O o       O  o        O      O \n\
+O   Oo   O    O    O  o   o    O     o     .O  ooOO     O      o    O     `OOoo.             `OOoo.   ooOO     o     .O o       o  ooOO     o     .O \n\
+O        o    o    O   o  O    o     OOooOO'   O        o      O    o          `O                 `O  O        OOooOO'  O      O'  O        OOooOO'  \n\
+o        O    O    o    O O    O     o    o    o        O      o    O           o                  o  o        o    o   `o    o    o        o    o   \n\
+o        O    O    o     Oo    O     O     O   O        o    .O'    O    O.    .O           O.    .O  O        O     O   `o  O     O        O     O  \n\
+O        o ooOOoOo O     `o ooOOoOo  O      o ooOooOoO  OooOO'   ooOOoOo  `oooO'             `oooO'  ooOooOoO  O      o   `o'     ooOooOoO  O      o \n\
+        "
 
 #endif /* MINI_REDIS_H */

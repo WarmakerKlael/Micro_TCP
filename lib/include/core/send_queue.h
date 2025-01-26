@@ -21,6 +21,7 @@ send_queue_t *sq_create(void);
 status_t sq_destroy(send_queue_t **_sq);
 void sq_enqueue(send_queue_t *_sq, uint32_t _seq_number, uint32_t _segment_size, const void *_buffer);
 size_t sq_dequeue(send_queue_t *_sq, uint32_t _ack_number);
+void sq_flush(send_queue_t *_sq);
 size_t sq_stored_segments(send_queue_t *_sq);
 size_t sq_stored_bytes(send_queue_t *_sq);
 _Bool sq_is_empty(send_queue_t *_sq);

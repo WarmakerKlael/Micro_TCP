@@ -21,7 +21,7 @@
 static inline void display_startup_message(const char *const _startup_message)
 {
         CLEAR_SCREEN();
-        printf(">>>> %s <<<<\n", _startup_message);
+        printf("%s\n", _startup_message);
 }
 
 /**
