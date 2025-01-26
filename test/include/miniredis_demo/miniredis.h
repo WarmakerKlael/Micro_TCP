@@ -13,6 +13,9 @@
 #define MAX_COMMAND_ARGUMENT_SIZE 400
 #define MAX_REQUEST_SIZE (MAX_COMMAND_SIZE + (2 * MAX_COMMAND_ARGUMENT_SIZE))
 
+#define REGISTRY_INITIAL_ENTRIES_CAPACITY (100)
+#define REGISTRY_CACHE_SIZE_LIMIT (500000)
+
 _Static_assert(MAX_FILE_PART > MAX_REQUEST_SIZE, "Helps avoid dynamic memory allocation for  filename buffers. JUST DO IT.");
 
 // clang-format off

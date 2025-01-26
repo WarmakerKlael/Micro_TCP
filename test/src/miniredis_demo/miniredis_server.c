@@ -30,7 +30,31 @@ static __always_inline void perform_set_resource_cleanup(FILE **const _file_ptr_
 /* Other INLINE HELPERS. */
 static __always_inline void miniredis_request_distributor(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
 
-static inline status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address)
+/* Static Functions: */
+static status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address);
+static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
+static status_t miniredis_server_manager(registry_t *_registry);
+static void miniredis_request_handlder(microtcp_sock_t *_socket, registry_t *_registry);
+
+/* Command functions: */
+static void perform_set(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
+static  void perform_get(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
+
+/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+
+int main(void)
+{
+        display_startup_message("Welcome to MINI-REDIS file server manager.");
+        prompt_to_configure_microtcp();
+        registry_t *mr_registry = registry_create(REGISTRY_INITIAL_ENTRIES_CAPACITY, REGISTRY_CACHE_SIZE_LIMIT);
+        if (mr_registry == NULL)
+                LOG_APP_ERROR_RETURN(EXIT_FAILURE, "Registry creation failed, miniredis_server EXIT_FAILURE.");
+        miniredis_server_manager(mr_registry);
+        registry_destroy(&mr_registry);
+        return EXIT_SUCCESS;
+}
+
+static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_socket, struct sockaddr_in *const _client_address)
 {
         struct sockaddr_in server_address = {
             .sin_family = AF_INET,
@@ -46,7 +70,7 @@ static inline status_t miniredis_establish_connection(microtcp_sock_t *_utcp_soc
         return SUCCESS;
 }
 
-static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket)
+static status_t miniredis_terminate_connection(microtcp_sock_t *const _utcp_socket)
 {
         if (microtcp_shutdown(_utcp_socket, SHUT_RDWR) == MICROTCP_SHUTDOWN_FAILURE)
                 return FAILURE;
@@ -69,7 +93,7 @@ static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uin
         return SUCCESS;
 }
 
-static inline void perform_set(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *const _request_header)
+static void perform_set(microtcp_sock_t *const _socket, registry_t *const _registry, miniredis_header_t *const _request_header)
 {
         DEBUG_SMART_ASSERT(_request_header->command_code == CMND_SET_CODE,
                            _request_header->operation_status == FAILURE,
@@ -99,7 +123,7 @@ cleanup_label:
         microtcp_send(_socket, _request_header, sizeof(*_request_header), 0); /* Send operation status response. */
 }
 
-static inline void perform_get(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header)
+static  void perform_get(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header)
 {
         DEBUG_SMART_ASSERT(_request_header->command_code == CMND_GET_CODE,
                            _request_header->operation_status == SUCCESS,
@@ -107,7 +131,7 @@ static inline void perform_get(microtcp_sock_t *_socket, registry_t *_registry, 
                            _request_header->file_name_size <= MAX_COMMAND_ARGUMENT_SIZE);
 }
 
-static inline void miniredis_request_handlder(microtcp_sock_t *_socket, registry_t *_registry)
+static void miniredis_request_handlder(microtcp_sock_t *const _socket, registry_t *const _registry)
 {
         char request_header_buffer[sizeof(miniredis_header_t)];
         while (true)
@@ -130,7 +154,7 @@ static inline void miniredis_request_handlder(microtcp_sock_t *_socket, registry
         }
 }
 
-static status_t miniredis_server_manager(registry_t *_registry)
+static status_t miniredis_server_manager(registry_t *const _registry)
 {
         struct sockaddr_in client_address = {0}; /* Acquired by microtcp_accept() internally (by recvfrom()). */
         microtcp_sock_t utcp_socket = {0};
@@ -142,23 +166,6 @@ static status_t miniredis_server_manager(registry_t *_registry)
                 LOG_APP_ERROR_RETURN(FAILURE, "Failed terminating connection.");
         return SUCCESS;
 }
-
-#define REGISTRY_INITIAL_CAPACITY (100)
-#define REGISTRY_CACHE_SIZE_LIMIT (500000)
-int main(void)
-{
-        display_startup_message("Welcome to MINI-REDIS file server.");
-        prompt_to_configure_microtcp();
-        registry_t *mr_registry = registry_create(REGISTRY_INITIAL_CAPACITY, REGISTRY_CACHE_SIZE_LIMIT);
-        if (mr_registry == NULL)
-                LOG_APP_ERROR_RETURN(EXIT_FAILURE, "Registry creation failed, miniredis_server EXIT_FAILURE.");
-        miniredis_server_manager(mr_registry);
-        registry_destroy(&mr_registry);
-        return EXIT_SUCCESS;
-}
-
-#undef REGISTRY_INITIAL_CAPACITY
-#undef REGISTRY_CACHE_SIZE_LIMIT
 
 /* INLINE HELPERS: */
 static __always_inline char *receive_file_name(microtcp_sock_t *const _socket, const size_t _file_name_size)
@@ -209,7 +216,12 @@ static __always_inline void perform_set_resource_cleanup(FILE **const _file_ptr_
                                                          char **const _file_name_address)
 {
         if (*_file_ptr_address != NULL)
+        {
+
                 fclose(*_file_ptr_address);
+                *_file_ptr_address = NULL;
+        }
+
         FREE_NULLIFY_LOG(*_file_buffer_address);
 
         if (access(STAGING_FILE_NAME, F_OK) == 0)

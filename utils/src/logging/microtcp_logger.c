@@ -79,10 +79,10 @@ static void logger_constructor(void)
 	mutex_logger = CALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_ERROR, LOGGER_TAG, "Logger failed to initialize.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_ERROR,LOGGER_TAG, "Logger failed to initialize.");
 		exit(EXIT_FAILURE);
 	}
-	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG, "Logger initialized.");
+	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG,"Logger initialized.");
 }
 
 static void logger_destructor(void)
@@ -92,10 +92,10 @@ static void logger_destructor(void)
 	{
 		free(mutex_logger);
 		mutex_logger = NULL;
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG, "Logger destroyed.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO,LOGGER_TAG, "Logger destroyed.");
 	}
 	else
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING, LOGGER_TAG, "Logger could not be destroyed.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING,LOGGER_TAG, "Logger could not be destroyed.");
 	fprintf(microtcp_log_stream, SGR_RESET); /* Reset print style to system's default. */
 }
 
@@ -113,7 +113,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
 {
 	va_list args;
 	va_start(args, _format_message);
-	log_message_forward_non_thread_safe(_log_tag, TRANSPORT_PROTOCOL_NAME, _file, _line, _func, _format_message, args);
+	log_message_forward_non_thread_safe(_log_tag, _project_name, _file, _line, _func, _format_message, args);
 	va_end(args);
 }
 

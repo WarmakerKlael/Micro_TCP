@@ -12,32 +12,26 @@
 #include <threads.h>
 #include "microtcp_helper_functions.h"
 
-#define HANDLE_FINACK_RECEPTION_AND_RETURN(_socket, _bytes_received)                                                                                       \
-        do                                                                                                                                                 \
-        {                                                                                                                                                  \
-                const microtcp_segment_t *const finack_segment = (_socket)->segment_receive_buffer;                                                        \
-                                                                                                                                                           \
-                if (finack_segment->header.seq_number == (_socket)->ack_number)                                                                            \
-                {                                                                                                                                          \
-                        (_socket)->ack_number++;                                                                                                           \
-                        if ((_bytes_received) == 0)                                                                                                        \
-                        {                                                                                                                                  \
-                                (_socket)->state = CLOSING_BY_PEER;                                                                                        \
-                                return MICROTCP_RECV_FAILURE;                                                                                              \
-                        }                                                                                                                                  \
-                        (_socket)->data_reception_with_finack = true;                                                                                      \
-                        return (_bytes_received);                                                                                                          \
-                }                                                                                                                                          \
-                else                                                                                                                                       \
-                        LOG_WARNING("Protocol lost sychronization, received FIN|ACK, with mismatched `seq_number`; Could also be out-of-order (ignored)"); \
-        } while (0)
+static __always_inline ssize_t handle_finack_reception(microtcp_sock_t *const _socket, const size_t _bytes_received)
+{
+        const microtcp_segment_t *const finack_segment = _socket->segment_receive_buffer;
 
-#define HANDLE_RST_RECEPTION_AND_RETURN(_return_value, _socket)                                                                                \
-        do                                                                                                                                     \
-        {                                                                                                                                      \
-                (_socket)->state = RESET;                                                                                                      \
-                LOG_ERROR_RETURN((_return_value), "Peer sent an RST. Socket enters %s state", get_microtcp_state_to_string((_socket)->state)); \
-        } while (0)
+        _socket->ack_number++;
+        if (_bytes_received == 0)
+        {
+                _socket->state = CLOSING_BY_PEER;
+                return MICROTCP_RECV_FAILURE;
+        }
+        _socket->data_reception_with_finack = true;
+        DEBUG_SMART_ASSERT(_bytes_received < SIZE_MAX / 2);
+        return (ssize_t)_bytes_received;
+}
+
+static __always_inline ssize_t handle_rst_reception(microtcp_sock_t *const _socket)
+{
+        _socket->state = RESET;
+        LOG_ERROR_RETURN(MICROTCP_RECV_FAILURE, "Peer sent an RST. Socket enters %s state", get_microtcp_state_to_string(_socket->state));
+}
 
 /* _flags are validated by the caller. microtcp_recv() */
 ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffer, const size_t _length, const int _flags)
@@ -64,9 +58,12 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                 case RECV_SEGMENT_FATAL_ERROR:
                         return MICROTCP_RECV_FAILURE;
                 case RECV_SEGMENT_FINACK_UNEXPECTED:
-                        HANDLE_FINACK_RECEPTION_AND_RETURN(_socket, bytes_received);
+                        if (_socket->segment_receive_buffer->header.seq_number == _socket->ack_number)
+                                return handle_finack_reception(_socket, bytes_received);
+                        LOG_WARNING("Protocol lost sychronization, received FIN|ACK, with mismatched `seq_number`; Could also be out-of-order (ignored)");
+                        break;
                 case RECV_SEGMENT_RST_RECEIVED:
-                        HANDLE_RST_RECEPTION_AND_RETURN(MICROTCP_RECV_FAILURE, _socket);
+                        return handle_rst_reception(_socket);
                 case RECV_SEGMENT_TIMEOUT:
                         bytes_received += rrb_pop(bytestream_rrb, _buffer + bytes_received, _length - bytes_received); /* Pop any remaining bytes.*/
                         if (_flags & MSG_WAITALL)
