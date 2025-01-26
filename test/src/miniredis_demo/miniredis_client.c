@@ -84,9 +84,11 @@ static status_t miniredis_client_manager(void)
                         break;
                 else if (strcmp(command_buffer, CMND_HELP_NAME) == 0 && args_parsed == CMND_HELP_ARGS)
                         display_help();
+                else if (strcmp(command_buffer, CMND_GET_NAME) == 0 && args_parsed == CMND_GET_ARGS)
+                        execute_get(&utcp_socket, argument_buffer1);
                 else if (strcmp(command_buffer, CMND_SET_NAME) == 0 && args_parsed == CMND_SET_ARGS)
                         execute_set(&utcp_socket, argument_buffer1);
-                free(prompt_answer_buffer);
+                FREE_NULLIFY_LOG(prompt_answer_buffer);
         }
 
         if (miniredis_terminate_connection(&utcp_socket) == FAILURE)
