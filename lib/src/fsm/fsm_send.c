@@ -27,6 +27,7 @@ typedef enum
         SEND_DATA_ROUND_SUBSTATE, /* Entry point. */
         RECV_ACK_ROUND_SUBSTATE,
         RETRANSMISSIONS_SUBSTATE,
+        PEER_WINDOW_ZERO_SUBSTATE,
         FINACK_RECEPTION_SUBSTATE,
         RST_RECEPTION_SUBSTATE,
         EXIT_SUCCESS_SUBSTATE,
@@ -63,17 +64,6 @@ static __always_inline ssize_t error_tolerant_send_data(microtcp_sock_t *_socket
                         continue;
                 return segment_bytes_sent;
         }
-}
-
-static inline void handle_zero_peer_window(void)
-{
-
-        HERE
-        /* TODO: With current setup peer_window can never be 0. */
-        /* As microtcp_recv reads bytes into rrb, only when, */
-        /* User of microtcp_recv requests so... Thus there is a buffer to copy.. */
-        ;
-        SMART_ASSERT(false);
 }
 
 /* FAST_RETRANSMIT: response to 3 dup ACK. */
@@ -159,7 +149,7 @@ static __always_inline send_fsm_substates_t handle_ack_reception(microtcp_sock_t
         handle_cwnd_increment(_socket, _context, acked_segments);
         handle_peer_win_size(_socket);
         if (RARE_CASE(_socket->segment_receive_buffer->header.window == 0)) /* IMPOSSIBLE_CASE ACTUALLY... (in single thread setup). */
-                handle_zero_peer_window();
+                return PEER_WINDOW_ZERO_SUBSTATE;
         return CONTINUE_SUBSTATE;
 }
 
@@ -288,6 +278,38 @@ static __always_inline ssize_t execute_rst_reception_substate(microtcp_sock_t *c
         return (ssize_t)(_bytes_sent > 0 ? _bytes_sent : MICROTCP_SEND_FAILURE);
 }
 
+#define NSEC_PER_USEC (1E3)
+static __always_inline send_fsm_substates_t execute_peer_window_zero_substate(microtcp_sock_t *_socket, fsm_context_t *_context)
+{
+        while (true)
+        {
+                const struct timeval microtcp_timeout = get_microtcp_ack_timeout();
+                const struct timespec nanosleep_interval = {.tv_sec = microtcp_timeout.tv_sec, .tv_nsec = microtcp_timeout.tv_usec * NSEC_PER_USEC};
+                clock_nanosleep(CLOCK_MONOTONIC, 0, &nanosleep_interval, NULL);
+                send_winack_control_segment(_socket);
+                ssize_t recv_ack_ret_val = receive_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address), _socket->seq_number + 1);
+                switch (recv_ack_ret_val)
+                {
+                case RECV_SEGMENT_FATAL_ERROR:
+                        return EXIT_FAILURE_SUBSTATE;
+                case RECV_SEGMENT_FINACK_UNEXPECTED:
+                        return FINACK_RECEPTION_SUBSTATE;
+                case RECV_SEGMENT_RST_RECEIVED:
+                        return RST_RECEPTION_SUBSTATE;
+                case RECV_SEGMENT_TIMEOUT:
+                        return PEER_WINDOW_ZERO_SUBSTATE;
+                case RECV_SEGMENT_ERROR:
+                        return PEER_WINDOW_ZERO_SUBSTATE;
+                default:
+                        if (_socket->peer_win_size != 0)
+                                return SEND_DATA_ROUND_SUBSTATE;
+                        return PEER_WINDOW_ZERO_SUBSTATE;
+                        _context->last_ack_timeval = get_current_timeval();
+                }
+        }
+}
+#undef NSEC_PER_USEC
+
 static __always_inline ssize_t execute_exit_stalled_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
 {
         DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
@@ -309,7 +331,7 @@ ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buf
                                  .last_ack_timeval = get_current_timeval(),
                                  .duplicate_ack_count = 0,
                                  .current_send_algorithm = ALGORITHM_SLOW_START};
-        const time_t invalid_response_time_limit_usec = timeval_to_us(get_microtcp_invalid_response_time_limit());
+        const time_t invalid_response_time_limit_usec = timeval_to_us(get_microtcp_stall_time_limit());
 
         send_fsm_substates_t current_substate = SEND_DATA_ROUND_SUBSTATE;
         while (true)
@@ -327,6 +349,9 @@ ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buf
                         continue;
                 case RETRANSMISSIONS_SUBSTATE:
                         current_substate = execute_retransmissions_substate(_socket, &context);
+                        continue;
+                case PEER_WINDOW_ZERO_SUBSTATE:
+                        current_substate = execute_peer_window_zero_substate(_socket, &context);
                         continue;
                 case CONTINUE_SUBSTATE:
                         LOG_ERROR("Logic error occured, CONTINUE_SUBSTATE is not meant to be returned in FSM substate runner. ");

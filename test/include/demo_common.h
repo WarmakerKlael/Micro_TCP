@@ -1,6 +1,8 @@
 #ifndef DEMO1_COMMON_H
 #define DEMO1_COMMON_H
 
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -14,14 +16,27 @@
 
 #include "microtcp.h"
 #include "microtcp_prompt_util.h"
+#include "logging/microtcp_logger.h"
 #include "settings/microtcp_settings_prompts.h"
-
-
 
 static inline void display_startup_message(const char *const _startup_message)
 {
         CLEAR_SCREEN();
         printf("%s\n", _startup_message);
+}
+
+static inline void display_current_path(void)
+{
+        char path[PATH_MAX]; // Buffer to store the current path
+
+        if (getcwd(path, sizeof(path)) != NULL)
+        {
+                LOG_APP_INFO("Current-Path: %s\n", path);
+        }
+        else
+        {
+                LOG_APP_ERROR("Failed to read `Current-Path`, errno(%d): %s.", errno, strerror(errno));
+        }
 }
 
 /**

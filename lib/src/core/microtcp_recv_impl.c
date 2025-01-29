@@ -2,13 +2,14 @@
 
 #include "fsm/microtcp_fsm.h"
 #include "microtcp.h"
-#include "microtcp_core.h"
 #include "microtcp_defines.h"
 #include "logging/microtcp_logger.h"
 #include "microtcp_helper_macros.h"
 #include "smart_assert.h"
 #include "core/misc.h"
 #include "core/microtcp_recv_impl.h"
+#include "core/segment_processing.h"
+#include "core/segment_io.h"
 #include <threads.h>
 #include "microtcp_helper_functions.h"
 #include "settings/microtcp_settings.h"
@@ -63,6 +64,10 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                         break;
                 case RECV_SEGMENT_RST_RECEIVED:
                         return handle_rst_reception(_socket);
+                case RECV_SEGMENT_WINACK_RECEIVED:
+                        if (send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)) == SEND_SEGMENT_FATAL_ERROR)
+                                return MICROTCP_RECV_FAILURE;
+                        break;
                 case RECV_SEGMENT_TIMEOUT:
                         bytes_received += rrb_pop(bytestream_rrb, _buffer + bytes_received, _length - bytes_received); /* Pop any remaining bytes.*/
                         if (_flags & MSG_WAITALL)
@@ -70,6 +75,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                         return bytes_received;
                 default:
                 {
+                        /* TODO: Functionize */
                         uint32_t appended_bytes = rrb_append(bytestream_rrb, _socket->segment_receive_buffer);
                         if (RARE_CASE(appended_bytes == 0))
                                 break;
@@ -80,6 +86,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                         _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb);
                         send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)); /* If curr_win_size == 0, we still send ACK. */
                         printf("SENT ACK , ack_number sent == %u\n", _socket->ack_number);
+                        break;
                 }
                 }
         }
@@ -94,8 +101,8 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
         const time_t max_idle_time_usec = timeval_to_us(_max_idle_time);
         DEBUG_SMART_ASSERT(_length > 0, max_idle_time_usec > 0);
 
-        if (max_idle_time_usec > microtcp_recv_timeout_usec)
-                LOG_WARNING("Argument `%s` [%lldusec] < timeout of `%s()` [%lldusec], `%s()` will be respected.",
+        if (max_idle_time_usec < microtcp_recv_timeout_usec)
+                LOG_WARNING("Argument `%s` [%lldusec] < timeout of `%s()` [%lldusec]. Timeout of `%s()'s` will be respected.",
                             STRINGIFY(_max_idle_time), max_idle_time_usec,
                             STRINGIFY(microtcp_recv), microtcp_recv_timeout_usec,
                             STRINGIFY(microtcp_recv));

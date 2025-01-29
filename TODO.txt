@@ -172,3 +172,9 @@ huffman encoding and bitpacking.
 32) TODO:  SECURITY UPDATE check that a received packet does not alter peer's address...
 
 33) TODO: Return on the multithreaded IDEA.. 1 thread sends, while the other receives...
+
+
+34)
+
+Add ping notification when a program is run.
+So you know they run your program :D.

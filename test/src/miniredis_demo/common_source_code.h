@@ -14,11 +14,28 @@ enum io_type
 };
 static inline void prompt_to_configure_microtcp(void);
 
+static __always_inline FILE *open_file_for_binary_io(const char *_file_name, enum io_type _io_type);
+static __always_inline uint8_t *allocate_message_buffer(void);
+
 static __always_inline status_t receive_file(microtcp_sock_t *_socket, uint8_t *_message_buffer,
                                              FILE *_file_ptr, size_t _file_size, const char *_file_name);
 static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *_socket, FILE *_file_ptr, const char *_file_name,
                                                             uint8_t *_file_buffer, size_t _file_part_size);
 static __always_inline status_t finalize_file(FILE **_file_ptr_address, const char *_staging_file_name, const char *_export_file_name);
+
+static __always_inline status_t send_request_header_and_filename(microtcp_sock_t *_socket, uint8_t *_message_buffer,
+                                                                 const miniredis_header_t *_header_ptr, const char *_file_name);
+static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+                                          FILE *const _file_ptr, const char *const _file_name);
+
+static __always_inline void cleanup_file_sending_resources(FILE **_file_ptr_address,
+                                                           uint8_t **_message_buffer_address,
+                                                           char **_file_name_address,
+                                                           miniredis_header_t **_header_ptr_address);
+
+static __always_inline void cleanup_file_receiving_resources(FILE **_file_ptr_address,
+                                                             uint8_t **_message_buffer_address,
+                                                             char **_file_name_address);
 
 static inline void prompt_to_configure_microtcp(void)
 {
@@ -59,7 +76,7 @@ static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uin
 static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *const _socket, FILE *const _file_ptr, const char *const _file_name,
                                                             uint8_t *const _file_buffer, const size_t _file_part_size)
 {
-        const ssize_t received_bytes = microtcp_recv(_socket, _file_buffer, _file_part_size, MSG_WAITALL);
+        const ssize_t received_bytes = microtcp_recv_timed(_socket, _file_buffer, _file_part_size, MAX_RESPONSE_IDLE_TIME);
         if (received_bytes == MICROTCP_RECV_FAILURE)
                 LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving file-chunk.");
         if (fwrite(_file_buffer, 1, received_bytes, _file_ptr) == 0)
@@ -81,9 +98,9 @@ static __always_inline status_t finalize_file(FILE **const _file_ptr_address, co
         return SUCCESS;
 }
 
-static __always_inline void cleanup_write_file_resources(FILE **const _file_ptr_address,
-                                                         uint8_t **const _message_buffer_address,
-                                                         char **const _file_name_address)
+static __always_inline void cleanup_file_receiving_resources(FILE **const _file_ptr_address,
+                                                             uint8_t **const _message_buffer_address,
+                                                             char **const _file_name_address)
 {
         if (*_file_ptr_address != NULL)
         {
@@ -99,6 +116,88 @@ static __always_inline void cleanup_write_file_resources(FILE **const _file_ptr_
         if (access(STAGING_FILE_NAME, F_OK) == 0)
                 if (remove(STAGING_FILE_NAME) != 0) /* We remove `staging_file_name` file. */
                         LOG_APP_ERROR("Failed to removing() %s in cleanup_stage, errno(%d): %s.", STAGING_FILE_NAME, errno, strerror(errno));
+}
+
+static __always_inline void cleanup_file_sending_resources(FILE **const _file_ptr_address,
+                                                           uint8_t **const _message_buffer_address,
+                                                           char **const _file_name_address,
+                                                           miniredis_header_t **const _header_ptr_address)
+{
+        if (*_file_ptr_address != NULL)
+        {
+                fclose(*_file_ptr_address);
+                *_file_ptr_address = NULL;
+        }
+        if (*_header_ptr_address != NULL)
+                FREE_NULLIFY_LOG(*_header_ptr_address);
+        if (*_file_name_address != NULL)
+                FREE_NULLIFY_LOG(*_file_name_address);
+        if (*_message_buffer_address != NULL)
+                FREE_NULLIFY_LOG(*_message_buffer_address);
+}
+
+static __always_inline status_t send_request_header_and_filename(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+                                                                 const miniredis_header_t *const _header_ptr, const char *const _file_name)
+{
+        size_t packed_bytes_count = 0;
+
+        /* Firstly, copy miniredis header. */
+        memcpy(_message_buffer, _header_ptr, sizeof(*_header_ptr));
+        packed_bytes_count += sizeof(*_header_ptr);
+
+        /* Secondly, copy filename. */
+        memcpy(_message_buffer + packed_bytes_count, _file_name, strlen(_file_name));
+        packed_bytes_count += strlen(_file_name);
+        ssize_t send_ret_val = microtcp_send(_socket, _message_buffer, packed_bytes_count, 0);
+
+        DEBUG_SMART_ASSERT(packed_bytes_count < ((size_t)-1) >> 1);
+        return send_ret_val == (ssize_t)packed_bytes_count ? SUCCESS : FAILURE;
+}
+
+static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+                                          FILE *const _file_ptr, const char *const _file_name)
+{
+        size_t file_bytes_sent_count = 0;
+        size_t file_bytes_read;
+        struct stat file_stats;
+        if (stat(_file_name, &file_stats) != 0)
+                LOG_APP_ERROR_RETURN(FAILURE, "File: %s failed stats-read, errno(%d): %s.", _file_name, errno, strerror(errno));
+
+        while ((file_bytes_read = fread(_message_buffer, 1, MAX_FILE_PART, _file_ptr)) > 0)
+        {
+                DEBUG_SMART_ASSERT(file_bytes_read < ((size_t)-1) >> 1);
+                if (microtcp_send(_socket, _message_buffer, file_bytes_read, 0) != (ssize_t)file_bytes_read)
+                        LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-chunk, aborting.");
+                file_bytes_sent_count += file_bytes_read;
+                LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", _file_name, file_bytes_sent_count, file_stats.st_size);
+        }
+        if (ferror(_file_ptr))
+                LOG_APP_ERROR_RETURN(FAILURE, "Error occurred while reading file '%s', errno(%d): %s", _file_name, errno, strerror(errno));
+        LOG_APP_INFO_RETURN(SUCCESS, "File `%s` sent.", _file_name);
+}
+
+static __always_inline FILE *open_file_for_binary_io(const char *const _file_name, const enum io_type _io_type)
+{
+        DEBUG_SMART_ASSERT(_file_name != NULL, _io_type == IO_READ || _io_type == IO_WRITE);
+        if (_io_type == IO_READ && access(_file_name, F_OK) != 0)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s not found, errno(%d): %s.", _file_name, errno, strerror(errno));
+        if (_io_type == IO_READ && access(_file_name, R_OK) != 0)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s read-permission missing, errno(%d): %s.", _file_name, errno, strerror(errno));
+
+        const char *fopen_mode = _io_type == IO_READ ? "rb" : "wb";
+        FILE *file_ptr = fopen(_file_name, fopen_mode);
+        if (file_ptr == NULL)
+                LOG_APP_ERROR_RETURN(NULL, "File: %s failed %s-open, errno(%d): %s.", _file_name,
+                                     (_io_type == IO_READ ? "read" : "write"), errno, strerror(errno));
+        return file_ptr;
+}
+
+static __always_inline uint8_t *allocate_message_buffer(void)
+{
+        uint8_t *message_buffer = MALLOC_LOG(message_buffer, MAX_FILE_PART);
+        if (message_buffer == NULL)
+                LOG_APP_ERROR_RETURN(NULL, "Failed allocating message_buffer.");
+        return message_buffer;
 }
 
 #endif /* MINIREDIS_COMMON_SOURCE_CODE_H */

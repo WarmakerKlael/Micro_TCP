@@ -8,14 +8,15 @@
 #define SEND_SEGMENT_ERROR (-1)
 #define SEND_SEGMENT_FATAL_ERROR (-2)
 
-#define RECV_SEGMENT_EXCEPTION_THRESHOLD 0
-#define RECV_SEGMENT_TIMEOUT 0
+#define RECV_SEGMENT_TIMEOUT (0)
 #define RECV_SEGMENT_ERROR (-1)
 #define RECV_SEGMENT_FATAL_ERROR (-2)
 #define RECV_SEGMENT_RST_RECEIVED (-3)
-#define RECV_SEGMENT_SYN_EXPECTED (-4)
-#define RECV_SEGMENT_FINACK_UNEXPECTED (-5)
-#define RECV_SEGMENT_CARRIES_DATA (-6)
+#define RECV_SEGMENT_WINACK_RECEIVED (-4)
+#define RECV_SEGMENT_SYN_EXPECTED (-5)
+#define RECV_SEGMENT_FINACK_UNEXPECTED (-6)
+#define RECV_SEGMENT_CARRIES_DATA (-7)
+#define RECV_SEGMENT_EXCEPTION_THRESHOLD RECV_SEGMENT_TIMEOUT
 
 /* HANDSHAKE CONTROL */
 ssize_t send_syn_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
@@ -23,6 +24,7 @@ ssize_t send_synack_control_segment(microtcp_sock_t *_socket, const struct socka
 ssize_t send_ack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
 ssize_t send_finack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
 ssize_t send_rstack_control_segment(microtcp_sock_t *_socket, const struct sockaddr *_address, socklen_t _address_len);
+ssize_t send_winack_control_segment(microtcp_sock_t *_socket);
 
 ssize_t receive_syn_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len);
 ssize_t receive_synack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number);

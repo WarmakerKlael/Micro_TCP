@@ -5,6 +5,7 @@
 
 #define TRANSPORT_PROTOCOL_NAME "μTCP"
 
+#define WIN_BIT (1 << 11) /* Requests window size from peer (intented to be used when peer's window is 0). */
 #define ACK_BIT (1 << 12)
 #define RST_BIT (1 << 13)
 #define SYN_BIT (1 << 14)

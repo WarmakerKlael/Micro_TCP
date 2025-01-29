@@ -13,7 +13,7 @@
  */
 
 // clang-format off
-const char *get_microtcp_state_to_string(mircotcp_state_t _state)
+const char *get_microtcp_state_to_string(microtcp_state_t _state)
 {
         #define CASE_RETURN_STRING(_case) case _case: return #_case
         switch ((int)_state)

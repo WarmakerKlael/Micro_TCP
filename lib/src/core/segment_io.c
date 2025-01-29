@@ -24,7 +24,7 @@ static inline ssize_t receive_bytestream(microtcp_sock_t *_socket, struct sockad
 static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint16_t _required_control, _Bool _block);
 static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockaddr *const _address, const socklen_t _address_len, microtcp_segment_t *_segment);
 static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len,
-                                           uint16_t _required_control, mircotcp_state_t _required_state);
+                                           uint16_t _control, microtcp_state_t _required_state);
 
 /* Internal MACRO defines. */
 #define NO_SENDTO_FLAGS 0
@@ -42,9 +42,9 @@ static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const
  * This implies that a packet was validly send into the socket.
  */
 static ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                    const socklen_t _address_len, uint16_t _control, mircotcp_state_t _required_state);
+                                    const socklen_t _address_len, uint16_t _control, microtcp_state_t _required_state);
 static ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, socklen_t _address_len,
-                                       uint32_t _required_ack_number, uint16_t _required_control, const mircotcp_state_t _required_state);
+                                       uint32_t _required_ack_number, uint16_t _required_control, const microtcp_state_t _required_state);
 
 ssize_t send_syn_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
@@ -58,7 +58,7 @@ ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct
 
 ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~INVALID);
+        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~(INVALID|RESET));
 }
 
 ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
@@ -70,7 +70,12 @@ ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct
 {
         /* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
         /* Every receive function returns special code if RST was received. So that's how you detect it... */
-        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ~INVALID);
+        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ~(INVALID|RESET));
+}
+
+ssize_t send_winack_control_segment(microtcp_sock_t *const _socket)
+{
+        return send_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address), WIN_BIT | ACK_BIT, ESTABLISHED);
 }
 
 ssize_t receive_syn_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, const socklen_t _address_len)
@@ -87,7 +92,7 @@ ssize_t receive_synack_control_segment(microtcp_sock_t *_socket, struct sockaddr
 
 ssize_t receive_ack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number)
 {
-        return receive_control_segment(_socket, _address, _address_len, _required_ack_number, ACK_BIT, ~INVALID);
+        return receive_control_segment(_socket, _address, _address_len, _required_ack_number, ACK_BIT, ~(INVALID|RESET));
 }
 
 ssize_t receive_finack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number)
@@ -101,7 +106,7 @@ ssize_t receive_finack_control_segment(microtcp_sock_t *_socket, struct sockaddr
  * This also implies that a packet was correctly received.
  */
 static inline ssize_t receive_control_segment(microtcp_sock_t *const _socket, struct sockaddr *const _address, socklen_t _address_len,
-                                              uint32_t _required_ack_number, uint16_t _required_control, const mircotcp_state_t _required_state)
+                                              uint32_t _required_ack_number, uint16_t _required_control, const microtcp_state_t _required_state)
 {
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(RECV_SEGMENT_FATAL_ERROR, _socket, _required_state);
@@ -176,6 +181,10 @@ static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr 
 
         if (RARE_CASE(segment->header.control & RST_BIT)) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_RST_RECEIVED, segment->header.control, _required_control);
+        if (RARE_CASE(segment->header.control == (WIN_BIT | ACK_BIT)))
+                LOG_INFO_RETURN(RECV_SEGMENT_WINACK_RECEIVED, "Peer send WINACK: Requests to find our window size.");
+                /* TODO: Should peer send that? Can we calculate if we ever send an ACK with window size = 0? Yes We can... DO it...  */
+
         if (RARE_CASE((segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT)))
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_FINACK_UNEXPECTED, segment->header.control, _required_control);
         if (RARE_CASE(segment->header.control != _required_control))
@@ -218,7 +227,7 @@ size_t send_data_segment(microtcp_sock_t *const _socket, const void *const _buff
 }
 
 static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address,
-                                           const socklen_t _address_len, uint16_t _required_control, mircotcp_state_t _required_state)
+                                           const socklen_t _address_len, uint16_t _control, microtcp_state_t _required_state)
 {
         /* Quick argument check. */
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(SEND_SEGMENT_FATAL_ERROR, _socket, _required_state);
@@ -227,7 +236,7 @@ static inline ssize_t send_control_segment(microtcp_sock_t *const _socket, const
 
         /* Create handshake segment. */
         const microtcp_payload_t payload = {.raw_bytes = NULL, .size = 0};
-        microtcp_segment_t *control_segment = construct_microtcp_segment(_socket, _socket->seq_number, _required_control, payload);
+        microtcp_segment_t *control_segment = construct_microtcp_segment(_socket, _socket->seq_number, _control, payload);
         DEBUG_SMART_ASSERT(control_segment != NULL); /* If socket is properly initialized, assert should never fail. */
 
         return send_segment(_socket, _address, _address_len, control_segment);

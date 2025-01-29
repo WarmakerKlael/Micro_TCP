@@ -66,14 +66,14 @@ _Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_L
  */
 typedef enum
 {
-        RESET = 0x00,
-        INVALID = 0x01,
-        CLOSED = 0x02, /* when there is no connection. Like when Creating the socket, or after ending a connection. */
-        LISTEN = 0x04,
-        ESTABLISHED = 0x08,
-        CLOSING_BY_PEER = 0x10,
-        CLOSING_BY_HOST = 0x20,
-} mircotcp_state_t;
+        RESET = 1 << 0,
+        INVALID = 1 << 1,
+        CLOSED = 1 << 2, /* when there is no connection. Like when Creating the socket, or after ending a connection. */
+        LISTEN = 1 << 3,
+        ESTABLISHED = 1 << 4,
+        CLOSING_BY_PEER = 1 << 5,
+        CLOSING_BY_HOST = 1 << 6,
+} microtcp_state_t;
 
 /**
  * This is the microTCP socket structure. It holds all the necessary
@@ -84,7 +84,7 @@ typedef enum
 typedef struct
 {
         int sd;                 /* The underline UDP socket descriptor. */
-        mircotcp_state_t state; /* The state of the microTCP socket. */
+        microtcp_state_t state; /* The state of the microTCP socket. */
         size_t curr_win_size;   /* The current window size. */
         size_t peer_win_size;
 

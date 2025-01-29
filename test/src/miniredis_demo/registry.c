@@ -9,14 +9,14 @@
 #include "status.h"
 #include "miniredis_demo/registry.h"
 
-typedef struct
+struct registry_node
 {
         char *file_name; /* Node KEY */
         size_t file_size;
         size_t download_count;
         time_t arrival_time;
         uint8_t *cache_buffer;
-} registry_node_t;
+};
 
 struct registry
 {
@@ -109,7 +109,7 @@ status_t registry_pop(registry_t *_registry, const char *const _file_name)
 
 status_t registry_cache(registry_t *const _registry, const char *const _file_name)
 {
-        registry_node_t *registry_node_array = _registry->node_array;
+        registry_node_t *const registry_node_array = _registry->node_array;
         size_t registry_size = _registry->size;
         for (size_t i = 0; i < registry_size; i++)
         {
@@ -138,6 +138,23 @@ status_t registry_cache(registry_t *const _registry, const char *const _file_nam
                 LOG_APP_INFO_RETURN(SUCCESS, "File: `%s` succeeded load into cache.");
         }
         LOG_APP_WARNING_RETURN(FAILURE, "File `%s` not found in registry.");
+}
+
+const registry_node_t *registry_find(registry_t *const _registry, const char *const _file_name)
+{
+        DEBUG_SMART_ASSERT(_registry != NULL, _file_name != NULL);
+        const registry_node_t *const registry_node_array = _registry->node_array;
+        size_t registry_size = _registry->size;
+        for (size_t i = 0; i < registry_size; i++)
+                if (strcmp(registry_node_array[i].file_name, _file_name) == 0)
+                        return &registry_node_array[i];
+        return NULL;
+}
+
+size_t registry_node_file_size(const registry_node_t *const _registry_node)
+{
+        DEBUG_SMART_ASSERT(_registry_node != NULL);
+        return _registry_node->file_size;
 }
 
 static __always_inline void initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)

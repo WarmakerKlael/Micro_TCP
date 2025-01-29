@@ -1,9 +1,10 @@
 #ifndef MICROTCP_HELPER_FUNCTIONS_H
 #define MICROTCP_HELPER_FUNCTIONS_H
 
+#include <stdbool.h>
 #include <stdint.h>
-#include "microtcp.h"
 #include <time.h> // for time_t
+#include "microtcp.h"
 struct timeval;
 
 /**
@@ -16,7 +17,7 @@ struct timeval;
  * @return A string representing the given state. If `_state` is unrecognized,
  * returns `"??MICROTCP_STATE??"`.
  */
-const char *get_microtcp_state_to_string(mircotcp_state_t _state);
+const char *get_microtcp_state_to_string(microtcp_state_t _state);
 
 /**
  * @brief Converts a microTCP control flag(s) field to its string representation.

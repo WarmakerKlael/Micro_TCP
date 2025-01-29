@@ -147,16 +147,13 @@ int microtcp_shutdown(microtcp_sock_t *_socket, int _how)
 
 ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _length, int _flags)
 {
-        DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL, _length > 0);
+        DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SEND_FAILURE, _socket, ESTABLISHED);
-
-        return microtcp_send_fsm(_socket, _buffer, _length);
+        return _length == 0 ? 0 : microtcp_send_fsm(_socket, _buffer, _length);
 }
 
 ssize_t microtcp_recv(microtcp_sock_t *const _socket, void *const _buffer, const size_t _length, const int _flags)
 {
-        _Static_assert(MICROTCP_RECV_TIMEOUT == 0, "DEFAULT value altered");
-        _Static_assert(MICROTCP_RECV_FAILURE == -1, "DEFAULT value altered");
         DEBUG_SMART_ASSERT(_buffer != NULL, _length > 0);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_CONNECT_FAILURE, _socket, ESTABLISHED);
         if (!ARE_VALID_MICROTCP_RECV_FLAGS(_flags))

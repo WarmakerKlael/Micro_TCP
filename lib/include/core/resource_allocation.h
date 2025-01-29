@@ -4,7 +4,7 @@
 #include "microtcp_defines.h"
 #include "microtcp.h"
 
-void release_and_reset_connection_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state);
+void release_and_reset_connection_resources(microtcp_sock_t *_socket, microtcp_state_t _rollback_state);
 
 /**
  * @brief Allocates buffers required for MicroTCP's handshake.

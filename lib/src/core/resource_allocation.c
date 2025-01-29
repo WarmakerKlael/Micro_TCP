@@ -76,7 +76,7 @@ status_t deallocate_post_handshake_buffers(microtcp_sock_t *_socket)
                rrb_destroy(&_socket->bytestream_rrb);
 }
 
-void release_and_reset_connection_resources(microtcp_sock_t *_socket, mircotcp_state_t _rollback_state)
+void release_and_reset_connection_resources(microtcp_sock_t *_socket, microtcp_state_t _rollback_state)
 {
         SMART_ASSERT(_socket != NULL, _rollback_state != ESTABLISHED);
         _Bool graceful_operation = true;

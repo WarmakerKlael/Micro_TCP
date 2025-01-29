@@ -79,10 +79,10 @@ static void logger_constructor(void)
 	mutex_logger = CALLOC_LOG(mutex_logger, sizeof(pthread_mutex_t));
 	if (mutex_logger == NULL || pthread_mutex_init(mutex_logger, NULL) != PTHREAD_MUTEX_INIT_SUCCESS)
 	{
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_ERROR,LOGGER_TAG, "Logger failed to initialize.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_ERROR, LOGGER_TAG, "Logger failed to initialize.");
 		exit(EXIT_FAILURE);
 	}
-	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG,"Logger initialized.");
+	LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG, "Logger initialized.");
 }
 
 static void logger_destructor(void)
@@ -92,10 +92,10 @@ static void logger_destructor(void)
 	{
 		free(mutex_logger);
 		mutex_logger = NULL;
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO,LOGGER_TAG, "Logger destroyed.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_INFO, LOGGER_TAG, "Logger destroyed.");
 	}
 	else
-		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING,LOGGER_TAG, "Logger could not be destroyed.");
+		LOG_MESSAGE_NON_THREAD_SAFE(LOG_WARNING, LOGGER_TAG, "Logger could not be destroyed.");
 	fprintf(microtcp_log_stream, SGR_RESET); /* Reset print style to system's default. */
 }
 
@@ -156,6 +156,7 @@ static const char *get_string_tag(enum log_tag _log_tag)
 	default:		return "??LOG??";
 	}
 }
+
 static const char *get_tag_color(enum log_tag _log_tag)
 {
 	switch (_log_tag)
