@@ -130,18 +130,17 @@ static void execute_get(microtcp_sock_t *_socket, registry_t *_registry, minired
                            _request_header->response_message_size == 0,
                            _request_header->file_name_size <= MAX_COMMAND_ARGUMENT_SIZE,
                            _request_header->file_size == 0);
-        uint8_t *message_buffer = NULL;        /* Requires deallocation. */
-        FILE *file_ptr = NULL;                 /* Requires deallocation. */
-        char *file_name = NULL;                /* Requires deallocation. */
-        miniredis_header_t *header_ptr = NULL; /* Requires deallocation. */
-        char *response_message = NULL;         /* Does not require deallocation (stores string literals). */
+        uint8_t *message_buffer = NULL; /* Requires deallocation. */
+        FILE *file_ptr = NULL;          /* Requires deallocation. */
+        char *file_name = NULL;         /* Requires deallocation. */
+        char *response_message = NULL;  /* Does not require deallocation (stores string literals). */
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Filename reception failed.");
         registry_node_t *registry_node;
         if ((registry_node = registry_find(_registry, file_name)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "File not found.");
-        if ((file_ptr = open_file_for_binary_io(STAGING_FILE_NAME, IO_READ)) == NULL)
+        if ((file_ptr = open_file_for_binary_io(file_name, IO_READ)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
         if ((message_buffer = allocate_message_buffer()) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
@@ -149,13 +148,13 @@ static void execute_get(microtcp_sock_t *_socket, registry_t *_registry, minired
 
         _request_header->file_name_size = registry_node_file_size(registry_node);
         _request_header->response_status = SUCCESS;
-        if (send_request_header_and_filename(_socket, message_buffer, header_ptr, file_name) == FAILURE)
+        if (send_request_header_and_filename(_socket, message_buffer, _request_header, file_name) == FAILURE)
                 LOG_APP_ERROR_GOTO(cleanup_label, "Failed sending request_header and file_name back to client.");
         if (send_file(_socket, message_buffer, file_ptr, file_name) == FAILURE)
                 goto cleanup_label;
 
 cleanup_label:
-        cleanup_file_sending_resources(&file_ptr, &message_buffer, &file_name, &header_ptr);
+        cleanup_file_sending_resources(&file_ptr, &message_buffer, &file_name, &(miniredis_header_t *){NULL});
         if (_request_header->response_status == FAILURE)
                 send_server_response(_socket, _request_header, response_message);
 }

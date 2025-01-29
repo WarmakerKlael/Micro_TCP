@@ -167,7 +167,7 @@ static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_
         {
                 DEBUG_SMART_ASSERT(file_bytes_read < ((size_t)-1) >> 1);
                 if (microtcp_send(_socket, _message_buffer, file_bytes_read, 0) != (ssize_t)file_bytes_read)
-                        LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-chunk, aborting.");
+                        LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-parts, aborting.");
                 file_bytes_sent_count += file_bytes_read;
                 LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", _file_name, file_bytes_sent_count, file_stats.st_size);
         }

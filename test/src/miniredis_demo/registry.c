@@ -28,7 +28,7 @@ struct registry
 };
 
 static status_t registry_expand(registry_t *_registry);
-static __always_inline void initialize_registry_node(registry_node_t *_registry_node, const char *_file_name);
+static __always_inline status_t initialize_registry_node(registry_node_t *_registry_node, const char *_file_name);
 
 registry_t *registry_create(const size_t _capacity, const size_t _cache_size_limit)
 {
@@ -74,9 +74,13 @@ status_t registry_append(registry_t *const _registry, const char *const _file_na
         }
 
         if (_registry->size == _registry->capacity) /* Expansion needed. */
-                registry_expand(_registry);
+                if (registry_expand(_registry) == FAILURE)
+                        return FAILURE;
 
-        initialize_registry_node(&_registry->node_array[_registry->size], _file_name);
+        if (initialize_registry_node(&_registry->node_array[_registry->size], _file_name) == FAILURE)
+                return FAILURE;
+        _registry->size ++;
+
         return SUCCESS;
 }
 
@@ -157,10 +161,11 @@ size_t registry_node_file_size(const registry_node_t *const _registry_node)
         return _registry_node->file_size;
 }
 
-static __always_inline void initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)
+static __always_inline status_t initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)
 {
         struct stat stat_buffer;
-        DEBUG_SMART_ASSERT(stat(_file_name, &stat_buffer) == 0);
+        if (stat(_file_name, &stat_buffer) != 0)
+                return FAILURE;
 
         _registry_node->download_count = 0;
         _registry_node->cache_buffer = NULL;
@@ -170,6 +175,7 @@ static __always_inline void initialize_registry_node(registry_node_t *const _reg
         /* Allocate memory to save file_name string. */
         _registry_node->file_name = MALLOC_LOG(_registry_node->file_name, strlen(_file_name) + 1); /* +1 for '\0' */
         strcpy(_registry_node->file_name, _file_name);
+        return SUCCESS;
 }
 
 static status_t registry_expand(registry_t *const _registry)
