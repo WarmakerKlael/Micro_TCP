@@ -25,9 +25,10 @@ static status_t miniredis_client_manager(void);
 /* Command functions: */
 static void request_set(microtcp_sock_t *_socket, const char *_file_name);
 static void request_get(microtcp_sock_t *_socket, const char *_file_name);
+static void request_del(microtcp_sock_t *_socket, const char *_file_name);
 
-/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-int main(void)
+    /* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+    int main(void)
 {
         display_startup_message(STARTUP_CLIENT_LOGO);
         display_current_path();
@@ -76,15 +77,17 @@ static void interactive_command_handler(microtcp_sock_t *_socket)
                         if (args_parsed == CMND_ARGS_QUIT)
                                 exit_loop_flag = true;
                         break;
-                case CMND_CODE_GET:
-                        if (args_parsed == CMND_ARGS_GET)
-                                request_get(_socket, argument_buffer1);
-                        break;
                 case CMND_CODE_SET:
                         if (args_parsed == CMND_ARGS_SET)
                                 request_set(_socket, argument_buffer1);
                         break;
+                case CMND_CODE_GET:
+                        if (args_parsed == CMND_ARGS_GET)
+                                request_get(_socket, argument_buffer1);
+                        break;
                 case CMND_CODE_DEL:
+                        if (args_parsed == CMND_ARGS_DEL)
+                                request_del(_socket, argument_buffer1);
                         break;
                 case CMND_CODE_CACHE:
                         break;
@@ -132,7 +135,9 @@ static void request_set(microtcp_sock_t *const _socket, const char *const _file_
                 goto cleanup_label;
         if ((message_buffer = allocate_message_buffer()) == NULL)
                 goto cleanup_label;
-        if (send_request_header_and_filename(_socket, message_buffer, header_ptr, _file_name) == FAILURE)
+        if (send_request_header(_socket, header_ptr) == FAILURE)
+                goto cleanup_label;
+        if (send_filename(_socket, _file_name) == FAILURE)
                 goto cleanup_label;
         if (send_file(_socket, message_buffer, file_ptr, _file_name) == FAILURE)
                 goto cleanup_label;
@@ -148,11 +153,14 @@ static void request_get(microtcp_sock_t *const _socket, const char *const _file_
         FILE *file_ptr = NULL;                 /* Requires deallocation */
         uint8_t *message_buffer = NULL;        /* Requires deallocation */
         miniredis_header_t *header_ptr = NULL; /* Requires deallocation */
+
         if ((header_ptr = create_miniredis_header(CMND_CODE_GET, _file_name, NULL)) == NULL)
                 goto cleanup_label;
         if ((message_buffer = allocate_message_buffer()) == NULL)
                 goto cleanup_label;
-        if (send_request_header_and_filename(_socket, message_buffer, header_ptr, _file_name) == FAILURE)
+        if (send_request_header(_socket, header_ptr) == FAILURE)
+                goto cleanup_label;
+        if (send_filename(_socket, _file_name) == FAILURE)
                 goto cleanup_label;
         if (receive_server_response_header(_socket, header_ptr, CMND_CODE_GET, _file_name) == FAILURE)
                 goto cleanup_label;
@@ -167,6 +175,22 @@ static void request_get(microtcp_sock_t *const _socket, const char *const _file_
 cleanup_label:
         /* 3rd argument: Dummy file_name address which points to NULL, as in client side `_file_name` is statically allocated. */
         cleanup_file_receiving_resources(&file_ptr, &message_buffer, &(char *){NULL});
+}
+
+static void request_del(microtcp_sock_t *const _socket, const char *const _file_name)
+{
+        miniredis_header_t *header_ptr = NULL; /* Requires deallocation */
+        if ((header_ptr = create_miniredis_header(CMND_CODE_DEL, _file_name, NULL)) == NULL)
+                goto cleanup_label;
+        if (send_request_header(_socket, header_ptr) == FAILURE)
+                goto cleanup_label;
+        if (send_filename(_socket, _file_name) == FAILURE)
+                goto cleanup_label;
+        if (receive_server_response_header(_socket, header_ptr, CMND_CODE_DEL, _file_name) == FAILURE)
+                goto cleanup_label;
+cleanup_label:
+        if (header_ptr != NULL)
+                FREE_NULLIFY_LOG(header_ptr);
 }
 
 static __always_inline miniredis_header_t *create_miniredis_header(const enum miniredis_command_codes _command_code,
@@ -190,6 +214,11 @@ static __always_inline miniredis_header_t *create_miniredis_header(const enum mi
                 header_ptr->file_size = file_stats.st_size;
                 break;
         case CMND_CODE_GET:
+                DEBUG_SMART_ASSERT(_file_name != NULL, _message == NULL);
+                header_ptr->file_name_size = strlen(_file_name);
+                header_ptr->file_size = 0;
+                break;
+        case CMND_CODE_DEL:
                 DEBUG_SMART_ASSERT(_file_name != NULL, _message == NULL);
                 header_ptr->file_name_size = strlen(_file_name);
                 header_ptr->file_size = 0;

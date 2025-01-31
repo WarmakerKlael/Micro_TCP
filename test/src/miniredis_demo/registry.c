@@ -13,7 +13,7 @@ struct registry_node
 {
         char *file_name; /* Node KEY */
         size_t file_size;
-        size_t download_count;
+        size_t get_count;
         time_t arrival_time;
         uint8_t *cache_buffer;
 };
@@ -79,7 +79,7 @@ status_t registry_append(registry_t *const _registry, const char *const _file_na
 
         if (initialize_registry_node(&_registry->node_array[_registry->size], _file_name) == FAILURE)
                 return FAILURE;
-        _registry->size ++;
+        _registry->size++;
 
         return SUCCESS;
 }
@@ -101,7 +101,7 @@ status_t registry_pop(registry_t *_registry, const char *const _file_name)
                 registry_node_t *last_node = registry_node_array + _registry->size - 1;
                 curr_node->file_name = last_node->file_name;
                 curr_node->file_size = last_node->file_size;
-                curr_node->download_count = last_node->download_count;
+                curr_node->get_count = last_node->get_count;
                 curr_node->arrival_time = last_node->arrival_time;
                 curr_node->cache_buffer = last_node->cache_buffer;
 
@@ -161,13 +161,19 @@ size_t registry_node_file_size(const registry_node_t *const _registry_node)
         return _registry_node->file_size;
 }
 
+size_t registry_node_increment_get_count(registry_node_t *const _registry_node)
+{
+        DEBUG_SMART_ASSERT(_registry_node != NULL);
+        return _registry_node->get_count;
+}
+
 static __always_inline status_t initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)
 {
         struct stat stat_buffer;
         if (stat(_file_name, &stat_buffer) != 0)
                 return FAILURE;
 
-        _registry_node->download_count = 0;
+        _registry_node->get_count = 0;
         _registry_node->cache_buffer = NULL;
         _registry_node->arrival_time = time(NULL);
         _registry_node->file_size = stat_buffer.st_size;

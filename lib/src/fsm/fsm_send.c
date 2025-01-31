@@ -263,6 +263,7 @@ static __always_inline ssize_t execute_exit_failure_substate(microtcp_sock_t *co
 static __always_inline ssize_t execute_finack_reception_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
 {
         DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        _socket->ack_number += FIN_SEQ_NUMBER_INCREMENT;
         _socket->state = CLOSING_BY_PEER;
         LOG_ERROR("%s reception during microtcp_send_fsm(): microtcp socket in %s state",
                   get_microtcp_control_to_string(FIN_BIT | ACK_BIT), get_microtcp_state_to_string(_socket->state));

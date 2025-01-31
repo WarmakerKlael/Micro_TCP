@@ -58,7 +58,7 @@ ssize_t send_synack_control_segment(microtcp_sock_t *const _socket, const struct
 
 ssize_t send_ack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
 {
-        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~(INVALID|RESET));
+        return send_control_segment(_socket, _address, _address_len, ACK_BIT, ~(INVALID | RESET));
 }
 
 ssize_t send_finack_control_segment(microtcp_sock_t *const _socket, const struct sockaddr *const _address, const socklen_t _address_len)
@@ -70,7 +70,7 @@ ssize_t send_rstack_control_segment(microtcp_sock_t *const _socket, const struct
 {
         /* There is not equivilant receive function. Nobody awaits to receive RST, it just happens :D    */
         /* Every receive function returns special code if RST was received. So that's how you detect it... */
-        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ~(INVALID|RESET));
+        return send_control_segment(_socket, _address, _address_len, RST_BIT | ACK_BIT, ~(INVALID | RESET));
 }
 
 ssize_t send_winack_control_segment(microtcp_sock_t *const _socket)
@@ -92,7 +92,7 @@ ssize_t receive_synack_control_segment(microtcp_sock_t *_socket, struct sockaddr
 
 ssize_t receive_ack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number)
 {
-        return receive_control_segment(_socket, _address, _address_len, _required_ack_number, ACK_BIT, ~(INVALID|RESET));
+        return receive_control_segment(_socket, _address, _address_len, _required_ack_number, ACK_BIT, ~(INVALID | RESET));
 }
 
 ssize_t receive_finack_control_segment(microtcp_sock_t *_socket, struct sockaddr *_address, socklen_t _address_len, uint32_t _required_ack_number)
@@ -183,8 +183,7 @@ static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr 
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_RST_RECEIVED, segment->header.control, _required_control);
         if (RARE_CASE(segment->header.control == (WIN_BIT | ACK_BIT)))
                 LOG_INFO_RETURN(RECV_SEGMENT_WINACK_RECEIVED, "Peer send WINACK: Requests to find our window size.");
-                /* TODO: Should peer send that? Can we calculate if we ever send an ACK with window size = 0? Yes We can... DO it...  */
-
+        /* TODO: Should peer send that? Can we calculate if we ever send an ACK with window size = 0? Yes We can... DO it...  */
         if (RARE_CASE((segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT)))
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_FINACK_UNEXPECTED, segment->header.control, _required_control);
         if (RARE_CASE(segment->header.control != _required_control))

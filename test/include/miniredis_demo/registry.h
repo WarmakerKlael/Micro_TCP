@@ -15,5 +15,6 @@ status_t registry_cache(registry_t *_registry, const char *_file_name);
 const registry_node_t *registry_find(registry_t *_registry, const char *_file_name);
 
 size_t registry_node_file_size(const registry_node_t *_registry_node);
+size_t registry_node_increment_get_count(registry_node_t *_registry_node);
 
 #endif /* MINI_REDIS_DEMO_REGISTRY_H */

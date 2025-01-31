@@ -15,6 +15,7 @@
 #define MICROTCP_MSL_SECONDS 10 /* Maximum Segment Lifetime. Used for transitioning from TIME_WAIT -> CLOSED */
 #define DEFAULT_SHUTDOWN_TIME_WAIT_SEC (2 * MICROTCP_MSL_SECONDS)
 #define DEFAULT_SHUTDOWN_TIME_WAIT_USEC 0
-#define TCP_RETRIES2 15 /* TCP default value for `TCP_RETRIES2` variable. What is this? WELL... per TCP is the timeouts to wait in TIMEWAIT */
+#define TCP_RETRIES2 (15 + 100000) /* TCP default value for `TCP_RETRIES2` variable. What is this? WELL... per TCP is the timeouts to wait in TIMEWAIT */
+/*TODO remove +100*/
 
 #endif /* MICROTCP_SETTINGS_COMMON_H */

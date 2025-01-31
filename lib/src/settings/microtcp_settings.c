@@ -7,8 +7,6 @@
 #include "microtcp_helper_functions.h"
 #include "microtcp_settings_common.h"
 
-/* TODO: remove the +100000 (are for debug). */
-
 /* ----------------------------------------- MicroTCP general configuration variables ----------------------------------------- */
 static size_t microtcp_bytestream_rrb_size = MICROTCP_RECVBUF_LEN;
 static struct timeval microtcp_ack_timeout = DEFAULT_MICROTCP_ACK_TIMEOUT;
@@ -18,11 +16,11 @@ static struct timeval microtcp_stall_time_limit = DEFAULT_MICROTCP_STALL_TIME_LI
 static size_t connect_rst_retries = DEFAULT_CONNECT_RST_RETRIES; /* Default. Can be changed from following "API". */
 
 /* ------------------------------------------ Accept()'s FSM configuration variables ------------------------------------------ */
-static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS + 100000; /* Default. Can be changed from following "API". */
+static size_t accept_synack_retries = LINUX_DEFAULT_ACCEPT_TIMEOUTS; /* Default. Can be changed from following "API". */
 
 /* ----------------------------------------- Shutdown()'s FSM configuration variables ----------------------------------------- */
 static struct timeval shutdown_time_wait_period = {.tv_sec = DEFAULT_SHUTDOWN_TIME_WAIT_SEC, .tv_usec = DEFAULT_SHUTDOWN_TIME_WAIT_USEC};
-static size_t shutdown_finack_retries = TCP_RETRIES2 + 100000; /* Default. Can be changed from following "API". */
+static size_t shutdown_finack_retries = TCP_RETRIES2; /* Default. Can be changed from following "API". */
 
 /* ___________________________________________________________________________________________________________________________ */
 /* ___________________________________________________________________________________________________________________________ */

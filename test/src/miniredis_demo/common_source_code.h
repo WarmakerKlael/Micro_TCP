@@ -23,8 +23,8 @@ static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *_so
                                                             uint8_t *_file_buffer, size_t _file_part_size);
 static __always_inline status_t finalize_file(FILE **_file_ptr_address, const char *_staging_file_name, const char *_export_file_name);
 
-static __always_inline status_t send_request_header_and_filename(microtcp_sock_t *_socket, uint8_t *_message_buffer,
-                                                                 const miniredis_header_t *_header_ptr, const char *_file_name);
+static __always_inline status_t send_request_header(microtcp_sock_t *_socket, const miniredis_header_t *_header_ptr);
+static __always_inline status_t send_filename(microtcp_sock_t *_socket, const char *_file_name);
 static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
                                           FILE *const _file_ptr, const char *const _file_name);
 
@@ -136,22 +136,20 @@ static __always_inline void cleanup_file_sending_resources(FILE **const _file_pt
                 FREE_NULLIFY_LOG(*_message_buffer_address);
 }
 
-static __always_inline status_t send_request_header_and_filename(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
-                                                                 const miniredis_header_t *const _header_ptr, const char *const _file_name)
+static __always_inline status_t send_request_header(microtcp_sock_t *const _socket, const miniredis_header_t *const _header_ptr)
 {
-        size_t packed_bytes_count = 0;
+        DEBUG_SMART_ASSERT(_socket != NULL, _header_ptr != NULL);
+        ssize_t send_ret_val = microtcp_send(_socket, _header_ptr, sizeof(*_header_ptr), 0);
+        return send_ret_val == sizeof(*_header_ptr) ? SUCCESS : FAILURE;
+}
 
-        /* Firstly, copy miniredis header. */
-        memcpy(_message_buffer, _header_ptr, sizeof(*_header_ptr));
-        packed_bytes_count += sizeof(*_header_ptr);
-
-        /* Secondly, copy filename. */
-        memcpy(_message_buffer + packed_bytes_count, _file_name, strlen(_file_name));
-        packed_bytes_count += strlen(_file_name);
-        ssize_t send_ret_val = microtcp_send(_socket, _message_buffer, packed_bytes_count, 0);
-
-        DEBUG_SMART_ASSERT(packed_bytes_count < ((size_t)-1) >> 1);
-        return send_ret_val == (ssize_t)packed_bytes_count ? SUCCESS : FAILURE;
+static __always_inline status_t send_filename(microtcp_sock_t *const _socket, const char *const _file_name)
+{
+        DEBUG_SMART_ASSERT(_socket != NULL, _file_name != NULL);
+        const size_t file_name_length = strlen(_file_name);
+        DEBUG_SMART_ASSERT(file_name_length < ((size_t)-1) >> 1);
+        ssize_t send_ret_val = microtcp_send(_socket, _file_name, file_name_length, 0);
+        return send_ret_val == (ssize_t)file_name_length ? SUCCESS : FAILURE;
 }
 
 static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
