@@ -60,7 +60,7 @@ static inline struct in_addr request_server_ipv4(void)
 #define INET_PTON_SUCCESS (1)
         char *ip_line = NULL;
         struct in_addr ipv4_address;
-        const char *prompt = "Enter server's listening IPv4 address (ANY = 0.0.0.0): ";
+        const char *prompt = "Enter server's listening IPv4 address (ANY = 0.0.0.0, LOCALHOST = 127.0.0.1): ";
         while (true)
         {
                 PROMPT_WITH_READ_STRING(prompt, ip_line);

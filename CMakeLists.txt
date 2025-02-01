@@ -51,6 +51,7 @@ endif()
 # Add defintions for debug and verbose mode.
 if(UNORTHODOX_MODE)
     add_compile_definitions(UNORTHODOX_MODE)
+    add_compile_options(-O3)
     message("CMAKE: UNORTHODOX_MODE enabled.")
 endif()
 

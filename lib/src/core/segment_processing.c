@@ -88,7 +88,6 @@ _Bool is_valid_microtcp_bytestream(void *_bytestream_buffer, const ssize_t _byte
 void extract_microtcp_segment(microtcp_segment_t **_segment_buffer, void *_bytestream_buffer, size_t _bytestream_buffer_length)
 {
 
-        printf("_bytestream_buffer_length == %zd\n", _bytestream_buffer_length);
         DEBUG_SMART_ASSERT(_segment_buffer != NULL);
         DEBUG_SMART_ASSERT(*_segment_buffer != NULL,
                            _bytestream_buffer != NULL,

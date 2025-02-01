@@ -69,6 +69,7 @@ static __always_inline ssize_t error_tolerant_send_data(microtcp_sock_t *_socket
 /* FAST_RETRANSMIT: response to 3 dup ACK. */
 static __always_inline send_fsm_substates_t respond_to_triple_dup_ack(microtcp_sock_t *const _socket, fsm_context_t *const _context)
 {
+        LOG_WARNING("SendFSM received 3-duplicate ACKs!");
         const send_queue_node_t *retransmission_node = sq_front(_socket->send_queue);
         const ssize_t send_data_ret_val = error_tolerant_send_data(_socket, retransmission_node->buffer, retransmission_node->segment_size, retransmission_node->seq_number);
         if (RARE_CASE(send_data_ret_val == SEND_SEGMENT_FATAL_ERROR))
@@ -83,6 +84,7 @@ static __always_inline send_fsm_substates_t respond_to_triple_dup_ack(microtcp_s
 
 static __always_inline void respond_to_timeout(microtcp_sock_t *const _socket, fsm_context_t *const _context)
 {
+        LOG_WARNING("SendFSM response timed-out!");
         _socket->ssthresh = MAX(_socket->cwnd / 2, MICROTCP_MSS);
         _socket->cwnd = MICROTCP_MSS;
         _context->duplicate_ack_count = 0;
@@ -129,11 +131,8 @@ static __always_inline send_fsm_substates_t handle_ack_reception(microtcp_sock_t
         if (sq_front(_socket->send_queue)->seq_number == received_ack_number) /* check for DUPLICATE ACK */
         {
                 if (++_context->duplicate_ack_count == DUPLICATE_ACK_COUNT_FOR_FAST_RETRANSMIT)
-                {
                         if (respond_to_triple_dup_ack(_socket, _context) == EXIT_FAILURE_SUBSTATE)
                                 return EXIT_FAILURE_SUBSTATE;
-                        LOG_WARNING("Received 3DUP_ACK"); /* TRIPLE DUPLICATE ACK */ /* TODO: REMOVE */
-                }
                 return CONTINUE_SUBSTATE;
         }
         _context->duplicate_ack_count = 0;
@@ -191,7 +190,6 @@ static inline send_fsm_substates_t receive_and_process_ack(microtcp_sock_t *cons
                 if (_block == true) /* If in block, timeout timer expired. */
                 {
                         respond_to_timeout(_socket, _context);
-                        LOG_WARNING("Timeout occured!"); /* TIMEOUT */ /* TODO: REMOVE */
                         return RETRANSMISSIONS_SUBSTATE;
                 }
                 break;

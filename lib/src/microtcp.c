@@ -1,6 +1,5 @@
 #include "microtcp.h"
 #include <errno.h>     // for errno
-#include <stdio.h>     // for printf
 #include <string.h>    // for strerror
 #include "core/misc.h" // for generate_initial_sequence_nu...
 #include "core/microtcp_recv_impl.h"
@@ -83,7 +82,6 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         if (allocate_post_handshake_buffers(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
-        printf("Connect sent %zu bytes for succeful connection.\n", _socket->bytes_sent);
         LOG_INFO_RETURN(MICROTCP_CONNECT_SUCCESS, "Connect operation succeeded; Post handshake buffer allocate.");
 
 connect_failure_cleanup:
@@ -111,7 +109,6 @@ int microtcp_accept(microtcp_sock_t *_socket, struct sockaddr *_address, socklen
         if (allocate_post_handshake_buffers(_socket) == FAILURE)
                 goto accept_failure_cleanup;
 
-        printf("Accept sent %zu bytes for succeful connection.\n", _socket->bytes_sent);
         LOG_INFO_RETURN(MICROTCP_ACCEPT_SUCCESS, "Accept operation succeeded; Post handshake buffer allocated.");
 
 accept_failure_cleanup:

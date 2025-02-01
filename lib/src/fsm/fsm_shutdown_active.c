@@ -159,8 +159,6 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
         const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
 
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len, required_ack_number);
-        printf("I wanted to receive ACK but instead I received: %zd\n", _context->recv_ack_ret_val);
-        printf("I wanted to receive ACK but instead I got %s\n", get_microtcp_control_to_string(_socket->segment_receive_buffer->header.control));
 
         switch (_context->recv_ack_ret_val)
         {

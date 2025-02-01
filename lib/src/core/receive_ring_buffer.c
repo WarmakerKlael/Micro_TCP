@@ -88,7 +88,6 @@ status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
  */
 uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t *const _segment)
 {
-        printf("RRB_CONTAINS %u consumable bytes\n", rrb_consumable_bytes(_rrb));
         DEBUG_SMART_ASSERT(_rrb != NULL, _segment != NULL);
         const uint32_t rrb_begin_ex_bound = _rrb->last_consumed_seq_number + _rrb->consumable_bytes;
         const uint32_t rrb_remaining_size = _rrb->buffer_size - _rrb->consumable_bytes;

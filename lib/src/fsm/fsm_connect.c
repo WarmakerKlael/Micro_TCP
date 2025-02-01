@@ -51,8 +51,6 @@ static connect_fsm_substates_t execute_closed_substate(microtcp_sock_t *_socket,
                                                        socklen_t _address_len, fsm_context_t *_context)
 {
 
-        printf("CONNECT sending SYN with seq_number = %u\n", _socket->seq_number);
-        printf("CONNECT sending SYN with ack_number = %u\n", _socket->ack_number);
         _context->send_syn_ret_val = send_syn_control_segment(_socket, _address, _address_len);
         switch (_context->send_syn_ret_val)
         {
@@ -69,8 +67,6 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
                                                          socklen_t _address_len, fsm_context_t *_context)
 {
         const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
-        printf("CONNECT receiving SYNACK with seq_number = %u\n", _socket->seq_number);
-        printf("CONNECT receiving SYNACK with ack_number = %u\n", _socket->ack_number);
         _context->recv_synack_ret_val = receive_synack_control_segment(_socket, (struct sockaddr *)_address, _address_len, required_ack_number);
         switch (_context->recv_synack_ret_val)
         {
@@ -82,7 +78,6 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
         /* Actions on the following three cases are the same. */
         case RECV_SEGMENT_FINACK_UNEXPECTED:
         case RECV_SEGMENT_ERROR:
-                printf("TRIGGERED!\n");
         case RECV_SEGMENT_TIMEOUT:
                 update_socket_lost_counters(_socket, _context->send_syn_ret_val);
                 return CLOSED_SUBSTATE;
@@ -106,8 +101,6 @@ static connect_fsm_substates_t execute_syn_sent_substate(microtcp_sock_t *_socke
 static connect_fsm_substates_t execute_synack_received_substate(microtcp_sock_t *_socket, const struct sockaddr *const _address,
                                                                 socklen_t _address_len, fsm_context_t *_context)
 {
-        printf("CONNECT sending ACK with seq_number = %u\n", _socket->seq_number);
-        printf("CONNECT sending ACK with ack_number = %u\n", _socket->ack_number);
         _context->send_ack_ret_val = send_ack_control_segment(_socket, _address, _address_len);
         switch (_context->send_ack_ret_val)
         {
@@ -160,8 +153,6 @@ int microtcp_connect_fsm(microtcp_sock_t *_socket, const struct sockaddr *const 
                         break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
                         log_errno_status(context.errno);
-                        printf("CONNECT_SUCCESS_EXIT_SEQ_NUMBER = %u\n", _socket->seq_number);
-                        printf("CONNECT_SUCCESS_EXIT_ACK_NUMBER = %u\n", _socket->ack_number);
                         return MICROTCP_CONNECT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
                         log_errno_status(context.errno);

@@ -24,8 +24,11 @@
 enum log_tag
 {
 	LOG_INFO,
+	LOG_INFO_APP,
 	LOG_WARNING,
+	LOG_WARNING_APP,
 	LOG_ERROR,
+	LOG_ERROR_APP
 };
 
 /**
@@ -106,11 +109,11 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_INFO(_format_message, ...) LOG_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__);
-#define LOG_APP_INFO(_format_message, ...) LOG_APP_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__);
 #else
-#define LOG_INFO(_format_message, ...)	   /* Logging disabled in release */
-#define LOG_APP_INFO(_format_message, ...) /* Logging disabled in release */
-#endif					   /* DEBUG_MODE || VERBOSE_MODE */
+#define LOG_INFO(_format_message, ...) /* Logging disabled in release */
+// #define LOG_APP_INFO(_format_message, ...) /* Logging disabled in release */
+#endif				       /* DEBUG_MODE || VERBOSE_MODE */
+#define LOG_APP_INFO(_format_message, ...) LOG_APP_MESSAGE(LOG_INFO_APP, _format_message, ##__VA_ARGS__);
 
 /**
  * @brief Logs a warning message.
@@ -124,7 +127,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_WARNING(_format_message, ...) LOG_MESSAGE(LOG_WARNING, _format_message, ##__VA_ARGS__)
-#define LOG_APP_WARNING(_format_message, ...) LOG_APP_MESSAGE(LOG_WARNING, _format_message, ##__VA_ARGS__)
+#define LOG_APP_WARNING(_format_message, ...) LOG_APP_MESSAGE(LOG_WARNING_APP, _format_message, ##__VA_ARGS__)
 
 /**
  * @brief Logs an error message.
@@ -138,7 +141,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
  * @note This macro ensures thread safety while logging the message.
  */
 #define LOG_ERROR(_format_message, ...) LOG_MESSAGE(LOG_ERROR, _format_message, ##__VA_ARGS__)
-#define LOG_APP_ERROR(_format_message, ...) LOG_APP_MESSAGE(LOG_ERROR, _format_message, ##__VA_ARGS__)
+#define LOG_APP_ERROR(_format_message, ...) LOG_APP_MESSAGE(LOG_ERROR_APP, _format_message, ##__VA_ARGS__)
 
 /**
  * @brief Logs an informational message and returns a specified value.
@@ -221,11 +224,10 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
 	} while (0)
 
 #define LOG_APP_ERROR_GOTO(_goto_label, _format_message, ...)  \
-        do                                                     \
-        {                                                      \
-                LOG_APP_ERROR(_format_message, ##__VA_ARGS__); \
-                goto _goto_label;                              \
-        } while (0)
-
+	do                                                     \
+	{                                                      \
+		LOG_APP_ERROR(_format_message, ##__VA_ARGS__); \
+		goto _goto_label;                              \
+	} while (0)
 
 #endif /* MICROTCP_LOGGER_H */

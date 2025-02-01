@@ -9,7 +9,7 @@
 #include "miniredis_demo/miniredis_commands.h"
 
 /* TODO: SET to UINT16_MAX not 2 */
-#define MAX_FILE_PART (UINT16_MAX * MICROTCP_MSS) /* TODO : make it equal to MicroTCP recvbuf_LEN*/
+#define MAX_FILE_PART (2 * MICROTCP_MSS) /* TODO : make it equal to MicroTCP recvbuf_LEN*/
 
 #define MAX_COMMAND_SIZE 20
 #define MAX_COMMAND_ARGUMENT_SIZE 400

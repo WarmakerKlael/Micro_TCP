@@ -41,20 +41,22 @@ int main(void)
 
 static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_socket, struct sockaddr_in *const _server_address)
 {
+        LOG_APP_INFO("MiniRedis Client-side attempting to connect to server...");
         (*_utcp_socket) = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (_utcp_socket->state == INVALID)
                 return FAILURE;
         if (microtcp_connect(_utcp_socket, (struct sockaddr *)_server_address, sizeof(*_server_address)) == MICROTCP_ACCEPT_FAILURE)
                 return FAILURE;
-        return SUCCESS;
+        LOG_APP_INFO_RETURN(SUCCESS, "MiniRedis Client-side connected to server.");
 }
 
 static status_t miniredis_terminate_connection(microtcp_sock_t *const _utcp_socket)
 {
+        LOG_APP_INFO("MiniRedis Client-side attempting to terminate connection with server...");
         if (microtcp_shutdown(_utcp_socket, SHUT_RDWR) == MICROTCP_SHUTDOWN_FAILURE)
                 return FAILURE;
         microtcp_close(_utcp_socket);
-        return SUCCESS;
+        LOG_APP_INFO_RETURN(SUCCESS, "MiniRedis Client-side connection with server terminated");
 }
 
 static void interactive_command_handler(microtcp_sock_t *_socket)
@@ -110,11 +112,11 @@ static void interactive_command_handler(microtcp_sock_t *_socket)
 
 static status_t miniredis_client_manager(void)
 {
+        static microtcp_sock_t utcp_socket = {0};
         struct sockaddr_in server_address = {
             .sin_family = AF_INET,
-            .sin_port = htons(50503)};
-        inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr);
-        microtcp_sock_t utcp_socket = {0};
+            .sin_port = request_server_port(),
+            .sin_addr = request_server_ipv4()};
 
         if (miniredis_establish_connection(&utcp_socket, &server_address) == FAILURE)
                 LOG_APP_ERROR_RETURN(FAILURE, "Failed establishing connection.");
@@ -218,17 +220,17 @@ static __always_inline status_t display_response_message(microtcp_sock_t *const 
                         LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part (file-name) of file #%zu.", file_counter);
 
                 /* Display file-stats: */
-                printf("%zu. Name: %.*s Size: %zu Downloads: %zu TOA: %ld\n",
-                       file_counter,
-                       (int)rnsi.file_name_size, _message_buffer,
-                       rnsi.file_size,
-                       rnsi.download_counter,
-                       rnsi.time_of_arrival);
+
+                LOG_APP_INFO("%zu. Name: %.*s Size: %zu Downloads: %zu TOA: %ld\n",
+                             file_counter,
+                             (int)rnsi.file_name_size, _message_buffer,
+                             rnsi.file_size,
+                             rnsi.download_counter,
+                             rnsi.time_of_arrival);
 
                 /* Move to next file: */
                 displayed_bytes_count += sizeof(rnsi) + rnsi.file_name_size;
                 file_counter++;
-                printf("DISPLAYED == %zu | RESPONSE_SIZE == %zu\n", displayed_bytes_count, _response_message_size);
         }
         return SUCCESS;
 }

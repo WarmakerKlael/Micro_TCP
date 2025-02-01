@@ -41,8 +41,6 @@ static const char *convert_substate_to_string(accept_fsm_substates_t _substate);
 static accept_fsm_substates_t execute_listen_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
                                                       socklen_t _address_len, fsm_context_t *_context)
 {
-        printf("ACCEPT receiving SYN with seq_number = %u\n", _socket->seq_number);
-        printf("ACCEPT receiving SYN with ack_number = %u\n", _socket->ack_number);
         _context->recv_syn_ret_val = receive_syn_control_segment(_socket, _address, _address_len);
         switch (_context->recv_syn_ret_val)
         {
@@ -70,8 +68,6 @@ static accept_fsm_substates_t execute_listen_substate(microtcp_sock_t *_socket, 
 static accept_fsm_substates_t execute_syn_received_substate(microtcp_sock_t *_socket, struct sockaddr *const _address,
                                                             socklen_t _address_len, fsm_context_t *_context)
 {
-        printf("ACCEPT sending SYNACK with seq_number = %u\n", _socket->seq_number);
-        printf("ACCEPT sending SYNACK with ack_number = %u\n", _socket->ack_number);
         _context->send_synack_ret_val = send_synack_control_segment(_socket, _address, _address_len);
         switch (_context->send_synack_ret_val)
         {
@@ -90,8 +86,6 @@ static accept_fsm_substates_t execute_synack_sent_substate(microtcp_sock_t *_soc
                                                            socklen_t _address_len, fsm_context_t *_context)
 {
         const uint32_t required_ack_number = _socket->seq_number + SYN_SEQ_NUMBER_INCREMENT;
-        printf("ACCEPT receiving ACK with seq_number = %u\n", _socket->seq_number);
-        printf("ACCEPT receiving ACK with ack_number = %u\n", _socket->ack_number);
         _context->recv_ack_ret_val = receive_ack_control_segment(_socket, _address, _address_len, required_ack_number);
         switch (_context->recv_ack_ret_val)
         {
@@ -160,8 +154,6 @@ int microtcp_accept_fsm(microtcp_sock_t *_socket, struct sockaddr *const _addres
                         current_substate = execute_ack_received_substate(_socket, _address, _address_len, &context);
                         break;
                 case CONNECTION_ESTABLISHED_SUBSTATE:
-                        printf("ACCEPT_SUCCESS_EXIT_SEQ_NUMBER = %u\n", _socket->seq_number);
-                        printf("ACCEPT_SUCCESS_EXIT_ACK_NUMBER = %u\n", _socket->ack_number);
                         return MICROTCP_ACCEPT_SUCCESS;
                 case EXIT_FAILURE_SUBSTATE:
                         return MICROTCP_ACCEPT_FAILURE;

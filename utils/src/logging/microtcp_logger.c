@@ -119,10 +119,6 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
 
 static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const char *_project_name, const char *_file, int _line, const char *_func, const char *_format_message, va_list arg_list)
 {
-	static struct timespec tv;
-	clock_gettime(CLOCK_REALTIME, &tv);
-
-	long milliseconds = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
 	if (!logger_is_enabled())
 		return;
 	if (!logger_is_info_enabled() && _log_tag == LOG_INFO)
@@ -131,13 +127,22 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 		return;
 	if (!logger_is_error_enabled() && _log_tag == LOG_ERROR)
 		return;
-
 	fprintf(microtcp_log_stream, LOG_DEFAULT_COLOR); /* Set DEFAULT logging color. */
-	fprintf(microtcp_log_stream, "[%s%s %s%s][%s:%d][%s()][%lddu]: ",
+#ifdef DEBUG_MODE
+	static struct timespec tv;
+	clock_gettime(CLOCK_REALTIME, &tv);
+
+	long milliseconds = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+	fprintf(microtcp_log_stream, "[%s%s %s%s][%s:%d][%s()][%lddu] ",
 		get_tag_color(_log_tag), _project_name, get_string_tag(_log_tag), LOG_DEFAULT_COLOR, /* 1st brackets. */
 		_file, _line,									     /* 2nd brackets. */
 		_func,										     /* 3rd brackets. */
 		milliseconds);									     /* 4th brackets. */
+
+#else  /*ifndef DEBUG_MODE */
+	fprintf(microtcp_log_stream, "[%s%s %s%s] ",
+		get_tag_color(_log_tag), _project_name, get_string_tag(_log_tag), LOG_DEFAULT_COLOR);
+#endif /* DEBUG_MODE */
 
 	fprintf(microtcp_log_stream, LOG_MESSAGE_COLOR); /* Set logging message color. */
 	vfprintf(microtcp_log_stream, _format_message, arg_list);
@@ -145,15 +150,21 @@ static void log_message_forward_non_thread_safe(enum log_tag _log_tag, const cha
 	fflush(microtcp_log_stream);				 /* We flush even though fprintf ends with '\n', in case stdout is fully-buffered. (file, pipe). */
 }
 
-// clang-format off
 static const char *get_string_tag(enum log_tag _log_tag)
 {
 	switch (_log_tag)
 	{
-	case LOG_INFO:		return "INFO";
-	case LOG_WARNING:	return "WARNING";
-	case LOG_ERROR:		return "ERROR";
-	default:		return "??LOG??";
+	case LOG_INFO:
+	case LOG_INFO_APP:
+		return "INFO";
+	case LOG_WARNING:
+	case LOG_WARNING_APP:
+		return "WARNING";
+	case LOG_ERROR:
+	case LOG_ERROR_APP:
+		return "ERROR";
+	default:
+		return "??LOG??";
 	}
 }
 
@@ -161,10 +172,16 @@ static const char *get_tag_color(enum log_tag _log_tag)
 {
 	switch (_log_tag)
 	{
-	case LOG_INFO:		return LOG_INFO_COLOR;
-	case LOG_WARNING:	return LOG_WARNING_COLOR;
-	case LOG_ERROR:		return LOG_ERROR_COLOR;
-	default:		return LOG_DEFAULT_COLOR;
+	case LOG_INFO:
+	case LOG_INFO_APP:
+		return LOG_INFO_COLOR;
+	case LOG_WARNING:
+	case LOG_WARNING_APP:
+		return LOG_WARNING_COLOR;
+	case LOG_ERROR:
+	case LOG_ERROR_APP:
+		return LOG_ERROR_COLOR;
+	default:
+		return LOG_DEFAULT_COLOR;
 	}
 }
-// clang-format on

@@ -16,9 +16,7 @@
 
 static __always_inline ssize_t handle_finack_reception(microtcp_sock_t *const _socket, const size_t _bytes_received)
 {
-        printf("\n\n\n\n\nbefore FIN_RECV increement socket_ack_number is %u\n", _socket->ack_number);
         _socket->ack_number += FIN_SEQ_NUMBER_INCREMENT;
-        printf("after FIN RECV increement socket_ack_number is %u\n", _socket->ack_number);
         if (_bytes_received == 0)
         {
                 _socket->state = CLOSING_BY_PEER;
@@ -87,7 +85,6 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                         bytes_received += rrb_pop(bytestream_rrb, _buffer + bytes_received, _length - bytes_received);
                         _socket->curr_win_size = cached_rrb_size - rrb_consumable_bytes(bytestream_rrb);
                         send_ack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address)); /* If curr_win_size == 0, we still send ACK. */
-                        printf("SENT ACK , ack_number sent == %u\n", _socket->ack_number);
                         break;
                 }
                 }

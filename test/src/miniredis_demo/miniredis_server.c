@@ -38,7 +38,7 @@ static __always_inline void miniredis_request_distributor(microtcp_sock_t *_sock
 static __always_inline status_t send_server_response(microtcp_sock_t *_socket, miniredis_header_t *_response_header, const char *_response_message);
 
 /* Static Functions: */
-static status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address);
+static status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address, struct sockaddr_in *_server_address);
 static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
 static status_t miniredis_server_manager(registry_t *_registry);
 static void miniredis_request_handler(microtcp_sock_t *_socket, registry_t *_registry);
@@ -63,16 +63,13 @@ int main(void)
         return EXIT_SUCCESS;
 }
 
-static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_socket, struct sockaddr_in *const _client_address)
+static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_socket,
+                                               struct sockaddr_in *const _client_address, struct sockaddr_in *_server_address)
 {
-        struct sockaddr_in server_address = {
-            .sin_family = AF_INET,
-            .sin_port = htons(50503)}; /* Required for bind(), after that variable can be safely destroyed. */
-        inet_pton(AF_INET, "0.0.0.0", &server_address.sin_addr);
         (*_utcp_socket) = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
         if (_utcp_socket->state == INVALID)
                 return FAILURE;
-        if (microtcp_bind(_utcp_socket, (const struct sockaddr *)&server_address, sizeof(server_address)) == MICROTCP_BIND_FAILURE)
+        if (microtcp_bind(_utcp_socket, (struct sockaddr *)_server_address, sizeof(*_server_address)) == MICROTCP_BIND_FAILURE)
                 return FAILURE;
         if (microtcp_accept(_utcp_socket, (struct sockaddr *)_client_address, sizeof(*_client_address)) == MICROTCP_ACCEPT_FAILURE)
                 return FAILURE;
@@ -264,18 +261,17 @@ cleanup_label:
                 FREE_NULLIFY_LOG(message_buffer);
 }
 
-static _Atomic _Bool stop_flag = false;
+static _Atomic _Bool server_safe_termination_flag = false;
 
 static void miniredis_request_handler(microtcp_sock_t *const _socket, registry_t *const _registry)
 {
         miniredis_header_t request_header = {0}; /* Zeroing is not really requires, but anyway... */
-        while (stop_flag == false)
+        while (server_safe_termination_flag == false)
         {
                 ssize_t recv_ret_val = microtcp_recv(_socket, &request_header, sizeof(request_header), 0); /* 0 as flag argument, for DEFAULT recv() mode. */
-                printf("SERVER RECEIVED %zd BYTES\n", recv_ret_val);
                 if (recv_ret_val == MICROTCP_RECV_TIMEOUT)
                 {
-                        LOG_APP_WARNING("NO_REQUEST->TIMEOUT"); // TODO remove
+                        LOG_APP_INFO("Waiting request.");
                         continue;
                 }
                 if (recv_ret_val == MICROTCP_RECV_FAILURE)
@@ -291,14 +287,18 @@ static void miniredis_request_handler(microtcp_sock_t *const _socket, registry_t
 
 void *miniredis_connection_handler(void *_registry)
 {
+        LOG_APP_INFO("Connection handler activated, and running.");
+        struct sockaddr_in server_address = {
+            .sin_family = AF_INET,
+            .sin_port = request_server_port(),
+            .sin_addr = request_server_ipv4()};  /* Required for bind(), after that variable can be safely destroyed. */
         struct sockaddr_in client_address = {0}; /* Acquired by microtcp_accept() internally (by recvfrom()). */
         microtcp_sock_t utcp_socket = {0};
-        printf("THREAD ACTIVATED\n");
         while (true)
         {
-                if (stop_flag == true)
+                if (server_safe_termination_flag == true)
                         return (void *)SUCCESS;
-                if (miniredis_establish_connection(&utcp_socket, &client_address) == FAILURE)
+                if (miniredis_establish_connection(&utcp_socket, &client_address, &server_address) == FAILURE)
                         LOG_APP_ERROR_RETURN((void *)FAILURE, "Failed establishing connection.");
                 miniredis_request_handler(&utcp_socket, (registry_t *)_registry);
                 if (miniredis_terminate_connection(&utcp_socket) == FAILURE)
@@ -308,8 +308,8 @@ void *miniredis_connection_handler(void *_registry)
 
 static void signal_handler(__attribute__((unused)) int _sig)
 {
-        stop_flag = true;
-        printf("\n\n\nFlag for stopping raised\n\n\n");
+        server_safe_termination_flag = true;
+        LOG_APP_WARNING("Server safe termination flag raised.");
 }
 
 static status_t miniredis_server_manager(registry_t *const _registry)
@@ -325,7 +325,6 @@ static status_t miniredis_server_manager(registry_t *const _registry)
         void *thread_ret_val;
 
         pthread_join(connection_handler_pid, &thread_ret_val);
-        printf("THread returned %s.", (_Bool)thread_ret_val ? "TRUE" : "FALSE");
         return (_Bool)thread_ret_val;
 }
 
@@ -350,6 +349,7 @@ static __always_inline char *receive_file_name(microtcp_sock_t *const _socket, c
 
 static __always_inline void miniredis_request_distributor(microtcp_sock_t *const _socket, registry_t *const _registry, miniredis_header_t *const _request_header)
 {
+        LOG_APP_INFO("Received request: %s", get_command_name(_request_header->command_code));
         /* Determine which command was received */
         switch (_request_header->command_code)
         {
