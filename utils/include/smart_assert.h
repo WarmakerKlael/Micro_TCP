@@ -87,7 +87,7 @@ static inline int _get_leading_spaces(const char *_string)
 #ifdef DEBUG_MODE
 #define DEBUG_SMART_ASSERT(...) SMART_ASSERT(__VA_ARGS__)
 #else
-#define DEBUG_SMART_ASSERT(...) (__VA_ARGS__) /* Might produce dead code (compiler removes it), but in case of functions it executes them. */
+#define DEBUG_SMART_ASSERT(...) (__VA_ARGS__) /* Produce dead-code (compiler removes it), but in case of functions it executes them (we want that). */
 #endif /* DEBUG_MODE */
 
 #endif /* SMART_ASSERT_H */

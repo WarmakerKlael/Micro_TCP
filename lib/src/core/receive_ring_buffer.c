@@ -93,7 +93,7 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
         const uint32_t rrb_remaining_size = _rrb->buffer_size - _rrb->consumable_bytes;
 
         if (RARE_CASE(!is_in_bounds(rrb_begin_ex_bound, rrb_remaining_size, _segment->header.seq_number)))
-                LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`rrb_beggining_bound` = %u, `rrb_remaining_size` = %u, `seq_number` = %u}.",
+                LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`rrb_beggining_bound` = %u, `rrb_remaining_size` = %u, `incoming seq_number` = %u}.",
                                    rrb_begin_ex_bound, rrb_remaining_size, _segment->header.seq_number);
         const uint32_t available_space = free_space(_rrb->last_consumed_seq_number, _rrb->buffer_size, _segment->header.seq_number);
         const uint32_t data_len = _segment->header.data_len;

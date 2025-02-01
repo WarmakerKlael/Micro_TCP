@@ -211,7 +211,6 @@ static __always_inline status_t display_response_message(microtcp_sock_t *const 
                 DEBUG_SMART_ASSERT(received_bytes < ((unsigned int)-1) >> 1);
                 if (received_bytes != sizeof(rnsi))
                         LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part (rnsi) of file #%zu.", file_counter);
-                DEBUG_SMART_ASSERT(rnsi.file_name_size <= MAX_FILE_PART);
 
                 /* Receive file-name: */
                 received_bytes = microtcp_recv_timed(_socket, _message_buffer, rnsi.file_name_size, MAX_RESPONSE_IDLE_TIME);

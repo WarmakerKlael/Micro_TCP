@@ -5,7 +5,36 @@
 
 #include "demo_common.h"
 #include "microtcp_prompt_util.h"
+#include "settings/microtcp_settings.h"
 #include "smart_assert.h"
+
+#define KB (1ULL << 10)
+#define MB (1ULL << 20)
+#define GB (1ULL << 30)
+#define TB (1ULL << 40)
+#define PB (1ULL << 50)
+#define EB (1ULL << 60)
+
+struct data_size
+{
+        const double size;
+        const char *unit;
+};
+
+static __always_inline struct data_size get_formatted_byte_count(const size_t _byte_count)
+{
+        if (_byte_count < KB)
+                return (struct data_size){.size = _byte_count, .unit = "B"};
+        if (_byte_count < MB)
+                return (struct data_size){.size = _byte_count / (double)KB, .unit = "KB"};
+        if (_byte_count < GB)
+                return (struct data_size){.size = _byte_count / (double)MB, .unit = "MB"};
+        if (_byte_count < TB)
+                return (struct data_size){.size = _byte_count / (double)GB, .unit = "GB"};
+        if (_byte_count < PB)
+                return (struct data_size){.size = _byte_count / (double)TB, .unit = "TB"};
+        return (struct data_size){.size = _byte_count / (long double)PB, .unit = "PB"};
+}
 
 struct __attribute__((packed)) registry_node_serialization_info /* We are packing, because we want to pass this info through network packets. */
 {
@@ -70,13 +99,19 @@ static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uin
                                              FILE *const _file_ptr, const size_t _file_size, const char *const _file_name)
 {
         size_t written_bytes_count = 0;
+        const double _file_size_formatted = get_formatted_byte_count(_file_size).size;
+        const char *_file_size_formatted_unit = get_formatted_byte_count(_file_size).unit;
+        const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
         while (written_bytes_count != _file_size)
         {
-                const size_t file_part_size = MIN(_file_size - written_bytes_count, MAX_FILE_PART);
+                const size_t file_part_size = MIN(_file_size - written_bytes_count, max_file_part_size);
                 if (receive_and_write_file_part(_socket, _file_ptr, _file_name, _message_buffer, file_part_size) == FAILURE)
                         return FAILURE;
                 written_bytes_count += file_part_size;
-                LOG_APP_INFO("File: %s, (%zu/%zu bytes received)", _file_name, written_bytes_count, _file_size);
+                const struct data_size received_data_size = get_formatted_byte_count(written_bytes_count);
+                LOG_APP_INFO("File: %s, (%.2lf%s/%.2lf%s received)", _file_name,
+                             received_data_size.size, received_data_size.unit,
+                             _file_size_formatted, _file_size_formatted_unit);
         }
         return SUCCESS;
 }
@@ -169,13 +204,18 @@ static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_
         if (stat(_file_name, &file_stats) != 0)
                 LOG_APP_ERROR_RETURN(FAILURE, "File: %s failed stats-read, errno(%d): %s.", _file_name, errno, strerror(errno));
 
-        while ((file_bytes_read = fread(_message_buffer, 1, MAX_FILE_PART, _file_ptr)) > 0)
+        const double _file_size_formatted = get_formatted_byte_count(file_stats.st_size).size;
+        const char *_file_size_formatted_unit = get_formatted_byte_count(file_stats.st_size).unit;
+        const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
+        while ((file_bytes_read = fread(_message_buffer, 1, max_file_part_size, _file_ptr)) > 0)
         {
                 DEBUG_SMART_ASSERT(file_bytes_read < ((size_t)-1) >> 1);
                 if (microtcp_send(_socket, _message_buffer, file_bytes_read, 0) != (ssize_t)file_bytes_read)
                         LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-parts, aborting.");
                 file_bytes_sent_count += file_bytes_read;
-                LOG_APP_INFO("File: %s, (%zu/%zu bytes sent)", _file_name, file_bytes_sent_count, file_stats.st_size);
+                LOG_APP_INFO("File: %s, (%.2lf%s/%.2lf%s bytes sent)", _file_name,
+                             get_formatted_byte_count(file_bytes_sent_count).size, get_formatted_byte_count(file_bytes_sent_count).unit,
+                             _file_size_formatted, _file_size_formatted_unit);
         }
         if (ferror(_file_ptr))
                 LOG_APP_ERROR_RETURN(FAILURE, "Error occurred while reading file '%s', errno(%d): %s", _file_name, errno, strerror(errno));
@@ -200,7 +240,7 @@ static __always_inline FILE *open_file_for_binary_io(const char *const _file_nam
 
 static __always_inline uint8_t *allocate_message_buffer(void)
 {
-        uint8_t *message_buffer = MALLOC_LOG(message_buffer, MAX_FILE_PART);
+        uint8_t *message_buffer = MALLOC_LOG(message_buffer, get_microtcp_bytestream_rrb_size());
         if (message_buffer == NULL)
                 LOG_APP_ERROR_RETURN(NULL, "Failed allocating message_buffer.");
         return message_buffer;

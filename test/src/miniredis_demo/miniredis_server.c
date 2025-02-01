@@ -212,6 +212,7 @@ static status_t send_registry_serialized_description(microtcp_sock_t *const _soc
         const size_t registry_size = _registry->size;
         const registry_node_t *registry_node_array = _registry->node_array;
         size_t message_buffer_copied_bytes = 0;
+        const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
         for (size_t i = 0; i < registry_size; i++)
         {
                 const registry_node_t current_node = registry_node_array[i];
@@ -220,8 +221,9 @@ static status_t send_registry_serialized_description(microtcp_sock_t *const _soc
                     .file_size = current_node.file_size,
                     .time_of_arrival = current_node.time_of_arrival,
                     .download_counter = current_node.download_counter};
+                DEBUG_SMART_ASSERT(rnsi.file_name_size <= max_file_part_size);
                 const size_t serialized_entry_size = sizeof(rnsi) + rnsi.file_name_size;
-                if (message_buffer_copied_bytes + serialized_entry_size <= MAX_FILE_PART)
+                if (message_buffer_copied_bytes + serialized_entry_size <= max_file_part_size)
                 {
                         memcpy(_message_buffer + message_buffer_copied_bytes, &rnsi, sizeof(rnsi));
                         message_buffer_copied_bytes += sizeof(rnsi);

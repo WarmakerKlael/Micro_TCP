@@ -9,6 +9,7 @@ add_compile_options(
     -Wall
     -Wextra
     -Wpedantic
+    -Wno-unused-value
 )
 
 # Suppress specific warnings
