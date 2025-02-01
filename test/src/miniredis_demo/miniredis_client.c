@@ -199,29 +199,36 @@ cleanup_label:
 
 static __always_inline status_t display_response_message(microtcp_sock_t *const _socket, uint8_t *const _message_buffer, const size_t _response_message_size)
 {
-        size_t unprocessed_received_bytes = 0;
+        size_t file_counter = 0;
         size_t displayed_bytes_count = 0;
-        size_t message_buffer_processed_bytes = 0;
         while (displayed_bytes_count != _response_message_size)
         {
-                if (unprocessed_received_bytes > sizeof(struct registry_node_serialization_info))
-                {
-                        struct registry_node_serialization_info rnsi;
-                        memcpy(&rnsi, _message_buffer + message_buffer_processed_bytes, sizeof(rnsi));
-                        if (unprocessed_received_bytes - sizeof(rnsi) >= rnsi.file_name_size)
-                        {
-                                printf("File: %.*s\n", rnsi.file_name_size, _message_buffer + message_buffer_processed_bytes);
-                                const size_t entry_processed_bytes = sizeof(rnsi) + rnsi.file_name_size;
-                                message_buffer_processed_bytes += entry_processed_bytes;
-                                unprocessed_received_bytes -= entry_processed_bytes;
-                                displayed_bytes_count += entry_processed_bytes;
-                        }
-                }
-                const ssize_t received_bytes = microtcp_recv_timed(_socket, _message_buffer + unprocessed_received_bytes,
-                                                                   MAX_FILE_PART - unprocessed_received_bytes, MAX_RESPONSE_IDLE_TIME);
-                if (received_bytes == MICROTCP_RECV_FAILURE)
-                        LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part.");
+                /* Receive the rnsi: */
+                struct registry_node_serialization_info rnsi;
+                ssize_t received_bytes = microtcp_recv_timed(_socket, &rnsi, sizeof(rnsi), MAX_RESPONSE_IDLE_TIME);
                 DEBUG_SMART_ASSERT(received_bytes < ((unsigned int)-1) >> 1);
+                if (received_bytes != sizeof(rnsi))
+                        LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part (rnsi) of file #%zu.", file_counter);
+                DEBUG_SMART_ASSERT(rnsi.file_name_size <= MAX_FILE_PART);
+
+                /* Receive file-name: */
+                received_bytes = microtcp_recv_timed(_socket, _message_buffer, rnsi.file_name_size, MAX_RESPONSE_IDLE_TIME);
+                DEBUG_SMART_ASSERT(received_bytes < ((unsigned int)-1) >> 1);
+                if (received_bytes != (ssize_t)rnsi.file_name_size)
+                        LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part (file-name) of file #%zu.", file_counter);
+
+                /* Display file-stats: */
+                printf("%zu. Name: %.*s Size: %zu Downloads: %zu TOA: %ld\n",
+                       file_counter,
+                       (int)rnsi.file_name_size, _message_buffer,
+                       rnsi.file_size,
+                       rnsi.download_counter,
+                       rnsi.time_of_arrival);
+
+                /* Move to next file: */
+                displayed_bytes_count += sizeof(rnsi) + rnsi.file_name_size;
+                file_counter++;
+                printf("DISPLAYED == %zu | RESPONSE_SIZE == %zu\n", displayed_bytes_count, _response_message_size);
         }
         return SUCCESS;
 }

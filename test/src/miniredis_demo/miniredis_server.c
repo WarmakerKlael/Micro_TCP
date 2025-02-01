@@ -45,7 +45,7 @@ static void miniredis_request_handler(microtcp_sock_t *_socket, registry_t *_reg
 
 /* Command functions: */
 static void execute_set(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
-static void execute_get(microtcp_sock_t *_socket, const registry_t *_registry, miniredis_header_t *_request_header);
+static void execute_get(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
 static void execute_del(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
@@ -133,7 +133,7 @@ cleanup_label:
         send_server_response(_socket, _request_header, response_message);
 }
 
-static void execute_get(microtcp_sock_t *const _socket, const registry_t *const _registry, miniredis_header_t *const _request_header)
+static void execute_get(microtcp_sock_t *const _socket, registry_t *const _registry, miniredis_header_t *const _request_header)
 {
         DEBUG_SMART_ASSERT(_request_header->command_code == CMND_CODE_GET,
                            _request_header->response_status == FAILURE, /* We set it to SUCCESS if we can accomplish request. */
@@ -147,7 +147,7 @@ static void execute_get(microtcp_sock_t *const _socket, const registry_t *const 
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Filename reception failed.");
-        const registry_node_t *registry_node = registry_find(_registry, file_name);
+        registry_node_t *registry_node = registry_find(_registry, file_name);
         if (registry_node == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "File not found.");
         if ((file_ptr = open_file_for_binary_io(file_name, IO_READ)) == NULL)

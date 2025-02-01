@@ -27,9 +27,9 @@ void registry_destroy(registry_t **_registry_address);
 status_t registry_append(registry_t *_registry, const char *_file_name);
 status_t registry_pop(registry_t *_registry, const char *_file_name);
 status_t registry_cache(registry_t *_registry, const char *_file_name);
-const registry_node_t *registry_find(const registry_t *_registry, const char *_file_name);
+registry_node_t *registry_find(const registry_t *_registry, const char *_file_name);
 
 size_t registry_node_file_size(const registry_node_t *_registry_node);
-size_t registry_node_increment_get_count(const registry_node_t *_registry_node);
+void registry_node_increment_get_count(registry_node_t *_registry_node);
 
 #endif /* MINI_REDIS_DEMO_REGISTRY_H */
