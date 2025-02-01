@@ -9,24 +9,6 @@
 #include "status.h"
 #include "miniredis_demo/registry.h"
 
-struct registry_node
-{
-        char *file_name; /* Node KEY */
-        size_t file_size;
-        size_t get_count;
-        time_t arrival_time;
-        uint8_t *cache_buffer;
-};
-
-struct registry
-{
-        registry_node_t *node_array;
-        size_t size;
-        size_t capacity;
-        size_t cached_bytes;
-        size_t cache_size_limit;
-};
-
 static status_t registry_expand(registry_t *_registry);
 static __always_inline status_t initialize_registry_node(registry_node_t *_registry_node, const char *_file_name);
 
@@ -101,8 +83,8 @@ status_t registry_pop(registry_t *_registry, const char *const _file_name)
                 registry_node_t *last_node = registry_node_array + _registry->size - 1;
                 curr_node->file_name = last_node->file_name;
                 curr_node->file_size = last_node->file_size;
-                curr_node->get_count = last_node->get_count;
-                curr_node->arrival_time = last_node->arrival_time;
+                curr_node->download_counter = last_node->download_counter;
+                curr_node->time_of_arrival = last_node->time_of_arrival;
                 curr_node->cache_buffer = last_node->cache_buffer;
 
                 _registry->size--;
@@ -144,7 +126,7 @@ status_t registry_cache(registry_t *const _registry, const char *const _file_nam
         LOG_APP_WARNING_RETURN(FAILURE, "File `%s` not found in registry.");
 }
 
-const registry_node_t *registry_find(registry_t *const _registry, const char *const _file_name)
+const registry_node_t *registry_find(const registry_t *const _registry, const char *const _file_name)
 {
         DEBUG_SMART_ASSERT(_registry != NULL, _file_name != NULL);
         const registry_node_t *const registry_node_array = _registry->node_array;
@@ -161,10 +143,10 @@ size_t registry_node_file_size(const registry_node_t *const _registry_node)
         return _registry_node->file_size;
 }
 
-size_t registry_node_increment_get_count(registry_node_t *const _registry_node)
+size_t registry_node_increment_get_count(const registry_node_t *const _registry_node)
 {
         DEBUG_SMART_ASSERT(_registry_node != NULL);
-        return _registry_node->get_count;
+        return _registry_node->download_counter;
 }
 
 static __always_inline status_t initialize_registry_node(registry_node_t *const _registry_node, const char *const _file_name)
@@ -173,9 +155,9 @@ static __always_inline status_t initialize_registry_node(registry_node_t *const 
         if (stat(_file_name, &stat_buffer) != 0)
                 return FAILURE;
 
-        _registry_node->get_count = 0;
+        _registry_node->download_counter = 0;
         _registry_node->cache_buffer = NULL;
-        _registry_node->arrival_time = time(NULL);
+        _registry_node->time_of_arrival = time(NULL);
         _registry_node->file_size = stat_buffer.st_size;
 
         /* Allocate memory to save file_name string. */

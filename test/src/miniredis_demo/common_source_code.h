@@ -7,6 +7,14 @@
 #include "microtcp_prompt_util.h"
 #include "smart_assert.h"
 
+struct __attribute__((packed)) registry_node_serialization_info /* We are packing, because we want to pass this info through network packets. */
+{
+        size_t file_name_size;
+        size_t file_size;
+        size_t download_counter;
+        time_t time_of_arrival;
+};
+
 enum io_type
 {
         IO_READ,
@@ -78,7 +86,7 @@ static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *con
 {
         const ssize_t received_bytes = microtcp_recv_timed(_socket, _file_buffer, _file_part_size, MAX_RESPONSE_IDLE_TIME);
         if (received_bytes == MICROTCP_RECV_FAILURE)
-                LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving file-chunk.");
+                LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving file-part.");
         if (fwrite(_file_buffer, 1, received_bytes, _file_ptr) == 0)
                 LOG_APP_ERROR_RETURN(FAILURE, "File: %s failed writing file-part, errno(%d): %s.", _file_name, errno, strerror(errno));
         if (fflush(_file_ptr) != 0)

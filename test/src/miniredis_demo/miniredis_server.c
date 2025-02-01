@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <ctype.h>
+#include "miniredis_demo/miniredis_commands.h"
 #include "microtcp_prompt_util.h"
 #include "microtcp_helper_macros.h"
 #include "settings/microtcp_settings_prompts.h"
@@ -89,11 +90,12 @@ static status_t miniredis_terminate_connection(microtcp_sock_t *const _utcp_sock
 static __always_inline status_t send_server_response(microtcp_sock_t *const _socket, miniredis_header_t *const _response_header, const char *const _response_message)
 {
         const size_t response_message_size = (_response_message == NULL) ? 0 : strlen(_response_message);
+        DEBUG_SMART_ASSERT(response_message_size < ((size_t)-1) >> 1);
         _response_header->response_message_size = response_message_size;
         if (microtcp_send(_socket, _response_header, sizeof(*_response_header), 0) != sizeof(*_response_header))
                 LOG_APP_ERROR_RETURN(FAILURE, "Server failed sending `_response_header`, sending response failed.");
         if (response_message_size != 0)
-                if (microtcp_send(_socket, _response_message, response_message_size, 0) != response_message_size)
+                if (microtcp_send(_socket, _response_message, response_message_size, 0) != (ssize_t)response_message_size)
                         LOG_APP_ERROR_RETURN(FAILURE, "Server failed sending `_response_message`, sending response failed.");
         LOG_APP_INFO_RETURN(SUCCESS, "Server successfully sent its response");
 }
@@ -145,8 +147,8 @@ static void execute_get(microtcp_sock_t *const _socket, const registry_t *const 
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Filename reception failed.");
-        registry_node_t *registry_node;
-        if ((registry_node = registry_find(_registry, file_name)) == NULL)
+        const registry_node_t *registry_node = registry_find(_registry, file_name);
+        if (registry_node == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "File not found.");
         if ((file_ptr = open_file_for_binary_io(file_name, IO_READ)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
@@ -171,12 +173,16 @@ cleanup_label:
 
 static void execute_del(microtcp_sock_t *const _socket, registry_t *const _registry, miniredis_header_t *const _request_header)
 {
+        DEBUG_SMART_ASSERT(_request_header->command_code == CMND_CODE_DEL,
+                           _request_header->response_status == FAILURE, /* We set it to SUCCESS if we can accomplish request. */
+                           _request_header->response_message_size == 0,
+                           _request_header->file_name_size <= MAX_COMMAND_ARGUMENT_SIZE,
+                           _request_header->file_size == 0);
         char *file_name = NULL;        /* Requires deallocation. */
         char *response_message = NULL; /* Does not require deallocation (stores string literals). */
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Filename reception failed.");
-        registry_node_t *registry_node;
-        if ((registry_node = registry_find(_registry, file_name)) == NULL)
+        if (registry_find(_registry, file_name) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "File not found.");
         if (registry_pop(_registry, file_name) == FAILURE)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Failed deleting file from registry.");
@@ -188,6 +194,74 @@ cleanup_label:
         if (file_name != NULL)
                 FREE_NULLIFY_LOG(file_name);
         send_server_response(_socket, _request_header, response_message);
+}
+
+static size_t registry_serialized_size(const registry_t *const _registry)
+{
+        DEBUG_SMART_ASSERT(_registry != NULL);
+        /* To avoid dereference in for-loop. */
+        const size_t registry_size = _registry->size;
+        const registry_node_t *registry_node_array = _registry->node_array;
+
+        size_t serialized_registry_size = registry_size * sizeof(struct registry_node_serialization_info);
+        for (size_t i = 0; i < registry_size; i++)
+                serialized_registry_size += strlen(registry_node_array->file_name);
+        return serialized_registry_size;
+}
+
+static status_t send_registry_serialized_description(microtcp_sock_t *const _socket, const registry_t *const _registry, uint8_t *const _message_buffer)
+{
+        DEBUG_SMART_ASSERT(_socket != NULL, _registry != NULL, _message_buffer != NULL);
+        const size_t registry_size = _registry->size;
+        const registry_node_t *registry_node_array = _registry->node_array;
+        size_t message_buffer_copied_bytes = 0;
+        for (size_t i = 0; i < registry_size; i++)
+        {
+                const registry_node_t current_node = registry_node_array[i];
+                const struct registry_node_serialization_info rnsi = {
+                    .file_name_size = strlen(current_node.file_name),
+                    .file_size = current_node.file_size,
+                    .time_of_arrival = current_node.time_of_arrival,
+                    .download_counter = current_node.download_counter};
+                const size_t serialized_entry_size = sizeof(rnsi) + rnsi.file_name_size;
+                if (message_buffer_copied_bytes + serialized_entry_size <= MAX_FILE_PART)
+                {
+                        memcpy(_message_buffer + message_buffer_copied_bytes, &rnsi, sizeof(rnsi));
+                        message_buffer_copied_bytes += sizeof(rnsi);
+                        memcpy(_message_buffer + message_buffer_copied_bytes, current_node.file_name, rnsi.file_name_size);
+                        message_buffer_copied_bytes += rnsi.file_name_size;
+                }
+                else
+                {
+                        if (microtcp_send(_socket, _message_buffer, message_buffer_copied_bytes, 0) != (ssize_t)message_buffer_copied_bytes)
+                                return FAILURE;
+                        message_buffer_copied_bytes = 0;
+                }
+        }
+        if (message_buffer_copied_bytes != 0)
+                if (microtcp_send(_socket, _message_buffer, message_buffer_copied_bytes, 0) != (ssize_t)message_buffer_copied_bytes)
+                        return FAILURE;
+        return SUCCESS;
+}
+
+static void execute_list(microtcp_sock_t *const _socket, const registry_t *const _registry, miniredis_header_t *const _request_header)
+{
+        DEBUG_SMART_ASSERT(_request_header->command_code == CMND_CODE_LIST,
+                           _request_header->response_status == FAILURE, /* We set it to SUCCESS if we can accomplish request. */
+                           _request_header->response_message_size == 0,
+                           _request_header->file_name_size == 0,
+                           _request_header->file_size == 0);
+        uint8_t *message_buffer = NULL; /* Requires deallocation. */
+        message_buffer = allocate_message_buffer();
+        _request_header->response_message_size = registry_serialized_size(_registry);
+        _request_header->response_status = SUCCESS;
+        if (send_request_header(_socket, _request_header) == FAILURE)
+                goto cleanup_label;
+        if (send_registry_serialized_description(_socket, _registry, message_buffer) == FAILURE)
+                goto cleanup_label;
+cleanup_label:
+        if (message_buffer != NULL)
+                FREE_NULLIFY_LOG(message_buffer);
 }
 
 static _Atomic _Bool stop_flag = false;
@@ -232,7 +306,7 @@ void *miniredis_connection_handler(void *_registry)
         }
 }
 
-static void signal_handler(int _sig)
+static void signal_handler(__attribute__((unused)) int _sig)
 {
         stop_flag = true;
         printf("\n\n\nFlag for stopping raised\n\n\n");
@@ -287,6 +361,9 @@ static __always_inline void miniredis_request_distributor(microtcp_sock_t *const
                 break;
         case CMND_CODE_DEL:
                 execute_del(_socket, _registry, _request_header);
+                break;
+        case CMND_CODE_LIST:
+                execute_list(_socket, _registry, _request_header);
                 break;
         }
 }

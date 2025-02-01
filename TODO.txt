@@ -178,3 +178,9 @@ huffman encoding and bitpacking.
 
 Add ping notification when a program is run.
 So you know they run your program :D.
+
+35)
+Add all printfs in LOGGING , so printfs become thread-safe
+
+36)
+TODO: increase FILE_PART size  make it equal to MICROTCP RECV_BUFFER SIZE.

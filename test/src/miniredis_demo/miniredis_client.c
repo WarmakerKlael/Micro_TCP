@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include "miniredis_demo/miniredis_commands.h"
 #include "allocator/allocator_macros.h"
 #include "common_source_code.h"
 #include "smart_assert.h"
@@ -26,9 +27,10 @@ static status_t miniredis_client_manager(void);
 static void request_set(microtcp_sock_t *_socket, const char *_file_name);
 static void request_get(microtcp_sock_t *_socket, const char *_file_name);
 static void request_del(microtcp_sock_t *_socket, const char *_file_name);
+static void request_list(microtcp_sock_t *_socket);
 
-    /* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
-    int main(void)
+/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+int main(void)
 {
         display_startup_message(STARTUP_CLIENT_LOGO);
         display_current_path();
@@ -92,6 +94,8 @@ static void interactive_command_handler(microtcp_sock_t *_socket)
                 case CMND_CODE_CACHE:
                         break;
                 case CMND_CODE_LIST:
+                        if (args_parsed == CMND_ARGS_LIST)
+                                request_list(_socket);
                         break;
                 case CMND_CODE_INFO:
                         break;
@@ -156,8 +160,6 @@ static void request_get(microtcp_sock_t *const _socket, const char *const _file_
 
         if ((header_ptr = create_miniredis_header(CMND_CODE_GET, _file_name, NULL)) == NULL)
                 goto cleanup_label;
-        if ((message_buffer = allocate_message_buffer()) == NULL)
-                goto cleanup_label;
         if (send_request_header(_socket, header_ptr) == FAILURE)
                 goto cleanup_label;
         if (send_filename(_socket, _file_name) == FAILURE)
@@ -165,6 +167,8 @@ static void request_get(microtcp_sock_t *const _socket, const char *const _file_
         if (receive_server_response_header(_socket, header_ptr, CMND_CODE_GET, _file_name) == FAILURE)
                 goto cleanup_label;
         if ((file_ptr = open_file_for_binary_io(STAGING_FILE_NAME, IO_WRITE)) == NULL)
+                goto cleanup_label;
+        if ((message_buffer = allocate_message_buffer()) == NULL)
                 goto cleanup_label;
         if (receive_file(_socket, message_buffer, file_ptr, header_ptr->file_size, _file_name) == FAILURE)
                 goto cleanup_label;
@@ -193,6 +197,56 @@ cleanup_label:
                 FREE_NULLIFY_LOG(header_ptr);
 }
 
+static __always_inline status_t display_response_message(microtcp_sock_t *const _socket, uint8_t *const _message_buffer, const size_t _response_message_size)
+{
+        size_t unprocessed_received_bytes = 0;
+        size_t displayed_bytes_count = 0;
+        size_t message_buffer_processed_bytes = 0;
+        while (displayed_bytes_count != _response_message_size)
+        {
+                if (unprocessed_received_bytes > sizeof(struct registry_node_serialization_info))
+                {
+                        struct registry_node_serialization_info rnsi;
+                        memcpy(&rnsi, _message_buffer + message_buffer_processed_bytes, sizeof(rnsi));
+                        if (unprocessed_received_bytes - sizeof(rnsi) >= rnsi.file_name_size)
+                        {
+                                printf("File: %.*s\n", rnsi.file_name_size, _message_buffer + message_buffer_processed_bytes);
+                                const size_t entry_processed_bytes = sizeof(rnsi) + rnsi.file_name_size;
+                                message_buffer_processed_bytes += entry_processed_bytes;
+                                unprocessed_received_bytes -= entry_processed_bytes;
+                                displayed_bytes_count += entry_processed_bytes;
+                        }
+                }
+                const ssize_t received_bytes = microtcp_recv_timed(_socket, _message_buffer + unprocessed_received_bytes,
+                                                                   MAX_FILE_PART - unprocessed_received_bytes, MAX_RESPONSE_IDLE_TIME);
+                if (received_bytes == MICROTCP_RECV_FAILURE)
+                        LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part.");
+                DEBUG_SMART_ASSERT(received_bytes < ((unsigned int)-1) >> 1);
+        }
+        return SUCCESS;
+}
+
+static void request_list(microtcp_sock_t *const _socket)
+{
+        uint8_t *message_buffer = NULL;        /* Requires deallocation */
+        miniredis_header_t *header_ptr = NULL; /* Requires deallocation. */
+        if ((header_ptr = create_miniredis_header(CMND_CODE_LIST, NULL, NULL)) == NULL)
+                goto cleanup_label;
+        if (send_request_header(_socket, header_ptr) == FAILURE)
+                goto cleanup_label;
+        if (receive_server_response_header(_socket, header_ptr, CMND_CODE_LIST, NULL) == FAILURE)
+                goto cleanup_label;
+        if ((message_buffer = allocate_message_buffer()) == NULL)
+                goto cleanup_label;
+        if (display_response_message(_socket, message_buffer, header_ptr->response_message_size) == FAILURE)
+                goto cleanup_label;
+cleanup_label:
+        if (message_buffer != NULL)
+                FREE_NULLIFY_LOG(message_buffer);
+        if (header_ptr != NULL)
+                FREE_NULLIFY_LOG(message_buffer);
+}
+
 static __always_inline miniredis_header_t *create_miniredis_header(const enum miniredis_command_codes _command_code,
                                                                    const char *const _file_name, const char *const _message)
 {
@@ -202,6 +256,8 @@ static __always_inline miniredis_header_t *create_miniredis_header(const enum mi
         header_ptr->command_code = _command_code;
         header_ptr->response_status = FAILURE;
         header_ptr->response_message_size = 0;
+        header_ptr->file_name_size = 0;
+        header_ptr->file_size = 0;
 
         struct stat file_stats = {0};
         switch (_command_code)
@@ -216,12 +272,13 @@ static __always_inline miniredis_header_t *create_miniredis_header(const enum mi
         case CMND_CODE_GET:
                 DEBUG_SMART_ASSERT(_file_name != NULL, _message == NULL);
                 header_ptr->file_name_size = strlen(_file_name);
-                header_ptr->file_size = 0;
                 break;
         case CMND_CODE_DEL:
                 DEBUG_SMART_ASSERT(_file_name != NULL, _message == NULL);
                 header_ptr->file_name_size = strlen(_file_name);
-                header_ptr->file_size = 0;
+                break;
+        case CMND_CODE_LIST:
+                DEBUG_SMART_ASSERT(_file_name == NULL, _message == NULL);
                 break;
         }
 
@@ -247,10 +304,19 @@ static __always_inline status_t receive_server_response_header(microtcp_sock_t *
                 char *response_message = MALLOC_LOG(response_message, required_response_message_space);
                 if (response_message == NULL)
                         LOG_APP_ERROR_RETURN(FAILURE, "Failed to allocate %zu bytes for storing server's response message.", required_response_message_space);
-                if (microtcp_recv_timed(_socket, response_message, _header_ptr->response_message_size, MAX_RESPONSE_IDLE_TIME) != _header_ptr->response_message_size)
+                if (microtcp_recv_timed(_socket, response_message, _header_ptr->response_message_size, MAX_RESPONSE_IDLE_TIME) != (ssize_t)_header_ptr->response_message_size)
                         LOG_APP_ERROR_RETURN(FAILURE, "Failed to receiving response message from server.");
-                LOG_APP_ERROR_RETURN(FAILURE, "Server failed to complete request: `%s %s`. Server's failure reason: %s",
-                                     get_command_name(_expected_command_code), _file_name, response_message);
+                if (_file_name == NULL)
+                        LOG_APP_ERROR_RETURN(FAILURE, "Server failed to complete request: `%s`. Server's failure reason: %s",
+                                             get_command_name(_expected_command_code), response_message);
+                else
+                        LOG_APP_ERROR_RETURN(FAILURE, "Server failed to complete request: `%s %s`. Server's failure reason: %s",
+                                             get_command_name(_expected_command_code),
+                                             _file_name != NULL ? " " : "",
+                                             _file_name != NULL ? _file_name : "");
         }
-        LOG_APP_INFO_RETURN(SUCCESS, "Server completed request: `%s %s`.", get_command_name(_expected_command_code), _file_name);
+        LOG_APP_INFO_RETURN(SUCCESS, "Server completed request: `%s%s%s`.",
+                            get_command_name(_expected_command_code),
+                            _file_name != NULL ? " " : "",
+                            _file_name != NULL ? _file_name : "");
 }

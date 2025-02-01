@@ -9,7 +9,7 @@
 #include "miniredis_demo/miniredis_commands.h"
 
 /* TODO: SET to UINT16_MAX not 2 */
-#define MAX_FILE_PART (2 * MICROTCP_MSS)
+#define MAX_FILE_PART (2 * MICROTCP_MSS) /* TODO : make it equal to MicroTCP recvbuf_LEN*/
 
 #define MAX_COMMAND_SIZE 20
 #define MAX_COMMAND_ARGUMENT_SIZE 400
@@ -17,7 +17,7 @@
 
 #define REGISTRY_INITIAL_ENTRIES_CAPACITY (100)
 #define REGISTRY_CACHE_SIZE_LIMIT (500000)
-#define MAX_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 300, .tv_usec = 0}) /* TODO... reset to 10 seconds, also make it configurable. */
+#define MAX_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 10, .tv_usec = 0}) /* TODO... reset to 10 seconds, also make it configurable. */
 
 #define STAGING_FILE_NAME ".__filepart__.dat" /* Hiddden, internal filename until stored in `_registry`. */
 

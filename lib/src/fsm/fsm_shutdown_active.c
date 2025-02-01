@@ -33,7 +33,7 @@ typedef enum
 typedef enum
 {
         NO_ERROR,
-        PEER_ACK_TIMEOUT, /* Sent FIN to peer, ack never received. */
+        PEER_FINACK_RETRIES_EXHAUSTED, /* Sent FIN to peer, ack never received. */
         PEER_FIN_TIMEOUT, /* Peer sent ACK, never sent FIN. */
         DOUBLE_FIN,
         RST_EXPECTED_ACK,          /* RST after host sent FIN|ACK and expected peer's ACK. */
@@ -87,7 +87,7 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
         {                                                                                                          \
                 if ((_context)->finack_retries_counter == 0) /* Exhausted attempts to resend FIN|ACK. */           \
                 {                                                                                                  \
-                        (_context)->errno = PEER_ACK_TIMEOUT;                                                      \
+                        (_context)->errno = PEER_FINACK_RETRIES_EXHAUSTED;                                                      \
                         return EXIT_FAILURE_SUBSTATE;                                                              \
                 }                                                                                                  \
                 (_context)->finack_retries_counter--; /* Decrement retry counter and attempt to resend FIN|ACK. */ \
@@ -121,12 +121,12 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
         }
 }
 
-#define IS_VALID_CNTRL_TYPE(_cntrl_type)                                                                             \
-         ((sizeof(#_cntrl_type) == sizeof("ack") &&                                                                  \
-           #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') || \
-          (sizeof(#_cntrl_type) == sizeof("finack") &&                                                               \
-           #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' &&   \
-           #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'))
+#define IS_VALID_CNTRL_TYPE(_cntrl_type)                                                                            \
+        ((sizeof(#_cntrl_type) == sizeof("ack") &&                                                                  \
+          #_cntrl_type[0] == 'a' && #_cntrl_type[1] == 'c' && #_cntrl_type[2] == 'k' && #_cntrl_type[3] == '\0') || \
+         (sizeof(#_cntrl_type) == sizeof("finack") &&                                                               \
+          #_cntrl_type[0] == 'f' && #_cntrl_type[1] == 'i' && #_cntrl_type[2] == 'n' && #_cntrl_type[3] == 'a' &&   \
+          #_cntrl_type[4] == 'c' && #_cntrl_type[5] == 'k' && #_cntrl_type[6] == '\0'))
 
 /**
  * @brief Purpose of macro is to remove boiler-plate code from
@@ -365,8 +365,8 @@ static void log_errno_status(shutdown_active_fsm_errno_t _errno)
         case NO_ERROR:
                 LOG_INFO("shutdown_active() FSM: closed connection gracefully.");
                 break;
-        case PEER_ACK_TIMEOUT:
-                LOG_ERROR("shutdown_active() FSM: timed out waiting for `ACK` from peer.");
+        case PEER_FINACK_RETRIES_EXHAUSTED:
+                LOG_ERROR("shutdown_active() FSM: peer's `FIN|ACK` retries exhausted.");
                 break;
         case PEER_FIN_TIMEOUT:
                 LOG_WARNING("shutdown_active() FSM: timed out waiting for `FIN` from peer.");

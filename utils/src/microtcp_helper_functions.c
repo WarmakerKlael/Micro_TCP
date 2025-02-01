@@ -134,7 +134,6 @@ void normalize_timeval(struct timeval *_tv)
         _tv->tv_usec %= USEC_PER_SEC;
 }
 
-
 /* Helper function: Safely subtract _minuend from _subtrahend and store the result in t1 */
 void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend)
 {
@@ -193,3 +192,13 @@ struct timeval get_current_timeval(void)
         gettimeofday(&tv, NULL);
         return tv;
 }
+
+#define COUNT_DIGITS_GENERIC_IMPL(_number) ({                                                             \
+        typeof(_number) number = (_number); /* Stroing it onto an actual variable.  So division won't affect `_number`. */ \
+        size_t digit_counter = 1;                                                                                       \
+        if (number < 0)                                                                                                 \
+                digit_counter++;                                                                                        \
+        while (number /= 10)                                                                                            \
+                digit_counter++;                                                                                        \
+        digit_counter;                                                                                                  \
+})
