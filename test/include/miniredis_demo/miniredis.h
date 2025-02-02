@@ -8,14 +8,13 @@
 #include "microtcp_helper_macros.h"
 #include "miniredis_demo/miniredis_commands.h"
 
-/* TODO: SET to UINT16_MAX not 2 */
 #define MAX_COMMAND_SIZE 20
 #define MAX_COMMAND_ARGUMENT_SIZE 400
 #define MAX_REQUEST_SIZE (MAX_COMMAND_SIZE + (2 * MAX_COMMAND_ARGUMENT_SIZE))
 
 #define REGISTRY_INITIAL_ENTRIES_CAPACITY (100)
 #define REGISTRY_CACHE_SIZE_LIMIT (500000)
-#define MAX_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 10, .tv_usec = 0}) /* TODO... reset to 10 seconds, also make it configurable. */
+#define MAX_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 10, .tv_usec = 0})
 
 #define STAGING_FILE_NAME ".__filepart__.dat" /* Hiddden, internal filename until stored in `_registry`. */
 
@@ -25,27 +24,21 @@ static const char sscanf_command_format[] = "%" STRINGIFY_EXPANDED(MAX_COMMAND_S
                                             "%" STRINGIFY_EXPANDED(MAX_COMMAND_ARGUMENT_SIZE) "s";
 // clang-format on
 static const char available_commands_text[] =
-    "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-    "┃      Available commands                  ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->QUIT                                    ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->HELP                                    ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->GET <filename>            <saving-path> ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->SET <filename> <path-to-file>           ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->DEL <filename>                          ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->CACHE <filename>                        ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->LIST                                    ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->INFO <filename>                         ┃\n"
-    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->SIZE <filename>                         ┃\n"
-    "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n";
+    "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
+    "┃      Available commands            ┃\n"
+    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
+    "┃->QUIT                              ┃\n"
+    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
+    "┃->HELP                              ┃\n"
+    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
+    "┃->GET <filename>  <saving-path>     ┃\n"
+    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
+    "┃->SET <filename>  <path-to-file>    ┃\n"
+    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
+    "┃->DEL <filename>                    ┃\n"
+    "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
+    "┃->LIST                              ┃\n"
+    "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n";
 
 static inline void display_help(void)
 {

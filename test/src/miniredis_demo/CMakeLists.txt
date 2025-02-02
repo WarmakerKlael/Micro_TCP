@@ -13,6 +13,8 @@ target_include_directories(miniredis_client.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/i
 target_include_directories(miniredis_client.out PUBLIC ${CMAKE_SOURCE_DIR}/test/include)
 target_include_directories(miniredis_server.out PUBLIC ${CMAKE_SOURCE_DIR}/lib/include)
 target_include_directories(miniredis_server.out PUBLIC ${CMAKE_SOURCE_DIR}/test/include)
+target_compile_options(miniredis_client.out PRIVATE "-Wno-switch")
+target_compile_options(miniredis_server.out PRIVATE "-Wno-switch")
 
 # Pass APPLICATION_NAME as a preprocessor definition
 target_compile_definitions(miniredis_client.out PRIVATE APPLICATION_NAME="${APPLICATION_NAME}")

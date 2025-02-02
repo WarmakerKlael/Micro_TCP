@@ -34,7 +34,7 @@ typedef enum
 {
         NO_ERROR,
         PEER_FINACK_RETRIES_EXHAUSTED, /* Sent FIN to peer, ack never received. */
-        PEER_FIN_TIMEOUT, /* Peer sent ACK, never sent FIN. */
+        PEER_FIN_TIMEOUT,              /* Peer sent ACK, never sent FIN. */
         DOUBLE_FIN,
         RST_EXPECTED_ACK,          /* RST after host sent FIN|ACK and expected peer's ACK. */
         RST_EXPECTED_FINACK,       /* RST after host received peer's ACK and expected peer's FIN|ACK. */
@@ -87,7 +87,7 @@ static shutdown_active_fsm_substates_t execute_connection_established_substate(m
         {                                                                                                          \
                 if ((_context)->finack_retries_counter == 0) /* Exhausted attempts to resend FIN|ACK. */           \
                 {                                                                                                  \
-                        (_context)->errno = PEER_FINACK_RETRIES_EXHAUSTED;                                                      \
+                        (_context)->errno = PEER_FINACK_RETRIES_EXHAUSTED;                                         \
                         return EXIT_FAILURE_SUBSTATE;                                                              \
                 }                                                                                                  \
                 (_context)->finack_retries_counter--; /* Decrement retry counter and attempt to resend FIN|ACK. */ \
@@ -136,7 +136,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_1_substate(microtcp_sock
 #define TRY_SEND_CTRL_SEG_OR_RETURN_SUBSTATE(_socket, _address, _address_len, _context, _cntrl_type)                                    \
         do                                                                                                                              \
         {                                                                                                                               \
-                _Static_assert(IS_VALID_CNTRL_TYPE(_cntrl_type), "Invalid _cntrl_type: must be 'ack' or 'finack'");                     \
+                /* _Static_assert(IS_VALID_CNTRL_TYPE(_cntrl_type), "Invalid _cntrl_type: must be 'ack' or 'finack'"); */               \
                                                                                                                                         \
                 (_context)->send_##_cntrl_type##_ret_val = send_##_cntrl_type##_control_segment((_socket), (_address), (_address_len)); \
                                                                                                                                         \

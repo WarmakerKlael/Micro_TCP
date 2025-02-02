@@ -93,15 +93,9 @@ static void interactive_command_handler(microtcp_sock_t *_socket)
                         if (args_parsed == CMND_ARGS_DEL)
                                 request_del(_socket, argument_buffer1);
                         break;
-                case CMND_CODE_CACHE:
-                        break;
                 case CMND_CODE_LIST:
                         if (args_parsed == CMND_ARGS_LIST)
                                 request_list(_socket);
-                        break;
-                case CMND_CODE_INFO:
-                        break;
-                case CMND_CODE_SIZE:
                         break;
                 default:
                         break;

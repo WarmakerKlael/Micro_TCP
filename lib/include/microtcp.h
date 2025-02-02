@@ -42,11 +42,17 @@ typedef struct
  * Several useful constants
  */
 #define MICROTCP_ACK_TIMEOUT_US 200000
-#define MICROTCP_MSS 1400
+
+#ifndef UNORTHODOX_MODE
+#define MICROTCP_MSS 1400ULL
+#else /* ifdef UNORTHODOX_MODE */
+#define MICROTCP_MSS 9000ULL /* Basically we prefer NIC fragmentation, compared to doing more sendto() systems calls (improves performance). */
+#endif /* UNORTHODOX_MODE */
+
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
 
 #ifdef UNORTHODOX_MODE
-#define MICROTCP_RECVBUF_LEN (1 << 24) /* TODO correct to: 32 MBytes (offers higher throughput) */
+#define MICROTCP_RECVBUF_LEN (1 << 16) /* TODO correct to: 32 MBytes (offers higher throughput) */
 #else
 #define MICROTCP_RECVBUF_LEN 8192 /* 8 KBytes. */
 #endif /* UNORTHODOX_MODE */

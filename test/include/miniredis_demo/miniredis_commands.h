@@ -25,21 +25,9 @@ enum miniredis_command_codes
 #define CMND_NAME_DEL "DEL"
 #define CMND_ARGS_DEL 2
 
-        CMND_CODE_CACHE,
-#define CMND_NAME_CACHE "CACHE"
-#define CMND_ARGS_CACHE 2
-
         CMND_CODE_LIST,
 #define CMND_NAME_LIST "LIST"
 #define CMND_ARGS_LIST 1
-
-        CMND_CODE_INFO,
-#define CMND_NAME_INFO "INFO"
-#define CMND_ARGS_INFO 2
-
-        CMND_CODE_SIZE,
-#define CMND_NAME_SIZE "SIZE"
-#define CMND_ARGS_SIZE 2
 
         CMND_CODE_INVALID,
 #define CMND_NAME_INVALID "INVALID"

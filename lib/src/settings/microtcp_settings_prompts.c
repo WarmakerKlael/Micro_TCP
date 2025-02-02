@@ -42,7 +42,7 @@ void prompt_set_microtcp_ack_timeout(void)
 
 void prompt_set_microtcp_stall_time_limit(void)
 {
-        const char *prompt = "Specify MicroTCP's stall time limit, (default: " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_SEC) " seconds " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_ACK_TIMEOUT_USEC) " microseconds): ";
+        const char *prompt = "Specify MicroTCP's stall time limit, (default: " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_STALL_TIME_LIMIT_SEC) " seconds " STRINGIFY_EXPANDED(DEFAULT_MICROTCP_STALL_TIME_LIMIT_USEC) " microseconds): ";
         struct timeval stall_time_limit = {0};
         do
         {

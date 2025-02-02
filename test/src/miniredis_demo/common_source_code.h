@@ -78,10 +78,10 @@ static inline void prompt_to_configure_microtcp(void)
 {
         const char *const prompt = "Would you like to configure MicroTCP [y/N]? ";
         char *prompt_answer_buffer = NULL;
-        const char default_answer = 'N';
+#define DEFAULT_ANSWER 'N'
         while (true)
         {
-                PROMPT_WITH_YES_NO(prompt, default_answer, prompt_answer_buffer);
+                PROMPT_WITH_YES_NO(prompt, DEFAULT_ANSWER, prompt_answer_buffer);
                 to_lowercase(prompt_answer_buffer);
                 if (strcmp(prompt_answer_buffer, "yes") == 0 || strcmp(prompt_answer_buffer, "y") == 0)
                 {
