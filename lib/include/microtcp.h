@@ -16,6 +16,7 @@ typedef struct send_queue send_queue_t;
  * microTCP header structure
  * NOTE: DO NOT CHANGE!
  */
+#define UNORTHODOX_MODE 1
 // clang-format off
 typedef struct
 {
