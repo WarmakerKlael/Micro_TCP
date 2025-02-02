@@ -16,7 +16,6 @@ typedef struct send_queue send_queue_t;
  * microTCP header structure
  * NOTE: DO NOT CHANGE!
  */
-#define UNORTHODOX_MODE 1
 // clang-format off
 typedef struct
 {
@@ -38,7 +37,6 @@ typedef struct
         uint32_t checksum; /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
 #define MICROTCP_HEADER_SIZE (sizeof(microtcp_header_t))
-
 /*
  * Several useful constants
  */
