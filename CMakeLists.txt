@@ -79,9 +79,13 @@ option(VERBOSE_MODE "Enables and informational logging." OFF)
 option(OPTIMIZED_MODE "Enables unorthodox optimizations." OFF)
 
 if(ENABLE_IWYU)
-        # Set the IWYU command to be used for analyzing include directives
-        set(CMAKE_C_INCLUDE_WHAT_YOU_USE include-what-you-use --no-fwd-decls)
-        message(STATUS "CMAKE: Include-What-You-Use enabled.")
+        find_program(IWYU_PATH include-what-you-use)
+        if(IWYU_PATH)
+                set(CMAKE_C_INCLUDE_WHAT_YOU_USE include-what-you-use --no-fwd-decls)
+                message(STATUS "CMAKE: include-what-you-use enabled.")
+        else()
+                message(SEND_ERROR "CMAKE: include-what-you-use not found on system.")
+        endif()
 else()
         message(STATUS "CMAKE: Include-What-You-Use disabled.")
 endif()
@@ -106,8 +110,6 @@ endif()
 add_subdirectory(lib)
 add_subdirectory(utils)
 add_subdirectory(test)
-
-
 
 
 # Add the mapping file
