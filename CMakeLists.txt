@@ -93,6 +93,8 @@ endif()
 if(DEBUG_MODE)
         add_compile_definitions(DEBUG_MODE)
         add_compile_options(-g)
+        add_compile_options(-fsanitize=address)
+        add_link_options(-fsanitize=address)
         message(STATUS "CMAKE: DEBUG_MODE enabled.")
 endif()
 
