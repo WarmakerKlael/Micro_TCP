@@ -106,7 +106,7 @@ static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uin
         {
                 const size_t file_part_size = MIN(_file_size - written_bytes_count, max_file_part_size);
                 if (receive_and_write_file_part(_socket, _file_ptr, _file_name, _message_buffer, file_part_size) == FAILURE)
-                        return FAILURE;
+                        LOG_ERROR_RETURN(FAILURE, "In function `%s()`, function `%s()` returned FAILURE.", __func__, STRINGIFY(receive_and_write_file_part));
                 written_bytes_count += file_part_size;
                 const struct data_size received_data_size = get_formatted_byte_count(written_bytes_count);
                 LOG_APP_INFO("File: %s, (%.2lf%s/%.2lf%s received)", _file_name,
@@ -119,11 +119,18 @@ static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uin
 static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *const _socket, FILE *const _file_ptr, const char *const _file_name,
                                                             uint8_t *const _file_buffer, const size_t _file_part_size)
 {
+        DEBUG_SMART_ASSERT(_socket != NULL, _file_ptr != NULL, _file_name != NULL, _file_buffer != NULL, _file_part_size < SSIZE_MAX);
         const ssize_t received_bytes = microtcp_recv_timed(_socket, _file_buffer, _file_part_size, MAX_RESPONSE_IDLE_TIME);
         if (received_bytes == MICROTCP_RECV_FAILURE)
-                LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving file-part.");
-        if (fwrite(_file_buffer, 1, received_bytes, _file_ptr) == 0)
-                LOG_APP_ERROR_RETURN(FAILURE, "File: %s failed writing file-part, errno(%d): %s.", _file_name, errno, strerror(errno));
+                LOG_APP_ERROR_RETURN(FAILURE, "Internal failure occurs on %s().", __func__);
+        DEBUG_SMART_ASSERT(received_bytes >= 0, received_bytes < SSIZE_MAX);
+        if (received_bytes != (ssize_t)_file_part_size)
+                LOG_APP_ERROR_RETURN(FAILURE, "Response from `%s()` stalled; %zd/%zu bytes of file-part received.",
+                                     STRINGIFY(microtcp_recv_timed), received_bytes, _file_part_size);
+        DEBUG_SMART_ASSERT(received_bytes > 0);
+        if (fwrite(_file_buffer, 1, received_bytes, _file_ptr) < (size_t)received_bytes)
+                LOG_APP_ERROR_RETURN(FAILURE, "File: %s failed writing file-part, %s = %zd, errno(%d): %s.",
+                                     _file_name, STRINGIFY(received_bytes), received_bytes, errno, strerror(errno));
         if (fflush(_file_ptr) != 0)
                 LOG_APP_ERROR_RETURN(FAILURE, "Failed to flush file-part to disk, errno(%d): %s.", errno, strerror(errno));
         return SUCCESS;
@@ -190,7 +197,7 @@ static __always_inline status_t send_filename(microtcp_sock_t *const _socket, co
 {
         DEBUG_SMART_ASSERT(_socket != NULL, _file_name != NULL);
         const size_t file_name_length = strlen(_file_name);
-        DEBUG_SMART_ASSERT(file_name_length < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(file_name_length < SSIZE_MAX);
         ssize_t send_ret_val = microtcp_send(_socket, _file_name, file_name_length, 0);
         return send_ret_val == (ssize_t)file_name_length ? SUCCESS : FAILURE;
 }
@@ -209,7 +216,7 @@ static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_
         const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
         while ((file_bytes_read = fread(_message_buffer, 1, max_file_part_size, _file_ptr)) > 0)
         {
-                DEBUG_SMART_ASSERT(file_bytes_read < ((size_t)-1) >> 1);
+                DEBUG_SMART_ASSERT(file_bytes_read < SSIZE_MAX);
                 if (microtcp_send(_socket, _message_buffer, file_bytes_read, 0) != (ssize_t)file_bytes_read)
                         LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-parts, aborting.");
                 file_bytes_sent_count += file_bytes_read;

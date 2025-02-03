@@ -1,6 +1,14 @@
 #ifndef LIB_MICROTCP_H_
 #define LIB_MICROTCP_H_
 
+#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
+#error C11 or newer required!
+#endif /* __STDC_VERSION__ */
+
+#if !defined(__GNUC__)
+#error GNU extensions required!
+#endif /* __GNUC__ */
+
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/socket.h>
@@ -16,54 +24,58 @@ typedef struct send_queue send_queue_t;
  * microTCP header structure
  * NOTE: DO NOT CHANGE!
  */
-// clang-format off
+#ifdef OPTIMIZED_MODE
 typedef struct
 {
         uint32_t seq_number; /**< Sequence number */
         uint32_t ack_number; /**< ACK number */
         uint16_t control;    /**< Control bits (e.g. SYN, ACK, FIN) */
-#ifdef UNORTHODOX_MODE
-        uint32_t window; /**< Window size in bytes (offers higher throughput) */
-#else
-        uint16_t window; /**< Window size in bytes */
-#endif /* UNORTHODOX_MODE */
-        uint32_t data_len; /**< Payload length in bytes */
-#ifndef UNORTHODOX_MODE
+        uint32_t window;     /**< Window size in bytes (offers higher throughput) */
+        uint32_t data_len;   /**< Payload length in bytes */
+        uint32_t checksum;   /**< CRC-32 checksum, see crc32() in utils folder */
+} microtcp_header_t;
+#else  /* #ifndef OPTIMIZED_MODE */
+typedef struct
+{
+        uint32_t seq_number;  /**< Sequence number */
+        uint32_t ack_number;  /**< ACK number */
+        uint16_t control;     /**< Control bits (e.g. SYN, ACK, FIN) */
+        uint16_t window;      /**< Window size in bytes */
+        uint32_t data_len;    /**< Payload length in bytes */
         uint32_t future_use0; /**< 32-bits for future use */
         uint32_t future_use1; /**< 32-bits for future use */
         uint32_t future_use2; /**< 32-bits for future use */
-#endif /* UNORTHODOX_MODE */
-
-        uint32_t checksum; /**< CRC-32 checksum, see crc32() in utils folder */
+        uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
+#endif /* OPTIMIZED_MODE */
 #define MICROTCP_HEADER_SIZE (sizeof(microtcp_header_t))
+
+#define FIELD_OF_TYPE_EXISTS(_type, _field) sizeof(((_type *)NULL)->_field)
+_Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, seq_number), "Type `microtcp_header_t` is missing field: `seq_number`.");
+_Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, ack_number), "Type `microtcp_header_t` is missing field: `ack_number`.");
+_Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, control), "Type `microtcp_header_t` is missing field: `control`.");
+_Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, window), "Type `microtcp_header_t` is missing field: `window`.");
+_Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, data_len), "Type `microtcp_header_t` is missing field: `data_len`.");
+_Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, checksum), "Type `microtcp_header_t` is missing field: `checksum`.");
+
 /*
  * Several useful constants
  */
 #define MICROTCP_ACK_TIMEOUT_US 200000
-
 #define MICROTCP_MSS 1400ULL
-
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
-
-#ifdef UNORTHODOX_MODE
+#ifdef OPTIMIZED_MODE
 #define MICROTCP_RECVBUF_LEN (1 << 16) /* TODO correct to: 32 MBytes (offers higher throughput) */
 #else
 #define MICROTCP_RECVBUF_LEN 8192 /* 8 KBytes. */
-#endif /* UNORTHODOX_MODE */
-
+#endif                            /* OPTIMIZED_MODE */
 #define MICROTCP_WIN_SIZE MICROTCP_RECVBUF_LEN
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
-
 _Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_LEN) " must be a power of 2 number");
-// clang-format on
 
 /**
- * Possible states of the microTCP socket
- *
- * NOTE: You can insert any other possible state
- * for your own convenience
+ * Possible states of the microTCP socket:
  */
 typedef enum
 {

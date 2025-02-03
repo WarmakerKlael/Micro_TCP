@@ -1,5 +1,6 @@
 #include <errno.h>
 #include "microtcp.h"
+#include <limits.h>
 #include <unistd.h>
 #include "core/misc.h"
 #include "core/segment_processing.h"
@@ -246,13 +247,13 @@ static inline send_fsm_substates_t execute_retransmissions_substate(microtcp_soc
 
 static __always_inline ssize_t execute_exit_success_substate(const size_t _bytes_sent)
 {
-        DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_bytes_sent < SSIZE_MAX);
         return (ssize_t)_bytes_sent;
 }
 
 static __always_inline ssize_t execute_exit_failure_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
 {
-        DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_bytes_sent < SSIZE_MAX);
         LOG_ERROR("EXIT FAILURE in microtcp_send_fsm()");
         _socket->state = INVALID;
         return (ssize_t)(_bytes_sent > 0 ? _bytes_sent : MICROTCP_SEND_FAILURE);
@@ -260,7 +261,7 @@ static __always_inline ssize_t execute_exit_failure_substate(microtcp_sock_t *co
 
 static __always_inline ssize_t execute_finack_reception_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
 {
-        DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_bytes_sent < SSIZE_MAX);
         _socket->ack_number += FIN_SEQ_NUMBER_INCREMENT;
         _socket->state = CLOSING_BY_PEER;
         LOG_ERROR("%s reception during microtcp_send_fsm(): microtcp socket in %s state",
@@ -270,7 +271,7 @@ static __always_inline ssize_t execute_finack_reception_substate(microtcp_sock_t
 
 static __always_inline ssize_t execute_rst_reception_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
 {
-        DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_bytes_sent < SSIZE_MAX);
         _socket->state = RESET;
         LOG_ERROR("%s reception during microtcp_send_fsm(): microtcp socket in %s state",
                   get_microtcp_control_to_string(RST_BIT), get_microtcp_state_to_string(_socket->state));
@@ -311,7 +312,7 @@ static __always_inline send_fsm_substates_t execute_peer_window_zero_substate(mi
 
 static __always_inline ssize_t execute_exit_stalled_substate(microtcp_sock_t *const _socket, const size_t _bytes_sent)
 {
-        DEBUG_SMART_ASSERT(_bytes_sent < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_bytes_sent < SSIZE_MAX);
         sq_flush(_socket->send_queue);
         LOG_ERROR_RETURN((ssize_t)_bytes_sent, "Send FSM stalled, couldn't receive valid ACKs, socket's->send_queue flushed.");
         return (ssize_t)_bytes_sent;

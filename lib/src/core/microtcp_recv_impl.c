@@ -11,6 +11,7 @@
 #include "core/segment_processing.h"
 #include "core/segment_io.h"
 #include <threads.h>
+#include <limits.h>
 #include "microtcp_helper_functions.h"
 #include "settings/microtcp_settings.h"
 
@@ -23,7 +24,7 @@ static __always_inline ssize_t handle_finack_reception(microtcp_sock_t *const _s
                 return MICROTCP_RECV_FAILURE;
         }
         _socket->data_reception_with_finack = true;
-        DEBUG_SMART_ASSERT(_bytes_received < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_bytes_received < SSIZE_MAX);
         return (ssize_t)_bytes_received;
 }
 
@@ -98,6 +99,7 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
 
         const time_t microtcp_recv_timeout_usec = timeval_to_us(get_microtcp_ack_timeout());
         const time_t max_idle_time_usec = timeval_to_us(_max_idle_time);
+        DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL);
         DEBUG_SMART_ASSERT(_length > 0, max_idle_time_usec > 0);
 
         if (max_idle_time_usec < microtcp_recv_timeout_usec)
@@ -117,7 +119,8 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
                 {
                         current_idle_time_usec += microtcp_recv_timeout_usec;
                         if (current_idle_time_usec >= max_idle_time_usec) /* Max time reached (or exceeded). */
-                                return bytes_received;
+                                LOG_WARNING_RETURN(bytes_received, "%s() `_max_idle_time` timer exhausted; `bytes_received = %zd`",
+                                                   __func__, bytes_received);
                         continue;
                 }
                 DEBUG_SMART_ASSERT(recv_ret_val > 0);

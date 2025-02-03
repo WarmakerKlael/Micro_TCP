@@ -23,11 +23,11 @@ microtcp_segment_t *construct_microtcp_segment(microtcp_sock_t *_socket, uint32_
         new_segment->header.control = _control;
         new_segment->header.window = _socket->curr_win_size; /* As sender we advertise our receive window, so opposite host wont overflow us .*/
         new_segment->header.data_len = _payload.size;
-#ifndef UNORTHODOX_MODE
+#ifndef OPTIMIZED_MODE
         new_segment->header.future_use0 = 0;
         new_segment->header.future_use1 = 0;
         new_segment->header.future_use2 = 0;
-#endif /* UNORTHODOX_MODE */
+#endif /* OPTIMIZED_MODE */
 
         new_segment->header.checksum = 0; /* CRC32 checksum is calculated after linearizing this packet. */
 

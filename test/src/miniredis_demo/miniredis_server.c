@@ -42,6 +42,8 @@ static status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, st
 static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
 static status_t miniredis_server_manager(registry_t *_registry);
 static void miniredis_request_handler(microtcp_sock_t *_socket, registry_t *_registry);
+static void create_registry_directory(void);
+static void move_into_registry_directory(void);
 
 /* Command functions: */
 static void execute_set(microtcp_sock_t *_socket, registry_t *_registry, miniredis_header_t *_request_header);
@@ -55,6 +57,8 @@ int main(void)
         display_startup_message(STARTUP_SERVER_LOGO);
         display_current_path();
         prompt_to_configure_microtcp();
+        create_registry_directory();
+        move_into_registry_directory();
         registry_t *mr_registry = registry_create(REGISTRY_INITIAL_ENTRIES_CAPACITY, REGISTRY_CACHE_SIZE_LIMIT);
         if (mr_registry == NULL)
                 LOG_APP_ERROR_RETURN(EXIT_FAILURE, "Registry creation failed, miniredis_server EXIT_FAILURE.");
@@ -87,7 +91,7 @@ static status_t miniredis_terminate_connection(microtcp_sock_t *const _utcp_sock
 static __always_inline status_t send_server_response(microtcp_sock_t *const _socket, miniredis_header_t *const _response_header, const char *const _response_message)
 {
         const size_t response_message_size = (_response_message == NULL) ? 0 : strlen(_response_message);
-        DEBUG_SMART_ASSERT(response_message_size < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(response_message_size < SSIZE_MAX);
         _response_header->response_message_size = response_message_size;
         if (microtcp_send(_socket, _response_header, sizeof(*_response_header), 0) != sizeof(*_response_header))
                 LOG_APP_ERROR_RETURN(FAILURE, "Server failed sending `_response_header`, sending response failed.");
@@ -333,7 +337,7 @@ static status_t miniredis_server_manager(registry_t *const _registry)
 /* INLINE HELPERS: */
 static __always_inline char *receive_file_name(microtcp_sock_t *const _socket, const size_t _file_name_size)
 {
-        DEBUG_SMART_ASSERT(_file_name_size < ((size_t)-1) >> 1);
+        DEBUG_SMART_ASSERT(_file_name_size < SSIZE_MAX);
         char *file_name = MALLOC_LOG(file_name, _file_name_size + 1);
         if (file_name == NULL)
                 return NULL;
@@ -368,4 +372,25 @@ static __always_inline void miniredis_request_distributor(microtcp_sock_t *const
                 execute_list(_socket, _registry, _request_header);
                 break;
         }
+}
+
+static void create_registry_directory(void)
+{
+        if (mkdir(DIRECTORY_REGISTRY_NAME, 0755) == 0)
+                LOG_APP_INFO("Directory `%s` created.", DIRECTORY_REGISTRY_NAME);
+        else if (errno == EEXIST)
+                LOG_APP_WARNING("Failed creating directory `%s`, exists already.", DIRECTORY_REGISTRY_NAME);
+        else
+                LOG_APP_ERROR("Failed creating directory `%s`, errno(%d): %s.", DIRECTORY_REGISTRY_NAME, errno, strerror(errno));
+}
+
+static void move_into_registry_directory(void)
+{
+        struct stat st;
+        if (stat(DIRECTORY_REGISTRY_NAME, &st) != 0 || !S_ISDIR(st.st_mode))
+                LOG_APP_ERROR("Cannot move into `%s`: Directory does not exist or is not a valid directory.", DIRECTORY_REGISTRY_NAME);
+        else if (chdir(DIRECTORY_REGISTRY_NAME) == 0)
+                LOG_APP_INFO("Successfully moved into directory `%s`.", DIRECTORY_REGISTRY_NAME);
+        else
+                LOG_APP_ERROR("Failed to move into directory `%s`, errno(%d): %s.", DIRECTORY_REGISTRY_NAME, errno, strerror(errno));
 }

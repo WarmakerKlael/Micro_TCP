@@ -113,7 +113,7 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
 #define LOG_INFO(_format_message, ...) /* Logging disabled in release */
 // #define LOG_APP_INFO(_format_message, ...) /* Logging disabled in release */
 #endif				       /* DEBUG_MODE || VERBOSE_MODE */
-#define LOG_APP_INFO(_format_message, ...) LOG_APP_MESSAGE(LOG_INFO_APP, _format_message, ##__VA_ARGS__);
+#define LOG_APP_INFO(_format_message, ...) LOG_APP_MESSAGE(LOG_INFO_APP, _format_message, ##__VA_ARGS__)
 
 /**
  * @brief Logs a warning message.
