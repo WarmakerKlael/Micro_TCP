@@ -18,7 +18,7 @@ extern FILE *prompt_stream;
  *        it may cause the macro to become stuck in a loop waiting for valid input
  * @warning Need to free() `_string_line`.
  */
-#define PROMPT_WITH_YES_NO(_prompt, _default, _string_line)                                                                                                                                  \
+#define PROMPT_WITH_YES_NO(_prompt, _default, _string_line)                                                                                                                             \
         do                                                                                                                                                                              \
         {                                                                                                                                                                               \
                 _Static_assert((_default) == 'Y' || (_default) == 'y' ||                                                                                                                \
@@ -121,6 +121,7 @@ extern FILE *prompt_stream;
                         printf("\033[2K"); /* Reset cursor to prompt line. */                                                                                                           \
                 }                                                                                                                                                                       \
                 free(extended_format);                                                                                                                                                  \
+                free(line);                                                                                                                                                             \
         } while (0)
 
 #endif /* UTILS_MICROTCP_PROMPT_UTIL_H */

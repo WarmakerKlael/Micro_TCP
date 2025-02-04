@@ -3,9 +3,11 @@
 
 /* SOURCE CODE IN HEADER????? WHAT??? DID YOU GO CRAZY??? Relax... buddy.. code file contains only static inline functions with INCLUDE-GUARD. */
 
+#include <time.h>
 #include "demo_common.h"
 #include "microtcp_prompt_util.h"
 #include "settings/microtcp_settings.h"
+#include "microtcp_helper_functions.h"
 #include "smart_assert.h"
 
 #define KB (1ULL << 10)
@@ -36,6 +38,24 @@ static __always_inline struct data_size get_formatted_byte_count(const size_t _b
         return (struct data_size){.size = _byte_count / (long double)PB, .unit = "PB"};
 }
 
+static __always_inline struct data_size get_formatted_bit_count(const size_t _byte_count)
+{
+#define BITS_PER_BYTE 8
+        const size_t _bit_count = BITS_PER_BYTE * _byte_count;
+        if (_bit_count < KB)
+                return (struct data_size){.size = _bit_count, .unit = "b"};
+        if (_bit_count < MB)
+                return (struct data_size){.size = _bit_count / (double)KB, .unit = "Kb"};
+        if (_bit_count < GB)
+                return (struct data_size){.size = _bit_count / (double)MB, .unit = "Mb"};
+        if (_bit_count < TB)
+                return (struct data_size){.size = _bit_count / (double)GB, .unit = "Gb"};
+        if (_bit_count < PB)
+                return (struct data_size){.size = _bit_count / (double)TB, .unit = "Tb"};
+        return (struct data_size){.size = _bit_count / (long double)PB, .unit = "Pb"};
+#undef BITS_PER_BYTE
+}
+
 struct __attribute__((packed)) registry_node_serialization_info /* We are packing, because we want to pass this info through network packets. */
 {
         size_t file_name_size;
@@ -50,11 +70,12 @@ enum io_type
         IO_WRITE
 };
 static inline void prompt_to_configure_microtcp(void);
+static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
 
 static __always_inline FILE *open_file_for_binary_io(const char *_file_name, enum io_type _io_type);
-static __always_inline uint8_t *allocate_message_buffer(void);
+static __always_inline uint8_t *allocate_message_buffer(size_t _message_buffer_size);
 
-static __always_inline status_t receive_file(microtcp_sock_t *_socket, uint8_t *_message_buffer,
+static __always_inline status_t receive_file(microtcp_sock_t *_socket, uint8_t *_message_buffer, size_t _message_buffer_size,
                                              FILE *_file_ptr, size_t _file_size, const char *_file_name);
 static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *_socket, FILE *_file_ptr, const char *_file_name,
                                                             uint8_t *_file_buffer, size_t _file_part_size);
@@ -62,17 +83,17 @@ static __always_inline status_t finalize_file(FILE **_file_ptr_address, const ch
 
 static __always_inline status_t send_request_header(microtcp_sock_t *_socket, const miniredis_header_t *_header_ptr);
 static __always_inline status_t send_filename(microtcp_sock_t *_socket, const char *_file_name);
-static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer, size_t _message_buffer_size,
                                           FILE *const _file_ptr, const char *const _file_name);
 
-static __always_inline void cleanup_file_sending_resources(FILE **_file_ptr_address,
-                                                           uint8_t **_message_buffer_address,
-                                                           char **_file_name_address,
-                                                           miniredis_header_t **_header_ptr_address);
+static __always_inline void cleanup_file_transfer_resources(FILE **const _file_ptr_address, uint8_t **const _message_buffer_address,
+                                                            char **const _file_name_address, miniredis_header_t **const _header_ptr_address);
 
-static __always_inline void cleanup_file_receiving_resources(FILE **_file_ptr_address,
-                                                             uint8_t **_message_buffer_address,
-                                                             char **_file_name_address);
+static __always_inline void cleanup_file_sending_resources(FILE **_file_ptr_address, uint8_t **_message_buffer_address,
+                                                           char **_file_name_address, miniredis_header_t **_header_ptr_address);
+
+static __always_inline void cleanup_file_receiving_resources(FILE **_file_ptr_address, uint8_t **_message_buffer_address,
+                                                             char **_file_name_address, miniredis_header_t **_header_ptr_address);
 
 static inline void prompt_to_configure_microtcp(void)
 {
@@ -93,25 +114,35 @@ static inline void prompt_to_configure_microtcp(void)
                 clear_line();
         }
         free(prompt_answer_buffer);
+#undef DEFAULT_ANSWER
 }
 
-static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+static status_t miniredis_terminate_connection(microtcp_sock_t *const _utcp_socket)
+{
+        const _Bool shutdown_succeeded = microtcp_shutdown(_utcp_socket, SHUT_RDWR) == MICROTCP_SHUTDOWN_SUCCESS;
+        microtcp_close(_utcp_socket);
+        return shutdown_succeeded ? SUCCESS : FAILURE;
+}
+
+static __always_inline status_t receive_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer, const size_t _message_buffer_size,
                                              FILE *const _file_ptr, const size_t _file_size, const char *const _file_name)
 {
         size_t written_bytes_count = 0;
-        const double _file_size_formatted = get_formatted_byte_count(_file_size).size;
-        const char *_file_size_formatted_unit = get_formatted_byte_count(_file_size).unit;
-        const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
+        struct data_size file_size_data_format = get_formatted_byte_count(_file_size);
         while (written_bytes_count != _file_size)
         {
-                const size_t file_part_size = MIN(_file_size - written_bytes_count, max_file_part_size);
+                const size_t file_part_size = MIN(_file_size - written_bytes_count, _message_buffer_size);
+                struct timeval time_before_download;
+                gettimeofday(&time_before_download, NULL);
                 if (receive_and_write_file_part(_socket, _file_ptr, _file_name, _message_buffer, file_part_size) == FAILURE)
                         LOG_ERROR_RETURN(FAILURE, "In function `%s()`, function `%s()` returned FAILURE.", __func__, STRINGIFY(receive_and_write_file_part));
                 written_bytes_count += file_part_size;
                 const struct data_size received_data_size = get_formatted_byte_count(written_bytes_count);
-                LOG_APP_INFO("File: %s, (%.2lf%s/%.2lf%s received)", _file_name,
+                const struct data_size download_per_sec = get_formatted_bit_count(get_transferred_bytes_per_sec(time_before_download, file_part_size));
+                LOG_APP_INFO("File: %s, %.2lf%s/%.2lf%s downloaded; Download speed: %.2lf%sps", _file_name,
                              received_data_size.size, received_data_size.unit,
-                             _file_size_formatted, _file_size_formatted_unit);
+                             file_size_data_format.size, file_size_data_format.unit,
+                             download_per_sec.size, download_per_sec.unit);
         }
         return SUCCESS;
 }
@@ -148,31 +179,15 @@ static __always_inline status_t finalize_file(FILE **const _file_ptr_address, co
         return SUCCESS;
 }
 
-static __always_inline void cleanup_file_receiving_resources(FILE **const _file_ptr_address,
-                                                             uint8_t **const _message_buffer_address,
-                                                             char **const _file_name_address)
+static __always_inline void cleanup_file_transfer_resources(FILE **const _file_ptr_address,
+                                                            uint8_t **const _message_buffer_address,
+                                                            char **const _file_name_address,
+                                                            miniredis_header_t **const _header_ptr_address)
 {
-        if (*_file_ptr_address != NULL)
-        {
-
-                fclose(*_file_ptr_address);
-                *_file_ptr_address = NULL;
-        }
-        if (*_file_name_address)
-                FREE_NULLIFY_LOG(*_file_name_address);
-        if (*_message_buffer_address)
-                FREE_NULLIFY_LOG(*_message_buffer_address);
-
-        if (access(STAGING_FILE_NAME, F_OK) == 0)
-                if (remove(STAGING_FILE_NAME) != 0) /* We remove `staging_file_name` file. */
-                        LOG_APP_ERROR("Failed to removing() %s in cleanup_stage, errno(%d): %s.", STAGING_FILE_NAME, errno, strerror(errno));
-}
-
-static __always_inline void cleanup_file_sending_resources(FILE **const _file_ptr_address,
-                                                           uint8_t **const _message_buffer_address,
-                                                           char **const _file_name_address,
-                                                           miniredis_header_t **const _header_ptr_address)
-{
+        DEBUG_SMART_ASSERT(_file_name_address != NULL,
+                           _message_buffer_address != NULL,
+                           _file_name_address != NULL,
+                           _header_ptr_address != NULL);
         if (*_file_ptr_address != NULL)
         {
                 fclose(*_file_ptr_address);
@@ -184,6 +199,21 @@ static __always_inline void cleanup_file_sending_resources(FILE **const _file_pt
                 FREE_NULLIFY_LOG(*_file_name_address);
         if (*_message_buffer_address != NULL)
                 FREE_NULLIFY_LOG(*_message_buffer_address);
+}
+
+static __always_inline void cleanup_file_receiving_resources(FILE **const _file_ptr_address, uint8_t **const _message_buffer_address,
+                                                             char **const _file_name_address, miniredis_header_t **const _header_ptr_address)
+{
+        cleanup_file_transfer_resources(_file_ptr_address, _message_buffer_address, _file_name_address, _header_ptr_address);
+        if (access(STAGING_FILE_NAME, F_OK) == 0)
+                if (remove(STAGING_FILE_NAME) != 0) /* We remove `staging_file_name` file. */
+                        LOG_APP_ERROR("Failed to removing() %s in cleanup_stage, errno(%d): %s.", STAGING_FILE_NAME, errno, strerror(errno));
+}
+
+static __always_inline void cleanup_file_sending_resources(FILE **const _file_ptr_address, uint8_t **const _message_buffer_address,
+                                                           char **const _file_name_address, miniredis_header_t **const _header_ptr_address)
+{
+        cleanup_file_receiving_resources(_file_ptr_address, _message_buffer_address, _file_name_address, _header_ptr_address);
 }
 
 static __always_inline status_t send_request_header(microtcp_sock_t *const _socket, const miniredis_header_t *const _header_ptr)
@@ -202,7 +232,7 @@ static __always_inline status_t send_filename(microtcp_sock_t *const _socket, co
         return send_ret_val == (ssize_t)file_name_length ? SUCCESS : FAILURE;
 }
 
-static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer,
+static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_t *const _message_buffer, const size_t _message_buffer_size,
                                           FILE *const _file_ptr, const char *const _file_name)
 {
         size_t file_bytes_sent_count = 0;
@@ -213,16 +243,20 @@ static __always_inline status_t send_file(microtcp_sock_t *const _socket, uint8_
 
         const double _file_size_formatted = get_formatted_byte_count(file_stats.st_size).size;
         const char *_file_size_formatted_unit = get_formatted_byte_count(file_stats.st_size).unit;
-        const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
-        while ((file_bytes_read = fread(_message_buffer, 1, max_file_part_size, _file_ptr)) > 0)
+        while ((file_bytes_read = fread(_message_buffer, 1, _message_buffer_size, _file_ptr)) > 0)
         {
                 DEBUG_SMART_ASSERT(file_bytes_read < SSIZE_MAX);
+                struct timeval time_before_upload;
+                gettimeofday(&time_before_upload, NULL);
+
                 if (microtcp_send(_socket, _message_buffer, file_bytes_read, 0) != (ssize_t)file_bytes_read)
                         LOG_APP_ERROR_RETURN(FAILURE, "microtcp_send() failed sending file-parts, aborting.");
                 file_bytes_sent_count += file_bytes_read;
-                LOG_APP_INFO("File: %s, (%.2lf%s/%.2lf%s bytes sent)", _file_name,
+                const struct data_size upload_per_sec = get_formatted_bit_count(get_transferred_bytes_per_sec(time_before_upload, file_bytes_read));
+                LOG_APP_INFO("File: %s, %.2lf%s/%.2lf%s uploaded; Upload speed:  %.2lf%sps", _file_name,
                              get_formatted_byte_count(file_bytes_sent_count).size, get_formatted_byte_count(file_bytes_sent_count).unit,
-                             _file_size_formatted, _file_size_formatted_unit);
+                             _file_size_formatted, _file_size_formatted_unit,
+                             upload_per_sec.size, upload_per_sec.unit);
         }
         if (ferror(_file_ptr))
                 LOG_APP_ERROR_RETURN(FAILURE, "Error occurred while reading file '%s', errno(%d): %s", _file_name, errno, strerror(errno));
@@ -245,9 +279,10 @@ static __always_inline FILE *open_file_for_binary_io(const char *const _file_nam
         return file_ptr;
 }
 
-static __always_inline uint8_t *allocate_message_buffer(void)
+static __always_inline uint8_t *allocate_message_buffer(const size_t _message_buffer_size)
 {
-        uint8_t *message_buffer = MALLOC_LOG(message_buffer, get_microtcp_bytestream_rrb_size());
+        DEBUG_SMART_ASSERT(_message_buffer_size > 0);
+        uint8_t *message_buffer = MALLOC_LOG(message_buffer, _message_buffer_size);
         if (message_buffer == NULL)
                 LOG_APP_ERROR_RETURN(NULL, "Failed allocating message_buffer.");
         return message_buffer;

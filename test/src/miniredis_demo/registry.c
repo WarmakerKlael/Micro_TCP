@@ -40,7 +40,8 @@ void registry_destroy(registry_t **const _registry_address)
         for (size_t i = 0; i < registry_size; i++)
         {
                 FREE_NULLIFY_LOG(REGISTRY->node_array[i].file_name);
-                FREE_NULLIFY_LOG(REGISTRY->node_array[i].cache_buffer);
+                if (REGISTRY->node_array[i].cache_buffer != NULL) /* Cache buffer isn't Implemented.. Its an artifact of time. */
+                        FREE_NULLIFY_LOG(REGISTRY->node_array[i].cache_buffer);
         }
         FREE_NULLIFY_LOG(REGISTRY->node_array);
         FREE_NULLIFY_LOG(REGISTRY);

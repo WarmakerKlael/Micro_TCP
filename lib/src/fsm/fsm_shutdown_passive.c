@@ -99,7 +99,7 @@ static shutdown_passive_fsm_substates_t execute_last_ack_substate(microtcp_sock_
 
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
-                if (timeval_to_us(_context->last_ack_wait_time_timer) > 0) /* Retry receiving LAST ACK until the timeout expires. */
+                if (timeval_to_usec(_context->last_ack_wait_time_timer) > 0) /* Retry receiving LAST ACK until the timeout expires. */
                 {
                         subtract_timeval(&(_context->last_ack_wait_time_timer), _context->recvfrom_timeout);
                         return CLOSE_WAIT_SUBTATE;

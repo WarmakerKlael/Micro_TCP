@@ -34,7 +34,9 @@ typedef struct
         uint32_t data_len;   /**< Payload length in bytes */
         uint32_t checksum;   /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
-#else  /* #ifndef OPTIMIZED_MODE */
+#define RRB_MAX_SIZE 2147483648UL /* Based on window bit-width (limiting factor). */
+#else                             /* #ifndef OPTIMIZED_MODE */
+
 typedef struct
 {
         uint32_t seq_number;  /**< Sequence number */
@@ -47,7 +49,8 @@ typedef struct
         uint32_t future_use2; /**< 32-bits for future use */
         uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
-#endif /* OPTIMIZED_MODE */
+#define RRB_MAX_SIZE 32768U       /* Based on window bit-width (limiting factor). */
+#endif                            /* OPTIMIZED_MODE */
 #define MICROTCP_HEADER_SIZE (sizeof(microtcp_header_t))
 
 #define FIELD_OF_TYPE_EXISTS(_type, _field) sizeof(((_type *)NULL)->_field)

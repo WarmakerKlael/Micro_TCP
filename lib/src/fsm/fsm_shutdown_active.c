@@ -202,7 +202,7 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_recv_substate(microtcp
         /* Actions on the following two cases are the same. */
         case RECV_SEGMENT_ERROR:
         case RECV_SEGMENT_TIMEOUT:
-                if (timeval_to_us(_context->finack_wait_time_timer) > 0) /* Retry receiving FIN|ACK until the timeout expires. */
+                if (timeval_to_usec(_context->finack_wait_time_timer) > 0) /* Retry receiving FIN|ACK until the timeout expires. */
                 {
                         subtract_timeval(&(_context->finack_wait_time_timer), _context->recvfrom_timeout);
                         return FIN_WAIT_2_RECV_SUBSTATE;
@@ -241,11 +241,11 @@ static shutdown_active_fsm_substates_t execute_fin_wait_2_send_substate(microtcp
 static shutdown_active_fsm_substates_t execute_time_wait_substate(microtcp_sock_t *const _socket, struct sockaddr *const _address,
                                                                   socklen_t _address_len, fsm_context_t *_context)
 {
-        time_t timewait_period_us = timeval_to_us(get_shutdown_time_wait_period());
+        time_t timewait_period_us = timeval_to_usec(get_shutdown_time_wait_period());
         struct timeval starting_time;
         gettimeofday(&starting_time, NULL);
 
-        while (elapsed_time_us(starting_time) < timewait_period_us)
+        while (elapsed_time_usec(starting_time) < timewait_period_us)
         {
                 _context->recv_finack_ret_val = receive_finack_control_segment(_socket, _address, _address_len, _socket->seq_number);
                 switch (_context->recv_finack_ret_val)

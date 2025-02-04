@@ -3,6 +3,8 @@
 #include <time.h>
 #include "smart_assert.h"
 
+static __always_inline time_t timeval_to_usec_internal(struct timeval _timeval);
+
 /**
  * @note Procomputed strings why? Cant you automate it you dumbo? Well ...
  * There were more automated and modular ways to assemble
@@ -125,7 +127,9 @@ const char *get_microtcp_control_to_string(const uint16_t _control)
 }
 // clang-format on
 
-#define USEC_PER_SEC 1000000
+#define USEC_PER_SEC 1000000L
+#define NSEC_PER_SEC 1000000000L
+
 void normalize_timeval(struct timeval *_tv)
 {
         SMART_ASSERT(_tv != NULL);
@@ -159,7 +163,7 @@ void subtract_timeval(struct timeval *_subtrahend, const struct timeval _minuend
         }
 }
 
-static __always_inline time_t timeval_to_us_internal(const struct timeval _timeval)
+static __always_inline time_t timeval_to_usec_internal(const struct timeval _timeval)
 {
         const time_t result = (_timeval.tv_sec * USEC_PER_SEC) + _timeval.tv_usec;
         DEBUG_SMART_ASSERT(_timeval.tv_sec >= 0, _timeval.tv_usec >= 0, result >= 0);
@@ -167,23 +171,23 @@ static __always_inline time_t timeval_to_us_internal(const struct timeval _timev
 }
 
 /* Helper function: Convert timeval to microseconds */
-time_t timeval_to_us(const struct timeval _timeval)
+time_t timeval_to_usec(const struct timeval _timeval)
 {
-        return timeval_to_us_internal(_timeval);
+        return timeval_to_usec_internal(_timeval);
 }
 
-struct timeval us_to_timeval(const time_t _us)
+struct timeval usec_to_timeval(const time_t _us)
 {
         return (struct timeval){.tv_sec = _us / USEC_PER_SEC, .tv_usec = _us % USEC_PER_SEC};
 }
 
-time_t elapsed_time_us(struct timeval _start_time)
+time_t elapsed_time_usec(struct timeval _start_time)
 {
         DEBUG_SMART_ASSERT(_start_time.tv_sec >= 0, _start_time.tv_usec >= 0, _start_time.tv_usec < USEC_PER_SEC);
         struct timeval current_time;
         gettimeofday(&current_time, NULL);
 
-        return timeval_to_us_internal(current_time) - timeval_to_us_internal(_start_time);
+        return timeval_to_usec_internal(current_time) - timeval_to_usec_internal(_start_time);
 }
 
 struct timeval get_current_timeval(void)
@@ -193,12 +197,19 @@ struct timeval get_current_timeval(void)
         return tv;
 }
 
-#define COUNT_DIGITS_GENERIC_IMPL(_number) ({                                                             \
+size_t get_transferred_bytes_per_sec(const struct timeval _start_time, const size_t _transferred_bytes)
+{
+        const double elapsed_seconds = elapsed_time_usec(_start_time) / (double)USEC_PER_SEC;
+        DEBUG_SMART_ASSERT(elapsed_seconds > 0);
+        return (size_t)(_transferred_bytes / elapsed_seconds);
+}
+
+#define COUNT_DIGITS_GENERIC_IMPL(_number) ({                                                                              \
         typeof(_number) number = (_number); /* Stroing it onto an actual variable.  So division won't affect `_number`. */ \
-        size_t digit_counter = 1;                                                                                       \
-        if (number < 0)                                                                                                 \
-                digit_counter++;                                                                                        \
-        while (number /= 10)                                                                                            \
-                digit_counter++;                                                                                        \
-        digit_counter;                                                                                                  \
+        size_t digit_counter = 1;                                                                                          \
+        if (number < 0)                                                                                                    \
+                digit_counter++;                                                                                           \
+        while (number /= 10)                                                                                               \
+                digit_counter++;                                                                                           \
+        digit_counter;                                                                                                     \
 })

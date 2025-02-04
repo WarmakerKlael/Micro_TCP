@@ -14,13 +14,13 @@
 
 void prompt_set_microtcp_rrb_length(void)
 {
-        const char *prompt = "Specify MicroTCP's Receive-Ring-Buffer size (uint32_t, power of 2, in bytes default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) "): ";
+        const char *prompt = "Specify MicroTCP's Receive-Ring-Buffer size (uint32_t, power of 2, in bytes default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) ", max: " STRINGIFY_EXPANDED(RRB_MAX_SIZE) "): ";
 
         long rrb_size = 0;
         while (1)
         {
                 PROMPT_WITH_READLINE(prompt, "%ld", &rrb_size);
-                if (rrb_size > 0 && rrb_size < UINT32_MAX && IS_POWER_OF_2(rrb_size))
+                if (rrb_size > 0 && rrb_size <= (long)RRB_MAX_SIZE && IS_POWER_OF_2(rrb_size))
                         break;
                 clear_line();
         }

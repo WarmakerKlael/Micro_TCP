@@ -64,7 +64,7 @@ void set_microtcp_ack_timeout(struct timeval _ack_timeout_tv)
 
 void set_microtcp_stall_time_limit(const struct timeval _time_limit)
 {
-        if (timeval_to_us(_time_limit) <= timeval_to_us(get_microtcp_ack_timeout()))
+        if (timeval_to_usec(_time_limit) <= timeval_to_usec(get_microtcp_ack_timeout()))
         {
                 LOG_ERROR("MicroTCP's stall time limit must be greater than MicroTCP's timeout. Stall time limit remains at default.");
                 return;

@@ -97,8 +97,8 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
                                  const size_t _length, const struct timeval _max_idle_time)
 {
 
-        const time_t microtcp_recv_timeout_usec = timeval_to_us(get_microtcp_ack_timeout());
-        const time_t max_idle_time_usec = timeval_to_us(_max_idle_time);
+        const time_t microtcp_recv_timeout_usec = timeval_to_usec(get_microtcp_ack_timeout());
+        const time_t max_idle_time_usec = timeval_to_usec(_max_idle_time);
         DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL);
         DEBUG_SMART_ASSERT(_length > 0, max_idle_time_usec > 0);
 

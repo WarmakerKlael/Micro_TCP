@@ -45,7 +45,7 @@ int microtcp_bind(microtcp_sock_t *_socket, const struct sockaddr *_address, soc
         /* Bind socket address with POSIX socket descriptor. */
         int bind_result = bind(_socket->sd, _address, _address_len);
         if (bind_result == POSIX_BIND_FAILURE)
-                LOG_ERROR_RETURN(MICROTCP_BIND_FAILURE, "Failed to bind socket descriptor to generic sockaddr.");
+                LOG_ERROR_RETURN(MICROTCP_BIND_FAILURE, "Failed to bind socket descriptor to generic sockaddr, errno(%d): %s", errno, strerror(errno));
         else if (bind_result != POSIX_BIND_SUCCESS)
                 LOG_ERROR_RETURN(MICROTCP_BIND_FAILURE, "Unknown error occurred on POSIX's bind()");
 
@@ -146,7 +146,9 @@ ssize_t microtcp_send(microtcp_sock_t *_socket, const void *_buffer, size_t _len
 {
         DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL);
         RETURN_ERROR_IF_MICROTCP_SOCKET_INVALID(MICROTCP_SEND_FAILURE, _socket, ESTABLISHED);
-        return _length == 0 ? 0 : microtcp_send_fsm(_socket, _buffer, _length);
+        if (_length == 0)
+                LOG_WARNING_RETURN(0, "%s() was asked to send 0 bytes.", __func__);
+        return microtcp_send_fsm(_socket, _buffer, _length);
 }
 
 ssize_t microtcp_recv(microtcp_sock_t *const _socket, void *const _buffer, const size_t _length, const int _flags)
@@ -170,12 +172,14 @@ ssize_t microtcp_recv_timed(microtcp_sock_t *const _socket, void *const _buffer,
         return microtcp_recv_timed_impl(_socket, _buffer, _length, _max_idle_time);
 }
 
+#include "core/segment_io.h"
+
 void microtcp_close(microtcp_sock_t *_socket)
 {
         SMART_ASSERT(_socket != NULL);
-
         if (_socket->state == ESTABLISHED)
-                microtcp_shutdown(_socket, SHUT_RDWR);
+                send_rstack_control_segment(_socket, _socket->peer_address, sizeof(*_socket->peer_address));
+        _socket->state = INVALID;
         cleanup_microtcp_socket(_socket);
         LOG_INFO("MicroTCP socket closed successfully.");
 }

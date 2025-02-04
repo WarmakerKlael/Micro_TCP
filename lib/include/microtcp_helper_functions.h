@@ -33,9 +33,10 @@ const char *get_microtcp_control_to_string(uint16_t _control);
 void normalize_timeval(struct timeval *_tv);
 
 void subtract_timeval(struct timeval *_subtrahend, struct timeval _minuend);
-time_t timeval_to_us(struct timeval _timeval);
-struct timeval us_to_timeval(time_t _us);
-time_t elapsed_time_us(struct timeval _start_time);
+time_t timeval_to_usec(struct timeval _timeval);
+struct timeval usec_to_timeval(time_t _us);
+time_t elapsed_time_usec(struct timeval _start_time);
 struct timeval get_current_timeval(void);
+size_t get_transferred_bytes_per_sec(struct timeval _start_time, size_t _transferred_bytes);
 
 #endif /* MICROTCP_HELPER_FUNCTIONS_H */

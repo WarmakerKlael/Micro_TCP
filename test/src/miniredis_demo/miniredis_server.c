@@ -39,7 +39,6 @@ static __always_inline status_t send_server_response(microtcp_sock_t *_socket, m
 
 /* Static Functions: */
 static status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address, struct sockaddr_in *_server_address);
-static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
 static status_t miniredis_server_manager(registry_t *_registry);
 static void miniredis_request_handler(microtcp_sock_t *_socket, registry_t *_registry);
 static void create_registry_directory(void);
@@ -67,27 +66,6 @@ int main(void)
         return EXIT_SUCCESS;
 }
 
-static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_socket,
-                                               struct sockaddr_in *const _client_address, struct sockaddr_in *_server_address)
-{
-        (*_utcp_socket) = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (_utcp_socket->state == INVALID)
-                return FAILURE;
-        if (microtcp_bind(_utcp_socket, (struct sockaddr *)_server_address, sizeof(*_server_address)) == MICROTCP_BIND_FAILURE)
-                return FAILURE;
-        if (microtcp_accept(_utcp_socket, (struct sockaddr *)_client_address, sizeof(*_client_address)) == MICROTCP_ACCEPT_FAILURE)
-                return FAILURE;
-        return SUCCESS;
-}
-
-static status_t miniredis_terminate_connection(microtcp_sock_t *const _utcp_socket)
-{
-        if (microtcp_shutdown(_utcp_socket, SHUT_RDWR) == MICROTCP_SHUTDOWN_FAILURE)
-                return FAILURE;
-        microtcp_close(_utcp_socket);
-        return SUCCESS;
-}
-
 static __always_inline status_t send_server_response(microtcp_sock_t *const _socket, miniredis_header_t *const _response_header, const char *const _response_message)
 {
         const size_t response_message_size = (_response_message == NULL) ? 0 : strlen(_response_message);
@@ -101,6 +79,19 @@ static __always_inline status_t send_server_response(microtcp_sock_t *const _soc
         LOG_APP_INFO_RETURN(SUCCESS, "Server successfully sent its response");
 }
 
+static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_socket, struct sockaddr_in *const _client_address,
+                                               struct sockaddr_in *const _server_address)
+{
+        (*_utcp_socket) = microtcp_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if (_utcp_socket->state == INVALID)
+                return FAILURE;
+        if (microtcp_bind(_utcp_socket, (struct sockaddr *)_server_address, sizeof(*_server_address)) == MICROTCP_BIND_FAILURE)
+                return FAILURE;
+        if (microtcp_accept(_utcp_socket, (struct sockaddr *)_client_address, sizeof(*_client_address)) == MICROTCP_ACCEPT_FAILURE)
+                return FAILURE;
+        return SUCCESS;
+}
+
 static void execute_set(microtcp_sock_t *const _socket, registry_t *const _registry, miniredis_header_t *const _request_header)
 {
         DEBUG_SMART_ASSERT(_request_header->command_code == CMND_CODE_SET,
@@ -112,15 +103,16 @@ static void execute_set(microtcp_sock_t *const _socket, registry_t *const _regis
         char *file_name = NULL;         /* Requires deallocation. */
         char *file_name_base = NULL;    /* Does not require deallocation (part of file_name). */
         char *response_message = NULL;  /* Does not require deallocation (stores string literals). */
+        const size_t message_buffer_size = get_microtcp_bytestream_rrb_size();
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Filename reception failed.");
         file_name_base = basename(file_name); /* In case received `file_name` contains paths, only the basename is kept. */
         if ((file_ptr = open_file_for_binary_io(STAGING_FILE_NAME, IO_WRITE)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
-        if ((message_buffer = allocate_message_buffer()) == NULL)
+        if ((message_buffer = allocate_message_buffer(message_buffer_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
-        if (receive_file(_socket, message_buffer, file_ptr, _request_header->file_size, file_name_base) == FAILURE)
+        if (receive_file(_socket, message_buffer, message_buffer_size, file_ptr, _request_header->file_size, file_name_base) == FAILURE)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "File reception failed.");
         if (finalize_file(&file_ptr, STAGING_FILE_NAME, file_name_base) == FAILURE)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
@@ -130,7 +122,7 @@ static void execute_set(microtcp_sock_t *const _socket, registry_t *const _regis
         LOG_APP_INFO("Server stored and registered `%s`.", file_name_base);
 
 cleanup_label:
-        cleanup_file_receiving_resources(&file_ptr, &message_buffer, &file_name);
+        cleanup_file_receiving_resources(&file_ptr, &message_buffer, &file_name, &((miniredis_header_t *){NULL}));
         send_server_response(_socket, _request_header, response_message);
 }
 
@@ -145,6 +137,7 @@ static void execute_get(microtcp_sock_t *const _socket, registry_t *const _regis
         FILE *file_ptr = NULL;          /* Requires deallocation. */
         char *file_name = NULL;         /* Requires deallocation. */
         char *response_message = NULL;  /* Does not require deallocation (stores string literals). */
+        const size_t message_buffer_size = _socket->peer_win_size;
 
         if ((file_name = receive_file_name(_socket, _request_header->file_name_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Filename reception failed.");
@@ -153,7 +146,7 @@ static void execute_get(microtcp_sock_t *const _socket, registry_t *const _regis
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "File not found.");
         if ((file_ptr = open_file_for_binary_io(file_name, IO_READ)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
-        if ((message_buffer = allocate_message_buffer()) == NULL)
+        if ((message_buffer = allocate_message_buffer(message_buffer_size)) == NULL)
                 SET_MESSAGE_AND_GOTO(cleanup_label, response_message, "Internal server error.");
         /* Modify request header, to send it back as response. */
 
@@ -163,7 +156,7 @@ static void execute_get(microtcp_sock_t *const _socket, registry_t *const _regis
 
         if (send_request_header(_socket, _request_header) == FAILURE)
                 LOG_APP_ERROR_GOTO(cleanup_label, "Failed sending request_header back to client.");
-        if (send_file(_socket, message_buffer, file_ptr, file_name) == FAILURE)
+        if (send_file(_socket, message_buffer, message_buffer_size, file_ptr, file_name) == FAILURE)
                 goto cleanup_label;
 
 cleanup_label:
@@ -206,17 +199,17 @@ static size_t registry_serialized_size(const registry_t *const _registry)
 
         size_t serialized_registry_size = registry_size * sizeof(struct registry_node_serialization_info);
         for (size_t i = 0; i < registry_size; i++)
-                serialized_registry_size += strlen(registry_node_array->file_name);
+                serialized_registry_size += strlen(registry_node_array[i].file_name);
         return serialized_registry_size;
 }
 
-static status_t send_registry_serialized_description(microtcp_sock_t *const _socket, const registry_t *const _registry, uint8_t *const _message_buffer)
+static status_t send_registry_serialized_description(microtcp_sock_t *const _socket, const registry_t *const _registry,
+                                                     uint8_t *const _message_buffer, const size_t _message_buffer_size)
 {
         DEBUG_SMART_ASSERT(_socket != NULL, _registry != NULL, _message_buffer != NULL);
         const size_t registry_size = _registry->size;
         const registry_node_t *registry_node_array = _registry->node_array;
         size_t message_buffer_copied_bytes = 0;
-        const size_t max_file_part_size = get_microtcp_bytestream_rrb_size();
         for (size_t i = 0; i < registry_size; i++)
         {
                 const registry_node_t current_node = registry_node_array[i];
@@ -225,21 +218,18 @@ static status_t send_registry_serialized_description(microtcp_sock_t *const _soc
                     .file_size = current_node.file_size,
                     .time_of_arrival = current_node.time_of_arrival,
                     .download_counter = current_node.download_counter};
-                DEBUG_SMART_ASSERT(rnsi.file_name_size <= max_file_part_size);
                 const size_t serialized_entry_size = sizeof(rnsi) + rnsi.file_name_size;
-                if (message_buffer_copied_bytes + serialized_entry_size <= max_file_part_size)
-                {
-                        memcpy(_message_buffer + message_buffer_copied_bytes, &rnsi, sizeof(rnsi));
-                        message_buffer_copied_bytes += sizeof(rnsi);
-                        memcpy(_message_buffer + message_buffer_copied_bytes, current_node.file_name, rnsi.file_name_size);
-                        message_buffer_copied_bytes += rnsi.file_name_size;
-                }
-                else
+                if (message_buffer_copied_bytes + serialized_entry_size > _message_buffer_size)
                 {
                         if (microtcp_send(_socket, _message_buffer, message_buffer_copied_bytes, 0) != (ssize_t)message_buffer_copied_bytes)
                                 return FAILURE;
                         message_buffer_copied_bytes = 0;
                 }
+
+                memcpy(_message_buffer + message_buffer_copied_bytes, &rnsi, sizeof(rnsi));
+                message_buffer_copied_bytes += sizeof(rnsi);
+                memcpy(_message_buffer + message_buffer_copied_bytes, current_node.file_name, rnsi.file_name_size);
+                message_buffer_copied_bytes += rnsi.file_name_size;
         }
         if (message_buffer_copied_bytes != 0)
                 if (microtcp_send(_socket, _message_buffer, message_buffer_copied_bytes, 0) != (ssize_t)message_buffer_copied_bytes)
@@ -255,12 +245,13 @@ static void execute_list(microtcp_sock_t *const _socket, const registry_t *const
                            _request_header->file_name_size == 0,
                            _request_header->file_size == 0);
         uint8_t *message_buffer = NULL; /* Requires deallocation. */
-        message_buffer = allocate_message_buffer();
+        const size_t message_buffer_size = _socket->peer_win_size;
+        message_buffer = allocate_message_buffer(message_buffer_size);
         _request_header->response_message_size = registry_serialized_size(_registry);
         _request_header->response_status = SUCCESS;
         if (send_request_header(_socket, _request_header) == FAILURE)
                 goto cleanup_label;
-        if (send_registry_serialized_description(_socket, _registry, message_buffer) == FAILURE)
+        if (send_registry_serialized_description(_socket, _registry, message_buffer, message_buffer_size) == FAILURE)
                 goto cleanup_label;
 cleanup_label:
         if (message_buffer != NULL)

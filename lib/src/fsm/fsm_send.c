@@ -320,7 +320,7 @@ static __always_inline ssize_t execute_exit_stalled_substate(microtcp_sock_t *co
 
 static __always_inline _Bool is_send_fsm_stalled(const struct timeval _last_ack_timeval, const time_t _stall_time_threshhold)
 {
-        return elapsed_time_us(_last_ack_timeval) > _stall_time_threshhold;
+        return elapsed_time_usec(_last_ack_timeval) > _stall_time_threshhold;
 }
 
 ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buffer, const size_t _length)
@@ -331,7 +331,7 @@ ssize_t microtcp_send_fsm(microtcp_sock_t *const _socket, const void *const _buf
                                  .last_ack_timeval = get_current_timeval(),
                                  .duplicate_ack_count = 0,
                                  .current_send_algorithm = ALGORITHM_SLOW_START};
-        const time_t invalid_response_time_limit_usec = timeval_to_us(get_microtcp_stall_time_limit());
+        const time_t invalid_response_time_limit_usec = timeval_to_usec(get_microtcp_stall_time_limit());
 
         send_fsm_substates_t current_substate = SEND_DATA_ROUND_SUBSTATE;
         while (true)
