@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmicrotcp_misc_utils.a CMakeFiles/microtcp_misc_utils.dir/microtcp_helper_functions.c.o CMakeFiles/microtcp_misc_utils.dir/microtcp_prompt_util.c.o
-/usr/bin/ranlib libmicrotcp_misc_utils.a

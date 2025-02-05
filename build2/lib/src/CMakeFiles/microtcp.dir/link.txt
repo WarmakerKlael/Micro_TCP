@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmicrotcp.a CMakeFiles/microtcp.dir/microtcp.c.o
-/usr/bin/ranlib libmicrotcp.a

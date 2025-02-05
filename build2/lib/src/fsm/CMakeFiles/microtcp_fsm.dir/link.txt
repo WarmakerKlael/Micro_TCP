@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmicrotcp_fsm.a CMakeFiles/microtcp_fsm.dir/fsm_connect.c.o CMakeFiles/microtcp_fsm.dir/fsm_accept.c.o CMakeFiles/microtcp_fsm.dir/fsm_send.c.o CMakeFiles/microtcp_fsm.dir/fsm_shutdown_active.c.o CMakeFiles/microtcp_fsm.dir/fsm_shutdown_passive.c.o
-/usr/bin/ranlib libmicrotcp_fsm.a

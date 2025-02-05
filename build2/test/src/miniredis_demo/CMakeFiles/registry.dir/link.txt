@@ -1,2 +1,0 @@
-/usr/bin/ar qc libregistry.a CMakeFiles/registry.dir/registry.c.o
-/usr/bin/ranlib libregistry.a

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmicrotcp_logger.a CMakeFiles/microtcp_logger.dir/microtcp_logger.c.o CMakeFiles/microtcp_logger.dir/microtcp_logger_options.c.o CMakeFiles/microtcp_logger.dir/microtcp_fsm_logger.c.o
-/usr/bin/ranlib libmicrotcp_logger.a
