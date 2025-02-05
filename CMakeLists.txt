@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
-project(microTCP VERSION 0.2.0 LANGUAGES C)
+project(microTCP VERSION 0.8.0 LANGUAGES C)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Output directory for executables
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/executables)
 
 # Check if compiler `clang` is available: 
 find_program(CLANG_PATH NAMES clang)
