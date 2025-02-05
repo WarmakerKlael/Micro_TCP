@@ -55,6 +55,9 @@ status_t registry_append(registry_t *const _registry, const char *const _file_na
                 LOG_APP_ERROR("File: %s not found.", _file_name);
                 return FAILURE;
         }
+        if (registry_find(_registry, _file_name) != NULL) /* Same file exists on registry (we should update) but for now we delete and reset. */
+                if (registry_pop(_registry, _file_name) == FAILURE)
+                        LOG_APP_ERROR_RETURN(FAILURE, "Failed `popping()` a registry node.");
 
         if (_registry->size == _registry->capacity) /* Expansion needed. */
                 if (registry_expand(_registry) == FAILURE)

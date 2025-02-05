@@ -15,6 +15,7 @@
 #include "microtcp_defines.h"
 #include "microtcp_helper_functions.h"
 #include "microtcp_helper_macros.h"
+#include "settings/microtcp_settings.h"
 #include "smart_assert.h"
 #include "status.h"
 #include <stdbool.h>
@@ -75,11 +76,11 @@ microtcp_sock_t initialize_microtcp_socket(void)
         microtcp_sock_t new_socket = {
             .sd = POSIX_SOCKET_FAILURE_VALUE,   /* We assume socket descriptor contains FAILURE value; Should change from POSIX's socket() */
             .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
-            .curr_win_size = MICROTCP_WIN_SIZE, /* Our window size. */
+            .curr_win_size = get_microtcp_bytestream_rrb_size(), /* Our window size. */
             .peer_win_size = 0,                 /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
             .bytestream_rrb = NULL,             /* Receive-Ring-Buffer gets allocated in 3-way handshake. */
             .cwnd = MICROTCP_INIT_CWND,
-            .ssthresh = MICROTCP_INIT_SSTHRESH,
+            .ssthresh = get_microtcp_bytestream_rrb_size(),
             .seq_number = 0, /* Default value, waiting 3 way. */
             .ack_number = 0, /* Default value */
             .packets_sent = 0,

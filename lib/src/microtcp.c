@@ -4,6 +4,7 @@
 #include "core/misc.h" // for generate_initial_sequence_nu...
 #include "core/microtcp_recv_impl.h"
 #include "core/resource_allocation.h"
+#include "core/segment_io.h"
 #include "fsm/microtcp_fsm.h"           // for microtcp_accept_fsm, microtc...
 #include "logging/microtcp_logger.h"    // for LOG_ERROR_RETURN, LOG_INFO_R...
 #include "microtcp_core_macros.h"       // for RETURN_ERROR_IF_MICROTCP_SOC...
@@ -172,7 +173,6 @@ ssize_t microtcp_recv_timed(microtcp_sock_t *const _socket, void *const _buffer,
         return microtcp_recv_timed_impl(_socket, _buffer, _length, _max_idle_time);
 }
 
-#include "core/segment_io.h"
 
 void microtcp_close(microtcp_sock_t *_socket)
 {

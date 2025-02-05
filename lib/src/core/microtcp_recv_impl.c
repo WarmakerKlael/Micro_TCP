@@ -39,7 +39,6 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
 {
         receive_ring_buffer_t *const bytestream_rrb = _socket->bytestream_rrb; /* Create local pointer to avoid dereferencing. */
         const size_t cached_rrb_size = rrb_size(bytestream_rrb);
-        size_t bytes_received = 0;
         const _Bool block = !(_flags & MSG_DONTWAIT);
 
         if (_socket->data_reception_with_finack == true) /* Received finack on previous called, but there was data available. */
@@ -48,7 +47,7 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                 return MICROTCP_RECV_FAILURE;
         }
 
-        bytes_received += rrb_pop(bytestream_rrb, _buffer + bytes_received, _length - bytes_received); /* Pop any leftover bytes in RRB. */
+        size_t bytes_received = rrb_pop(bytestream_rrb, _buffer, _length); /* Pop any leftover bytes in RRB. */
         while (bytes_received != _length)
         {
                 ssize_t receive_data_ret_val = receive_data_segment(_socket, block);
@@ -73,7 +72,9 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                         bytes_received += rrb_pop(bytestream_rrb, _buffer + bytes_received, _length - bytes_received); /* Pop any remaining bytes.*/
                         if (_flags & MSG_WAITALL)
                                 break;
-                        return bytes_received;
+
+                        DEBUG_SMART_ASSERT(bytes_received < SSIZE_MAX);
+                        return (ssize_t)bytes_received;
                 default:
                 {
                         /* TODO: Functionize */
@@ -90,7 +91,8 @@ ssize_t microtcp_recv_impl(microtcp_sock_t *const _socket, uint8_t *const _buffe
                 }
                 }
         }
-        return bytes_received;
+        DEBUG_SMART_ASSERT(bytes_received < SSIZE_MAX);
+        return (ssize_t)bytes_received;
 }
 
 ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const _buffer,
@@ -100,7 +102,7 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
         const time_t microtcp_recv_timeout_usec = timeval_to_usec(get_microtcp_ack_timeout());
         const time_t max_idle_time_usec = timeval_to_usec(_max_idle_time);
         DEBUG_SMART_ASSERT(_socket != NULL, _buffer != NULL);
-        DEBUG_SMART_ASSERT(_length > 0, max_idle_time_usec > 0);
+        DEBUG_SMART_ASSERT(_length > 0, _length < SSIZE_MAX, max_idle_time_usec > 0);
 
         if (max_idle_time_usec < microtcp_recv_timeout_usec)
                 LOG_WARNING("Argument `%s` [%lldusec] < timeout of `%s()` [%lldusec]. Timeout of `%s()'s` will be respected.",
@@ -114,7 +116,7 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
         {
                 ssize_t recv_ret_val = microtcp_recv_impl(_socket, _buffer + bytes_received, _length - bytes_received, 0);
                 if (RARE_CASE(recv_ret_val == MICROTCP_RECV_FAILURE))
-                        return bytes_received > 0 ? bytes_received : MICROTCP_RECV_FAILURE;
+                        return (ssize_t)(bytes_received > 0 ? bytes_received : MICROTCP_RECV_FAILURE);
                 if (RARE_CASE(recv_ret_val == MICROTCP_RECV_TIMEOUT))
                 {
                         current_idle_time_usec += microtcp_recv_timeout_usec;
@@ -128,5 +130,5 @@ ssize_t microtcp_recv_timed_impl(microtcp_sock_t *const _socket, uint8_t *const 
                 current_idle_time_usec = 0; /* Reset idle time counter. */
         }
         DEBUG_SMART_ASSERT(bytes_received <= _length); /* We should never received more bytes than asked... (Just a final silly check). */
-        return bytes_received;
+        return (ssize_t)bytes_received;
 }

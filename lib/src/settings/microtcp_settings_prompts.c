@@ -15,7 +15,6 @@
 void prompt_set_microtcp_rrb_length(void)
 {
         const char *prompt = "Specify MicroTCP's Receive-Ring-Buffer size (uint32_t, power of 2, in bytes default: " STRINGIFY_EXPANDED(MICROTCP_RECVBUF_LEN) ", max: " STRINGIFY_EXPANDED(RRB_MAX_SIZE) "): ";
-
         long rrb_size = 0;
         while (1)
         {

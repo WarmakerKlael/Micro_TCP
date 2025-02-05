@@ -42,6 +42,7 @@ static uint32_t join_rrb_blocks(receive_ring_buffer_t *_rrb);
 static inline rrb_block_t *create_rrb_block(uint32_t _seq_number, uint32_t _size, rrb_block_t *_next);
 static inline void merge_with_left(rrb_block_t *_prev_left_node, rrb_block_t *_left_node, uint32_t _extend_size, rrb_block_t **_head_address);
 static inline void merge_with_right(rrb_block_t *_prev_right_node, rrb_block_t *_right_node, uint32_t _new_seq_number, uint32_t _extend_size);
+static inline size_t block_list_size(const rrb_block_t * _head_of_list);
 
 receive_ring_buffer_t *rrb_create(const size_t _rrb_size, const uint32_t _current_seq_number)
 {
@@ -324,4 +325,16 @@ static inline void merge_with_right(rrb_block_t *_prev_right_node, rrb_block_t *
                 _prev_right_node->next = _right_node->next;
                 FREE_NULLIFY_LOG(_right_node);
         }
+}
+
+static inline size_t block_list_size(const rrb_block_t * _head_of_list)
+{
+        DEBUG_SMART_ASSERT(_head_of_list != NULL);
+        size_t list_size = 0;
+        while(_head_of_list)
+        {
+                list_size++;
+                _head_of_list = _head_of_list->next;
+        }
+        return list_size;
 }
