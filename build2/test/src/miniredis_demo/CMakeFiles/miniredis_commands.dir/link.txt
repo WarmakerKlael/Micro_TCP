@@ -1,0 +1,2 @@
+/usr/bin/ar qc libminiredis_commands.a CMakeFiles/miniredis_commands.dir/miniredis_commands.c.o
+/usr/bin/ranlib libminiredis_commands.a

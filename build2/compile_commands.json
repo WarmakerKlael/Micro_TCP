@@ -1,0 +1,152 @@
+[
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_misc_utils.dir/microtcp_helper_functions.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/microtcp_helper_functions.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/microtcp_helper_functions.c",
+  "output": "lib/src/CMakeFiles/microtcp_misc_utils.dir/microtcp_helper_functions.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_misc_utils.dir/microtcp_prompt_util.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/microtcp_prompt_util.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/microtcp_prompt_util.c",
+  "output": "lib/src/CMakeFiles/microtcp_misc_utils.dir/microtcp_prompt_util.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp.dir/microtcp.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/microtcp.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/microtcp.c",
+  "output": "lib/src/CMakeFiles/microtcp.dir/microtcp.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/fsm",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_fsm.dir/fsm_connect.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_connect.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_connect.c",
+  "output": "lib/src/fsm/CMakeFiles/microtcp_fsm.dir/fsm_connect.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/fsm",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_fsm.dir/fsm_accept.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_accept.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_accept.c",
+  "output": "lib/src/fsm/CMakeFiles/microtcp_fsm.dir/fsm_accept.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/fsm",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -Wunused-parameter -o CMakeFiles/microtcp_fsm.dir/fsm_send.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_send.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_send.c",
+  "output": "lib/src/fsm/CMakeFiles/microtcp_fsm.dir/fsm_send.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/fsm",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_fsm.dir/fsm_shutdown_active.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_shutdown_active.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_shutdown_active.c",
+  "output": "lib/src/fsm/CMakeFiles/microtcp_fsm.dir/fsm_shutdown_active.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/fsm",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_fsm.dir/fsm_shutdown_passive.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_shutdown_passive.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/fsm/fsm_shutdown_passive.c",
+  "output": "lib/src/fsm/CMakeFiles/microtcp_fsm.dir/fsm_shutdown_passive.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/settings",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_settings.dir/microtcp_settings.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/settings/microtcp_settings.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/settings/microtcp_settings.c",
+  "output": "lib/src/settings/CMakeFiles/microtcp_settings.dir/microtcp_settings.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/settings",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_settings.dir/microtcp_settings_prompts.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/settings/microtcp_settings_prompts.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/settings/microtcp_settings_prompts.c",
+  "output": "lib/src/settings/CMakeFiles/microtcp_settings.dir/microtcp_settings_prompts.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/misc.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/misc.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/misc.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/misc.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/resource_allocation.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/resource_allocation.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/resource_allocation.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/resource_allocation.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/segment_io.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/segment_io.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/segment_io.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/segment_io.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/segment_processing.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/segment_processing.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/segment_processing.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/segment_processing.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/socket_stats_updater.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/socket_stats_updater.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/socket_stats_updater.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/socket_stats_updater.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/receive_ring_buffer.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/receive_ring_buffer.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/receive_ring_buffer.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/receive_ring_buffer.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/send_queue.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/send_queue.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/send_queue.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/send_queue.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/lib/src/core",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/microtcp_core.dir/microtcp_recv_impl.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/microtcp_recv_impl.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/src/core/microtcp_recv_impl.c",
+  "output": "lib/src/core/CMakeFiles/microtcp_core.dir/microtcp_recv_impl.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/utils/src/logging",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_logger.dir/microtcp_logger.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/src/logging/microtcp_logger.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/src/logging/microtcp_logger.c",
+  "output": "utils/src/logging/CMakeFiles/microtcp_logger.dir/microtcp_logger.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/utils/src/logging",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_logger.dir/microtcp_logger_options.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/src/logging/microtcp_logger_options.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/src/logging/microtcp_logger_options.c",
+  "output": "utils/src/logging/CMakeFiles/microtcp_logger.dir/microtcp_logger_options.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/utils/src/logging",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-unused-parameter -o CMakeFiles/microtcp_logger.dir/microtcp_fsm_logger.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/src/logging/microtcp_fsm_logger.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/src/logging/microtcp_fsm_logger.c",
+  "output": "utils/src/logging/CMakeFiles/microtcp_logger.dir/microtcp_fsm_logger.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/test/src/miniredis_demo",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/registry.dir/registry.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/registry.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/registry.c",
+  "output": "test/src/miniredis_demo/CMakeFiles/registry.dir/registry.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/test/src/miniredis_demo",
+  "command": "/usr/bin/gcc -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -o CMakeFiles/miniredis_commands.dir/miniredis_commands.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/miniredis_commands.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/miniredis_commands.c",
+  "output": "test/src/miniredis_demo/CMakeFiles/miniredis_commands.dir/miniredis_commands.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/test/src/miniredis_demo",
+  "command": "/usr/bin/gcc -DAPPLICATION_NAME=\\\"REDIS\\\" -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-switch -o CMakeFiles/miniredis_client.out.dir/miniredis_client.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/miniredis_client.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/miniredis_client.c",
+  "output": "test/src/miniredis_demo/CMakeFiles/miniredis_client.out.dir/miniredis_client.c.o"
+},
+{
+  "directory": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/build2/test/src/miniredis_demo",
+  "command": "/usr/bin/gcc -DAPPLICATION_NAME=\\\"REDIS\\\" -DPROJECT_TOP_LEVEL_DIRECTORY=\\\"Micro_TCP\\\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/lib/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/include\" -I\"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/utils/include\" -std=gnu17 -Wall -Wextra -Wpedantic -Wno-unused-value -Wno-gnu-statement-expression -Wno-gnu-zero-variadic-macro-arguments -Wno-gnu-folding-constant -Wno-switch -pthread -o CMakeFiles/miniredis_server.out.dir/miniredis_server.c.o -c \"/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/miniredis_server.c\"",
+  "file": "/home/stygian/Documents/CSD/CS-335_Computer_Networks/2024-2025/Winter_Semester/Project/Phase B/A/microtcp/Micro_TCP/test/src/miniredis_demo/miniredis_server.c",
+  "output": "test/src/miniredis_demo/CMakeFiles/miniredis_server.out.dir/miniredis_server.c.o"
+}
+]
