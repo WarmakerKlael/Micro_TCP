@@ -17,6 +17,9 @@
 #define PB (1ULL << 50)
 #define EB (1ULL << 60)
 
+extern struct timeval max_response_idle_time;
+
+
 struct data_size
 {
         const double size;
@@ -71,6 +74,7 @@ enum io_type
 };
 static inline void prompt_to_configure_microtcp(void);
 static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
+static void set_max_response_idle_time(size_t _max_idle_time_multiplier);
 
 static __always_inline FILE *open_file_for_binary_io(const char *_file_name, enum io_type _io_type);
 static __always_inline uint8_t *allocate_message_buffer(size_t _message_buffer_size);
@@ -151,7 +155,7 @@ static __always_inline status_t receive_and_write_file_part(microtcp_sock_t *con
                                                             uint8_t *const _file_buffer, const size_t _file_part_size)
 {
         DEBUG_SMART_ASSERT(_socket != NULL, _file_ptr != NULL, _file_name != NULL, _file_buffer != NULL, _file_part_size < SSIZE_MAX);
-        const ssize_t received_bytes = microtcp_recv_timed(_socket, _file_buffer, _file_part_size, MAX_RESPONSE_IDLE_TIME);
+        const ssize_t received_bytes = microtcp_recv_timed(_socket, _file_buffer, _file_part_size, max_response_idle_time);
         if (received_bytes == MICROTCP_RECV_FAILURE)
                 LOG_APP_ERROR_RETURN(FAILURE, "Internal failure occurs on %s().", __func__);
         DEBUG_SMART_ASSERT(received_bytes >= 0, received_bytes < SSIZE_MAX);
@@ -286,6 +290,19 @@ static __always_inline uint8_t *allocate_message_buffer(const size_t _message_bu
         if (message_buffer == NULL)
                 LOG_APP_ERROR_RETURN(NULL, "Failed allocating message_buffer.");
         return message_buffer;
+}
+
+static void set_max_response_idle_time(const size_t _max_idle_time_multiplier)
+{
+#ifndef USEC_PER_SEC
+#define USEC_PER_SEC 1000000
+#endif /* USEC_PER_SEC */
+        const struct timeval microtcp_stall_time_limit = get_microtcp_stall_time_limit();
+        max_response_idle_time.tv_sec = (microtcp_stall_time_limit.tv_sec * _max_idle_time_multiplier) +
+                                        (microtcp_stall_time_limit.tv_usec * _max_idle_time_multiplier) / USEC_PER_SEC;
+        max_response_idle_time.tv_usec = (microtcp_stall_time_limit.tv_usec * _max_idle_time_multiplier) % USEC_PER_SEC;
+        if (max_response_idle_time.tv_sec < MIN_RESPONSE_IDLE_TIME.tv_sec)
+                max_response_idle_time = MIN_RESPONSE_IDLE_TIME;
 }
 
 #endif /* MINIREDIS_COMMON_SOURCE_CODE_H */

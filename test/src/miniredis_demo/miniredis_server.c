@@ -23,6 +23,8 @@
 #include <pthread.h>
 #include <stdatomic.h> // For thread-safe stop flag
 
+struct timeval max_response_idle_time = MIN_RESPONSE_IDLE_TIME;
+
 #define SET_MESSAGE_AND_GOTO(_goto_label, _message_variable, _message) \
         do                                                             \
         {                                                              \
@@ -51,11 +53,13 @@ static void execute_del(microtcp_sock_t *_socket, registry_t *_registry, minired
 
 /* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MAIN() <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 
+
 int main(void)
 {
         display_startup_message(STARTUP_SERVER_LOGO);
         display_current_path();
         prompt_to_configure_microtcp();
+        set_max_response_idle_time(SERVER_MAX_IDLE_TIME_MULTIPLIER);
         create_registry_directory();
         move_into_registry_directory();
         registry_t *mr_registry = registry_create(REGISTRY_INITIAL_ENTRIES_CAPACITY, REGISTRY_CACHE_SIZE_LIMIT);
@@ -334,7 +338,7 @@ static __always_inline char *receive_file_name(microtcp_sock_t *const _socket, c
                 return NULL;
 
         /* Read filename. */
-        if (microtcp_recv_timed(_socket, file_name, _file_name_size, MAX_RESPONSE_IDLE_TIME) != (ssize_t)_file_name_size)
+        if (microtcp_recv_timed(_socket, file_name, _file_name_size, max_response_idle_time) != (ssize_t)_file_name_size)
         {
                 FREE_NULLIFY_LOG(file_name);
                 return NULL;

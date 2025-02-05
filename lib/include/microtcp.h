@@ -42,14 +42,18 @@ typedef struct
         uint32_t seq_number;  /**< Sequence number */
         uint32_t ack_number;  /**< ACK number */
         uint16_t control;     /**< Control bits (e.g. SYN, ACK, FIN) */
-        uint16_t window;      /**< Window size in bytes */
+        uint32_t window;      /**< Window size in bytes */
         uint32_t data_len;    /**< Payload length in bytes */
         uint32_t future_use0; /**< 32-bits for future use */
         uint32_t future_use1; /**< 32-bits for future use */
         uint32_t future_use2; /**< 32-bits for future use */
         uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
-#define RRB_MAX_SIZE 32768U       /* Based on window bit-width (limiting factor). */
+#define RRB_MAX_SIZE 2147483648UL /* Based on window bit-width (limiting factor). */
+/* TODO reset window to 16bit. */
+/* TODO reset window to 16bit. */
+/* TODO reset window to 16bit. */
+/* TODO reset window to 16bit. */
 #endif                            /* OPTIMIZED_MODE */
 #define MICROTCP_HEADER_SIZE (sizeof(microtcp_header_t))
 
@@ -74,7 +78,9 @@ _Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, checksum), "Type `microtc
 #endif                            /* OPTIMIZED_MODE */
 #define MICROTCP_WIN_SIZE MICROTCP_RECVBUF_LEN
 #define MICROTCP_INIT_CWND (3 * MICROTCP_MSS)
+
 #define MICROTCP_INIT_SSTHRESH MICROTCP_WIN_SIZE
+
 _Static_assert(IS_POWER_OF_2(MICROTCP_RECVBUF_LEN), STRINGIFY(MICROTCP_RECVBUF_LEN) " must be a power of 2 number");
 
 /**

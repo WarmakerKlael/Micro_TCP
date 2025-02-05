@@ -14,7 +14,9 @@
 
 #define REGISTRY_INITIAL_ENTRIES_CAPACITY (100)
 #define REGISTRY_CACHE_SIZE_LIMIT (500000)
-#define MAX_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 10, .tv_usec = 0})
+#define MIN_RESPONSE_IDLE_TIME ((struct timeval){.tv_sec = 10, .tv_usec = 0}) /* Minimum idle time before giving up is set to 10 seconds. */
+#define CLIENT_MAX_IDLE_TIME_MULTIPLIER 1
+#define SERVER_MAX_IDLE_TIME_MULTIPLIER 1
 
 #define STAGING_FILE_NAME ".__filepart__.dat" /* Hiddden, internal filename until stored in `_registry`. */
 #define DIRECTORY_REGISTRY_NAME "REGISTRY_SERVER_DIR"

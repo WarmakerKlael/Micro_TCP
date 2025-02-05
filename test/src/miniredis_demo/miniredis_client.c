@@ -12,7 +12,7 @@
 #include "allocator/allocator_macros.h"
 #include "common_source_code.h"
 #include "smart_assert.h"
-
+struct timeval max_response_idle_time = MIN_RESPONSE_IDLE_TIME;
 /* INLINE HELPERS for `execute_set()`. */
 static __always_inline miniredis_header_t *create_miniredis_header(enum miniredis_command_codes _command_code, const char *_file_name,
                                                                    const char *_message);
@@ -39,6 +39,7 @@ int main(void)
         display_startup_message(STARTUP_CLIENT_LOGO);
         display_current_path();
         prompt_to_configure_microtcp();
+        set_max_response_idle_time(CLIENT_MAX_IDLE_TIME_MULTIPLIER);
         miniredis_client_manager();
         return EXIT_SUCCESS;
 }
@@ -224,13 +225,13 @@ static __always_inline status_t receive_and_display_registry_list(microtcp_sock_
         {
                 /* Receive the rnsi: */
                 struct registry_node_serialization_info rnsi;
-                ssize_t received_bytes = microtcp_recv_timed(_socket, &rnsi, sizeof(rnsi), MAX_RESPONSE_IDLE_TIME);
+                ssize_t received_bytes = microtcp_recv_timed(_socket, &rnsi, sizeof(rnsi), max_response_idle_time);
                 if (received_bytes != sizeof(rnsi))
                         LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part (rnsi) of file #%zu.", file_counter);
 
                 /* Receive file-name: */
                 SMART_ASSERT(rnsi.file_name_size < message_buffer_size); /* Leads to Buffer-Overflow. (safe assertion for any kind of filename). */
-                received_bytes = microtcp_recv_timed(_socket, _message_buffer, rnsi.file_name_size, MAX_RESPONSE_IDLE_TIME);
+                received_bytes = microtcp_recv_timed(_socket, _message_buffer, rnsi.file_name_size, max_response_idle_time);
                 if (received_bytes != (ssize_t)rnsi.file_name_size)
                         LOG_APP_ERROR_RETURN(FAILURE, "Failed receiving response-part (file-name) of file #%zu.", file_counter);
 
@@ -327,7 +328,7 @@ static __always_inline void receive_and_display_failure_response_message(microtc
         response_message[_header_ptr->response_message_size] = '\0';                                   /* Added the NULL terminating string byte. */
         if (response_message == NULL)
                 LOG_APP_ERROR_GOTO(cleanup_label, "Failed to allocate %zu bytes for storing server's response message.", _header_ptr->response_message_size + 1);
-        if (microtcp_recv_timed(_socket, response_message, _header_ptr->response_message_size, MAX_RESPONSE_IDLE_TIME) != (ssize_t)_header_ptr->response_message_size)
+        if (microtcp_recv_timed(_socket, response_message, _header_ptr->response_message_size, max_response_idle_time) != (ssize_t)_header_ptr->response_message_size)
                 LOG_APP_ERROR_GOTO(cleanup_label, "Failed to receiving response message from server.");
         LOG_APP_ERROR("Server failed to complete request: `%s %s`. Server's failure reason: %s",
                       get_command_name(_expected_command_code), _file_name, response_message);
@@ -342,7 +343,7 @@ static __always_inline status_t receive_server_response_header(microtcp_sock_t *
         const size_t required_reception_length = sizeof(*_header_ptr);
 
         /* Receive response header. */
-        if (microtcp_recv_timed(_socket, _header_ptr, required_reception_length, MAX_RESPONSE_IDLE_TIME) != required_reception_length)
+        if (microtcp_recv_timed(_socket, _header_ptr, required_reception_length, max_response_idle_time) != required_reception_length)
                 LOG_APP_ERROR_RETURN(FAILURE, "%s exceeded, failed receiving server response header.", STRINGIFY(MAX_RESPONSE_IDLE_TIME));
         if (_header_ptr->command_code != _expected_command_code)
                 LOG_APP_ERROR_RETURN(FAILURE, "Expected command_code = `%s`, server response command_code = `%s`.",
