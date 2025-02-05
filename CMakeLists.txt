@@ -36,7 +36,7 @@ file(WRITE "${CMAKE_BINARY_DIR}/${GNU_CHECK_PROGRAM_NAME}"
 set(FOUND_ACCEPTABLE_GNU_VERSION FALSE)
 foreach(GNU_VERSION 17 11)
         try_compile(FOUND_ACCEPTABLE_GNU_VERSION
-                 "${CMAKE_BINARY_DIR}/CMakeTmp"
+                "${CMAKE_BINARY_DIR}/CMakeTmp"
                 SOURCES "${CMAKE_BINARY_DIR}/${GNU_CHECK_PROGRAM_NAME}"
                 COMPILE_DEFINITIONS "-std=gnu${GNU_VERSION}"
         )
@@ -67,7 +67,7 @@ add_compile_options(
 
 # Suppress specific warnings
 add_compile_options(
-        -Wno-gnu-statement-expression-from-macro-expansion
+        -Wno-gnu-statement-expression
         -Wno-gnu-zero-variadic-macro-arguments
         -Wno-gnu-folding-constant
 )
