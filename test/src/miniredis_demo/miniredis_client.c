@@ -220,7 +220,7 @@ static __always_inline status_t receive_and_display_registry_list(microtcp_sock_
 {
         size_t file_counter = 0;
         size_t displayed_bytes_count = 0;
-        printf(COLOR_FG_GREEN "============================REGISTRY_LIST_BEGIN============================\n");
+        printf(COLOR_FG_GREEN "===========================================REGISTRY_LIST_BEGIN===========================================\n");
         while (displayed_bytes_count != _response_message_size)
         {
                 /* Receive the rnsi: */
@@ -237,10 +237,10 @@ static __always_inline status_t receive_and_display_registry_list(microtcp_sock_
 
                 /* Display file-stats: */
 
-                printf(COLOR_FG_MATRIX "%zu. Name: %.*s Size: %zu Downloads: %zu TOA: %ld\n",
+                printf(COLOR_FG_MATRIX "#%-5zu Name: %-40.*s Size: %8.2lf%s Downloads: %-5zu TOA: %-12ld\n",
                        file_counter,
                        (int)rnsi.file_name_size, _message_buffer,
-                       rnsi.file_size,
+                       get_formatted_byte_count(rnsi.file_size).size, get_formatted_byte_count(rnsi.file_size).unit,
                        rnsi.download_counter,
                        rnsi.time_of_arrival);
 
@@ -248,7 +248,7 @@ static __always_inline status_t receive_and_display_registry_list(microtcp_sock_
                 displayed_bytes_count += sizeof(rnsi) + rnsi.file_name_size;
                 file_counter++;
         }
-        printf("=============================REGISTRY_LIST_END=============================\n" SGR_RESET);
+        printf("============================================REGISTRY_LIST_END============================================\n" SGR_RESET);
         return SUCCESS;
 }
 
