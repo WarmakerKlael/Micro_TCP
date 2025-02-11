@@ -15,7 +15,7 @@ struct send_queue
         size_t stored_segments;
         size_t stored_bytes;
         /* TODO Remove: Added for debugging. */
-        FILE *send_packets_info;
+        // FILE *send_packets_info;
 };
 
 send_queue_t *sq_create(void)
