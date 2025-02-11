@@ -29,17 +29,7 @@ Refine code comments.
 7)
 Include function that can set the print stream.
 
-8) CHECK WHICH SECTIONS OF EACH FILE BENEFIT FROM DEBUG_MODE. put #IFNDEF DEBUG_MODE sections.
-
-
-9) IF connection is closed by peer, recv should return 0, (Per recvfrom in UDP)... Check this more
-
-10)
-CHECK sequence number (in the specific check) of send_handshake_segment() and receive_handshake_segment().
-
 11) >>>CHECK<<< Define different macros (or variables) for chaning TIMEOUT timer and RECVBUF of a socket. in order to increate μTCP performance.
-
-12) >>>CHECK<<< What's up with RST_BIT flag?
 
 14) What's up with the `how` argument on microtcp_shutdown, implements the shutdown modes.
 
@@ -83,86 +73,9 @@ COMPLETE YOUR TODOs... You have a lot of them...
 
 
 
-22)
-SORT #INCLUDE ROWS, in first < > second " "order grouped
-
-23) >>>CHECK<<< RENAME RECVBUF, and the functions that init it and destroy it...
-
-
-24) Create explicit loggers (One for settings, one for allocator, on microtcpGeneral) Or mehh idea?
-
-
-
-
-
-
-        case RECV_SEGMENT_RST_BIT: /* Let it fall to CLOSED_1_SUBSTATE*/
-
-                LOG_WARNING("Received a RST segment in TIME_WAIT substate. Closing connection");
-
-        
-
-        case RECV_SEGMENT_ERROR:
-
-        case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
-
-                return CLOSED_1_SUBSTATE;
-
-
-vs
-
-
-        /* Actions on the following two cases are the same. */
-
-        case RECV_SEGMENT_RST_BIT:
-
-                LOG_WARNING("Received a RST segment in TIME_WAIT substate. Closing connection");        
-
-                return CLOSED_1_SUBSTATE;
-
-        
-
-        case RECV_SEGMENT_ERROR:
-
-        case RECV_SEGMENT_TIMEOUT: /* Timeout occurred ; Healthy netowork case. */
-
-                return CLOSED_1_SUBSTATE;
-
-
-
-25) To optimize performance, remove redundant assertions and check. After you assure code runs without errors (laughing..) put #ifdef guards. 
-Let then on only ON only when  DEBUG_MODE is defined.
-
-26) Allocator macro, can be advance (with the help of a function) to keep track of allocated memory (and its size (maybe for logging)),
-and you should be able to do 
-        1: print currently allocated segment.
-        2: SMART_ASSERT, all memory regions are free()ed and NULLIFyied.
-
-27) Create accessor methods (getters) to take a socket stats (sent, lost, received packers (and bytes)).
-
-28) CHECK You can print lines to go up. not down. search it.
-
-
-29)
-
-TODO: @Note: IMPORTANT.. INTERFACE.. should ask for IP AND PORT number.
-maybe different interface for Client, different for Server.
-
-
 handle endianess for header. network endianess is bigendian. (your machine is litle, you phone is big), se host to network htons and 
 htons and htonl (shor and long) and their opposites ntohs and ntohl. network to host
 
-
-30)
-
-When you want a data packet, you call recvfrom().
-
-If recvfrom() returns a packet in timeout time,
-then check if there is space in assembly buffer.
-If There is a gap, or just free space... In any 
-case if you can store some or the entire payload bytes,
-and with these bytes you complete a gap,you should sent an ACK,
-for "up to those bytes". Of course you must update you receive window too.
 
 31)
 huffman encoding and bitpacking.
@@ -181,6 +94,3 @@ So you know they run your program :D.
 
 35)
 Add all printfs in LOGGING , so printfs become thread-safe
-
-36)
-TODO: increase FILE_PART size  make it equal to MICROTCP RECV_BUFFER SIZE.

@@ -56,8 +56,6 @@ if(NOT FOUND_ACCEPTABLE_GNU_VERSION)
 endif()
 
 # General warnings
-
-# TODO: PUT this on try_compile too
 add_compile_options(
         -Wall
         -Wextra

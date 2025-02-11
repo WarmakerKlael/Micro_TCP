@@ -57,7 +57,7 @@ typedef struct __attribute__((packed))
     size_t file_size;
 } miniredis_header_t;
 
-#define STARTUP_CLIENT_LOGO "\
+#define STARTUP_CLIENT_LOGO COLOR_FG_SKY "\
 Oo      oO ooOoOOo o.     O ooOoOOo `OooOOo.  o.OOoOoo o.OOOo.   ooOoOOo .oOOOo.             .oOOOo.   o      ooOoOOo o.OOoOoo o.     O oOoOOoOOo \n\
 O O    o o    O    Oo     o    O     o     `o  O        O    `o     O    o     o            .O     o  O          O     O       Oo     o     o     \n\
 o  o  O  O    o    O O    O    o     O      O  o        o      O    o    O.                 o         o          o     o       O O    O     o     \n\
@@ -66,8 +66,8 @@ O        o    o    O   o  O    o     OOooOO'   O        o      O    o          `
 o        O    O    o    O O    O     o    o    o        O      o    O           o           O         O          O     o       o    O O     O     \n\
 o        O    O    o     Oo    O     O     O   O        o    .O'    O    O.    .O           `o     .o o     .    O     O       o     Oo     O     \n\
 O        o ooOOoOo O     `o ooOOoOo  O      o ooOooOoO  OooOO'   ooOOoOo  `oooO'             `OoooO'  OOoOooO ooOOoOo ooOooOoO O     `o     o'    \n\
-"
-#define STARTUP_SERVER_LOGO "\
+" SGR_RESET
+#define STARTUP_SERVER_LOGO COLOR_FG_CRIMSON "\
 Oo      oO ooOoOOo o.     O ooOoOOo `OooOOo.  o.OOoOoo o.OOOo.   ooOoOOo .oOOOo.            .oOOOo.  o.OOoOoo `OooOOo.  o      'O o.OOoOoo `OooOOo.  \n\
 O O    o o    O    Oo     o    O     o     `o  O        O    `o     O    o     o            o     o   O        o     `o O       o  O        o     `o \n\
 o  o  O  O    o    O O    O    o     O      O  o        o      O    o    O.                 O.        o        O      O o       O  o        O      O \n\
@@ -76,6 +76,6 @@ O        o    o    O   o  O    o     OOooOO'   O        o      O    o          `
 o        O    O    o    O O    O     o    o    o        O      o    O           o                  o  o        o    o   `o    o    o        o    o   \n\
 o        O    O    o     Oo    O     O     O   O        o    .O'    O    O.    .O           O.    .O  O        O     O   `o  O     O        O     O  \n\
 O        o ooOOoOo O     `o ooOOoOo  O      o ooOooOoO  OooOO'   ooOOoOo  `oooO'             `oooO'  ooOooOoO  O      o   `o'     ooOooOoO  O      o \n\
-        "
+        " SGR_RESET
 
 #endif /* MINI_REDIS_H */

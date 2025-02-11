@@ -121,7 +121,6 @@ static accept_fsm_substates_t execute_ack_received_substate(microtcp_sock_t *_so
 {
         _socket->peer_address = (struct sockaddr *)_address;
         _socket->state = ESTABLISHED;
-        // TODO: LOG FSM's result (Like: "FSM succeded: Established connection.") or similar.
         return CONNECTION_ESTABLISHED_SUBSTATE;
 }
 

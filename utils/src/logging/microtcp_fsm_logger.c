@@ -7,7 +7,6 @@
 
 extern FILE *microtcp_log_stream;
 
-/* TODO: write DOC */
 static const char *get_colored_fsm_log_tag_string(enum fsm_log_tag _fsm_log_tag);
 
 void log_fsm_message_thread_safe(enum fsm_log_tag _fsm_log_tag, const char *_format_message, ...)

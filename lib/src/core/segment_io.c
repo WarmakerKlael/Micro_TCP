@@ -183,7 +183,6 @@ static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr 
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_RST_RECEIVED, segment->header.control, _required_control);
         if (RARE_CASE(segment->header.control == (WIN_BIT | ACK_BIT)))
                 LOG_INFO_RETURN(RECV_SEGMENT_WINACK_RECEIVED, "Peer send WINACK: Requests to find our window size.");
-        /* TODO: Should peer send that? Can we calculate if we ever send an ACK with window size = 0? Yes We can... DO it...  */
         if (RARE_CASE((segment->header.control == (FIN_BIT | ACK_BIT)) && (_required_control == ACK_BIT)))
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_FINACK_UNEXPECTED, segment->header.control, _required_control);
         if (RARE_CASE(segment->header.control != _required_control))

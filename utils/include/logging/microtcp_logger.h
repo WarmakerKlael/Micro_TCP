@@ -110,9 +110,9 @@ void log_message_non_thread_safe(enum log_tag _log_tag, const char *_project_nam
  */
 #define LOG_INFO(_format_message, ...) LOG_MESSAGE(LOG_INFO, _format_message, ##__VA_ARGS__);
 #else
-#define LOG_INFO(_format_message, ...) /* Logging disabled in release */
+#define LOG_INFO(_format_message, ...) ((void)0, ##__VA_ARGS__) /* Hack used to silence compiler as Logging is disabled in release. */
 // #define LOG_APP_INFO(_format_message, ...) /* Logging disabled in release */
-#endif				       /* DEBUG_MODE || VERBOSE_MODE */
+#endif								/* DEBUG_MODE || VERBOSE_MODE */
 #define LOG_APP_INFO(_format_message, ...) LOG_APP_MESSAGE(LOG_INFO_APP, _format_message, ##__VA_ARGS__)
 
 /**

@@ -151,7 +151,6 @@ static shutdown_active_fsm_substates_t execute_fin_double_substate(microtcp_sock
                                                                    socklen_t _address_len, fsm_context_t *_context)
 {
         _context->errno = DOUBLE_FIN;
-        /* TODO: check if FINACK is with correct seq and ACK. (if it is SYNCED). */
         _socket->ack_number = _socket->segment_receive_buffer->header.seq_number + FIN_SEQ_NUMBER_INCREMENT;
         _socket->peer_win_size = _socket->segment_build_buffer->header.window;
 

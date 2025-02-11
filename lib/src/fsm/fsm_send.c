@@ -278,7 +278,7 @@ static __always_inline ssize_t execute_rst_reception_substate(microtcp_sock_t *c
         return (ssize_t)(_bytes_sent > 0 ? _bytes_sent : MICROTCP_SEND_FAILURE);
 }
 
-#define NSEC_PER_USEC (1E3)
+#define NSEC_PER_USEC (1000)
 static __always_inline send_fsm_substates_t execute_peer_window_zero_substate(microtcp_sock_t *_socket, fsm_context_t *_context)
 {
         while (true)

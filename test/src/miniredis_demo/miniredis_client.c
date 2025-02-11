@@ -55,7 +55,6 @@ static status_t miniredis_establish_connection(microtcp_sock_t *const _utcp_sock
         LOG_APP_INFO_RETURN(SUCCESS, "MiniRedis Client-side connected to server.");
 }
 
-/* TODO: avoid big switch... */
 static void interactive_command_handler(microtcp_sock_t *_socket)
 {
         char command_buffer[MAX_COMMAND_SIZE + 1] = {0};            /* +1 for '\0'. */

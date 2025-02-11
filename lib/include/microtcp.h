@@ -50,10 +50,6 @@ typedef struct
         uint32_t checksum;    /**< CRC-32 checksum, see crc32() in utils folder */
 } microtcp_header_t;
 #define RRB_MAX_SIZE 32768UL      /* Based on window bit-width (limiting factor). */
-/* TODO reset window to 16bit. */
-/* TODO reset window to 16bit. */
-/* TODO reset window to 16bit. */
-/* TODO reset window to 16bit. */
 #endif                            /* OPTIMIZED_MODE */
 #define MICROTCP_HEADER_SIZE (sizeof(microtcp_header_t))
 
@@ -72,7 +68,7 @@ _Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, checksum), "Type `microtc
 #define MICROTCP_MSS 1400ULL
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
 #ifdef OPTIMIZED_MODE
-#define MICROTCP_RECVBUF_LEN (1 << 16) /* TODO correct to: 32 MBytes (offers higher throughput) */
+#define MICROTCP_RECVBUF_LEN 1048576 /* 1MBytes. */
 #else
 #define MICROTCP_RECVBUF_LEN 8192 /* 8 KBytes. */
 #endif                            /* OPTIMIZED_MODE */

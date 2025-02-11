@@ -3,7 +3,6 @@
 
 #define STRINGIFY(_var_name) #_var_name
 #define STRINGIFY_EXPANDED(_var_name) STRINGIFY(_var_name)
-#define EXPAND(_var_name) _var_name /* TODO REMOVE, check if useless. */
 
 #define MIN(x, y) ((x) <= (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
