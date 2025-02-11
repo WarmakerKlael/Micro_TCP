@@ -14,6 +14,8 @@ struct send_queue
         send_queue_node_t *rear;
         size_t stored_segments;
         size_t stored_bytes;
+        /* TODO Remove: Added for debugging. */
+        FILE *send_packets_info;
 };
 
 send_queue_t *sq_create(void)
@@ -23,6 +25,7 @@ send_queue_t *sq_create(void)
         sq->rear = NULL;
         sq->stored_segments = 0;
         sq->stored_bytes = 0;
+        // sq->send_packets_info = fopen("__SENT_PACKETS__.txt","w");
         return sq;
 }
 
@@ -44,6 +47,7 @@ status_t sq_destroy(send_queue_t **const _sq_address)
                 curr_node = next;
         }
         FREE_NULLIFY_LOG(SQ);
+        // fclose(SQ->send_packets_info);
         return SUCCESS;
 #undef SQ
 }
@@ -65,6 +69,7 @@ void sq_enqueue(send_queue_t *const _sq, const uint32_t _seq_number, const uint3
         DEBUG_SMART_ASSERT(_sq->rear != NULL && _sq->rear->next == NULL);
         _sq->stored_segments++;
         _sq->stored_bytes += _segment_size;
+        // fprintf(_sq->send_packets_info,"sn: %u, sz: %u\n", _seq_number, _segment_size);
 }
 
 /**
@@ -84,9 +89,9 @@ size_t sq_dequeue(send_queue_t *const _sq, const uint32_t _ack_number)
         while (curr_node != NULL && curr_node->seq_number + curr_node->segment_size != _ack_number)
                 curr_node = curr_node->next;
 
-        /* Not FOUND! Hint that something went wrong with protocol. */
+        /* Not FOUND! Probably ACK for old packet (already acked). Usually occur in timeouts. */
         if (curr_node == NULL)
-                LOG_ERROR_RETURN(dequeued_node_counter, "out-of-sync: No match for ACK number = %u", _ack_number);
+                LOG_WARNING_RETURN(dequeued_node_counter, "No match for ACK number = %u (old/duplicate ACK).", _ack_number);
 
         /* ACK number matched. */
         while (true)

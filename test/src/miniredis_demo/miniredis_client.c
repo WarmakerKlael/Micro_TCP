@@ -13,7 +13,7 @@
 #include "common_source_code.h"
 #include "smart_assert.h"
 struct timeval max_response_idle_time = MIN_RESPONSE_IDLE_TIME;
-/* INLINE HELPERS for `execute_set()`. */
+/* INLINE HELPERS: */
 static __always_inline miniredis_header_t *create_miniredis_header(enum miniredis_command_codes _command_code, const char *_file_name,
                                                                    const char *_message);
 static __always_inline status_t receive_server_response_header(microtcp_sock_t *_socket, miniredis_header_t *_header_ptr,
