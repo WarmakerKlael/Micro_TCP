@@ -14,6 +14,9 @@ struct send_queue
         send_queue_node_t *rear;
         size_t stored_segments;
         size_t stored_bytes;
+#ifdef DEBUG_MODE
+        FILE *outbound_traffic_log
+#endif /* DEBUG_MODE */
 };
 
 send_queue_t *sq_create(void)
@@ -23,6 +26,9 @@ send_queue_t *sq_create(void)
         sq->rear = NULL;
         sq->stored_segments = 0;
         sq->stored_bytes = 0;
+#ifdef DEBUG_MODE
+        sq->outbound_traffic_log = fopen("SQ_traffic.log", "w");
+#endif /* DEBUG_MODE */
         return sq;
 }
 
@@ -43,6 +49,9 @@ status_t sq_destroy(send_queue_t **const _sq_address)
                 FREE_NULLIFY_LOG(curr_node);
                 curr_node = next;
         }
+#ifdef DEBUG_MODE
+        fclose(SQ->outbound_traffic_log);
+#endif /* DEBUG_MODE */
         FREE_NULLIFY_LOG(SQ);
         return SUCCESS;
 #undef SQ
@@ -65,6 +74,9 @@ void sq_enqueue(send_queue_t *const _sq, const uint32_t _seq_number, const uint3
         DEBUG_SMART_ASSERT(_sq->rear != NULL && _sq->rear->next == NULL);
         _sq->stored_segments++;
         _sq->stored_bytes += _segment_size;
+#ifdef DEBUG_MODE
+        fprintf(_sq->outbound_traffic_log, "SQ=%u, SZ=%u\n", _seq_number, _segment_size);
+#endif /* DEBUG_MODE */
 }
 
 /**
