@@ -74,11 +74,11 @@ void generate_initial_sequence_number(microtcp_sock_t *_socket)
 microtcp_sock_t initialize_microtcp_socket(void)
 {
         microtcp_sock_t new_socket = {
-            .sd = POSIX_SOCKET_FAILURE_VALUE,   /* We assume socket descriptor contains FAILURE value; Should change from POSIX's socket() */
-            .state = INVALID,                   /* Socket state is INVALID until we get a POSIX's socket descriptor. */
+            .sd = POSIX_SOCKET_FAILURE_VALUE,                    /* We assume socket descriptor contains FAILURE value; Should change from POSIX's socket() */
+            .state = INVALID,                                    /* Socket state is INVALID until we get a POSIX's socket descriptor. */
             .curr_win_size = get_microtcp_bytestream_rrb_size(), /* Our window size. */
-            .peer_win_size = 0,                 /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
-            .bytestream_rrb = NULL,             /* Receive-Ring-Buffer gets allocated in 3-way handshake. */
+            .peer_win_size = 0,                                  /* We assume window side of other side to be zero, we wait for other side to advertise it window size in 3-way handshake. */
+            .bytestream_rrb = NULL,                              /* Receive-Ring-Buffer gets allocated in 3-way handshake. */
             .cwnd = MICROTCP_INIT_CWND,
             .ssthresh = get_microtcp_bytestream_rrb_size(),
             .seq_number = 0, /* Default value, waiting 3 way. */
@@ -94,11 +94,15 @@ microtcp_sock_t initialize_microtcp_socket(void)
             .send_queue = NULL,
             .bytestream_receive_buffer = NULL,
             .peer_address = NULL,
+#ifdef LOG_TRAFFIC_MODE
+            .inbound_traffic_log = fopen("inbound_traffic.log", "w"),
+            .outbound_traffic_log = fopen("outbound_traffic.log", "w"),
+#endif /* LOG_TRAFFIC_MODE */
             .data_reception_with_finack = false};
         return new_socket;
 }
 
-void cleanup_microtcp_socket(microtcp_sock_t *_socket)
+void cleanup_microtcp_socket(microtcp_sock_t *const _socket)
 {
         SMART_ASSERT(_socket != NULL);
         _Bool graceful_operation = true;
@@ -115,6 +119,10 @@ void cleanup_microtcp_socket(microtcp_sock_t *_socket)
         _socket->state = INVALID;
         _socket->peer_address = NULL;
         _socket->data_reception_with_finack = false;
-        if (graceful_operation)
+#ifdef LOG_TRAFFIC_MODE
+        fclose(_socket->inbound_traffic_log);
+        fclose(_socket->outbound_traffic_log);
+#endif /* LOG_TRAFFIC_MODE */
+            if (graceful_operation)
                 LOG_INFO("MicroTCP socket, successfully cleaned its resources.");
 }

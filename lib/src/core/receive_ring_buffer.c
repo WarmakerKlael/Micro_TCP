@@ -31,9 +31,6 @@ struct receive_ring_buffer
         uint32_t last_consumed_seq_number;
         uint32_t consumable_bytes;
         rrb_block_t *rrb_block_list_head;
-#ifdef DEBUG_MODE
-        FILE *inbound_traffic_log
-#endif /* DEBUG_MODE */
 };
 
 /* Inner helper functions. */
@@ -64,9 +61,6 @@ receive_ring_buffer_t *rrb_create(const size_t _rrb_size, const uint32_t _curren
         rrb->buffer_size = _rrb_size;
         rrb->consumable_bytes = 0;
         rrb->last_consumed_seq_number = _current_seq_number;
-#ifdef DEBUG_MODE
-        rrb->inbound_traffic_log = fopen("RRB_traffic.log", "w");
-#endif /* DEBUG_MODE */
         return rrb;
 }
 
@@ -82,9 +76,6 @@ status_t rrb_destroy(receive_ring_buffer_t **const _rrb_address)
 
         /* Proceed with destruction. */
         rrb_block_list_destroy(&RRB->rrb_block_list_head);
-#ifdef DEBUG_MODE
-        fclose(RRB->inbound_traffic_log);
-#endif /* DEBUG_MODE */
         FREE_NULLIFY_LOG(RRB->buffer);
         FREE_NULLIFY_LOG(RRB);
         return SUCCESS;
@@ -101,9 +92,6 @@ uint32_t rrb_append(receive_ring_buffer_t *const _rrb, const microtcp_segment_t 
         DEBUG_SMART_ASSERT(_rrb != NULL, _segment != NULL);
         const uint32_t rrb_begin_ex_bound = _rrb->last_consumed_seq_number + _rrb->consumable_bytes;
         const uint32_t rrb_remaining_size = _rrb->buffer_size - _rrb->consumable_bytes;
-#ifdef DEBUG_MODE
-        fprintf(_rrb->inbound_traffic_log, "SQ=%u, SZ=%u\n", _segment->header.seq_number, _segment->header.data_len);
-#endif /* DEBUG_MODE */
 
         if (RARE_CASE(!is_in_bounds(rrb_begin_ex_bound, rrb_remaining_size, _segment->header.seq_number)))
                 LOG_WARNING_RETURN(0, "RRB out-of-bounds segment: {`rrb_beggining_bound` = %u, `rrb_remaining_size` = %u, `incoming seq_number` = %u}.",

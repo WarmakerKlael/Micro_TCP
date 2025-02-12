@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h> // IWYU pragma: keep
@@ -141,6 +142,11 @@ typedef struct
         void *bytestream_receive_buffer;
         struct sockaddr *peer_address;
         _Bool data_reception_with_finack;
+
+#ifdef LOG_TRAFFIC_MODE
+        FILE *inbound_traffic_log;
+        FILE *outbound_traffic_log;
+#endif /* LOG_TRAFFIC_MODE */
 } microtcp_sock_t;
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);

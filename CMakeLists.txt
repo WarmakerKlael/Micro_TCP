@@ -103,6 +103,11 @@ if(DEBUG_MODE)
         message(STATUS "CMAKE: DEBUG_MODE enabled.")
 endif()
 
+if (LOG_TRAFFIC_MODE)
+        add_compile_definitions(LOG_TRAFFIC_MODE)
+        message(WARNING "CMAKE: LOG_TRAFFIC_MODE enabled.")
+endif()
+
 if(VERBOSE_MODE)
         add_compile_definitions(VERBOSE_MODE)
         message(STATUS "CMAKE: VERBOSE_MODE enabled.")
