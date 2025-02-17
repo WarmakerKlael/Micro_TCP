@@ -43,7 +43,6 @@ static __always_inline status_t send_server_response(microtcp_sock_t *_socket, m
 static status_t miniredis_establish_connection(microtcp_sock_t *_utcp_socket, struct sockaddr_in *_client_address, struct sockaddr_in *_server_address);
 static status_t miniredis_server_manager(registry_t *_registry);
 static void miniredis_request_handler(microtcp_sock_t *_socket, registry_t *_registry);
-static void create_registry_directory(void);
 static void move_into_registry_directory(void);
 
 /* Command functions: */
@@ -60,7 +59,7 @@ int main(void)
         display_current_path();
         prompt_to_configure_microtcp();
         set_max_response_idle_time(SERVER_MAX_IDLE_TIME_MULTIPLIER);
-        create_registry_directory();
+        create_directory(DIRECTORY_NAME_FOR_REGISTRY);
         move_into_registry_directory();
         registry_t *mr_registry = registry_create(REGISTRY_INITIAL_ENTRIES_CAPACITY, REGISTRY_CACHE_SIZE_LIMIT);
         if (mr_registry == NULL)
@@ -369,23 +368,13 @@ static __always_inline void miniredis_request_distributor(microtcp_sock_t *const
         }
 }
 
-static void create_registry_directory(void)
-{
-        if (mkdir(DIRECTORY_REGISTRY_NAME, 0755) == 0)
-                LOG_APP_INFO("Directory `%s` created.", DIRECTORY_REGISTRY_NAME);
-        else if (errno == EEXIST)
-                LOG_APP_WARNING("Failed creating directory `%s`, exists already.", DIRECTORY_REGISTRY_NAME);
-        else
-                LOG_APP_ERROR("Failed creating directory `%s`, errno(%d): %s.", DIRECTORY_REGISTRY_NAME, errno, strerror(errno));
-}
-
 static void move_into_registry_directory(void)
 {
         struct stat st;
-        if (stat(DIRECTORY_REGISTRY_NAME, &st) != 0 || !S_ISDIR(st.st_mode))
-                LOG_APP_ERROR("Cannot move into `%s`: Directory does not exist or is not a valid directory.", DIRECTORY_REGISTRY_NAME);
-        else if (chdir(DIRECTORY_REGISTRY_NAME) == 0)
-                LOG_APP_INFO("Successfully moved into directory `%s`.", DIRECTORY_REGISTRY_NAME);
+        if (stat(DIRECTORY_NAME_FOR_REGISTRY, &st) != 0 || !S_ISDIR(st.st_mode))
+                LOG_APP_ERROR("Cannot move into `%s`: Directory does not exist or is not a valid directory.", DIRECTORY_NAME_FOR_REGISTRY);
+        else if (chdir(DIRECTORY_NAME_FOR_REGISTRY) == 0)
+                LOG_APP_INFO("Successfully moved into directory `%s`.", DIRECTORY_NAME_FOR_REGISTRY);
         else
-                LOG_APP_ERROR("Failed to move into directory `%s`, errno(%d): %s.", DIRECTORY_REGISTRY_NAME, errno, strerror(errno));
+                LOG_APP_ERROR("Failed to move into directory `%s`, errno(%d): %s.", DIRECTORY_NAME_FOR_REGISTRY, errno, strerror(errno));
 }

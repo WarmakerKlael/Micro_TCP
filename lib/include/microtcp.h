@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h> // IWYU pragma: keep
@@ -68,6 +69,7 @@ _Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, checksum), "Type `microtc
 #define MICROTCP_MSS 1400ULL
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
 #ifdef OPTIMIZED_MODE
+#define MICROTCP_RECVBUF_LEN 1048576 /* 1 MByte. */
 #define MICROTCP_RECVBUF_LEN 1048576 /* 1MBytes. */
 #else
 #define MICROTCP_RECVBUF_LEN 8192 /* 8 KBytes. */
@@ -137,6 +139,11 @@ typedef struct
         void *bytestream_receive_buffer;
         struct sockaddr *peer_address;
         _Bool data_reception_with_finack;
+
+#ifdef LOG_TRAFFIC_MODE
+        FILE *inbound_traffic_log;
+        FILE *outbound_traffic_log;
+#endif /* LOG_TRAFFIC_MODE */
 } microtcp_sock_t;
 
 microtcp_sock_t microtcp_socket(int _domain, int _type, int _protocol);

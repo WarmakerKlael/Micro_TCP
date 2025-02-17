@@ -24,6 +24,7 @@
    - `DEBUG_MODE`: Enable debug-specific features; Extensive logging, sanitizers, etc.
    - `VERBOSE_MODE`: Enables verbose logging, focuses mainly on microTCP-specific logs, excluding memory logging or other lower-level details (not recommended for benchmarking).
    - `OPTIMIZED_MODE`: Enables optimizations that break the initial constraints of the project. (Recommended for benchmarking)
+   - `IWYU-ENABLE`: Enables Include-What-You-Use. This is for developers/maintainers as there is no advantaje for users of MicroTCP or mini-REDIS.
 
    For example:
    ```bash

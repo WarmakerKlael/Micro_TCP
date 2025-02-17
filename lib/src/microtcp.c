@@ -71,12 +71,11 @@ int microtcp_connect(microtcp_sock_t *_socket, const struct sockaddr *const _add
         RETURN_ERROR_IF_SOCKADDR_INVALID(MICROTCP_CONNECT_FAILURE, _address);
         RETURN_ERROR_IF_SOCKET_ADDRESS_LENGTH_INVALID(MICROTCP_CONNECT_FAILURE, _address_len, sizeof(*_address));
 
-        /* Initialize socket handshake reuired resources for connection.*/
+        /* Initialize socket handshake required resources for connection.*/
         generate_initial_sequence_number(_socket);
         if (allocate_pre_handshake_buffers(_socket) == FAILURE)
                 goto connect_failure_cleanup;
 
-        /* Run the `connect's` state machine. */
         if (microtcp_connect_fsm(_socket, _address, _address_len) == MICROTCP_CONNECT_FAILURE)
                 goto connect_failure_cleanup;
 

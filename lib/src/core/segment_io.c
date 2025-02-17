@@ -178,6 +178,10 @@ static inline ssize_t receive_segment(microtcp_sock_t *_socket, struct sockaddr 
         extract_microtcp_segment(&_socket->segment_receive_buffer, _socket->bytestream_receive_buffer, receive_bytestream_ret_val);
         microtcp_segment_t *segment = _socket->segment_receive_buffer;
         DEBUG_SMART_ASSERT(segment != NULL);
+#ifdef LOG_TRAFFIC_MODE
+        fprintf(_socket->inbound_traffic_log, "SQ=%u, AN=%u, SZ=%u\n",
+                segment->header.seq_number, segment->header.ack_number, segment->header.data_len);
+#endif /* LOG_TRAFFIC_MODE */
 
         if (RARE_CASE(segment->header.control & RST_BIT)) /* We test if RST is contained in control field, ACK_BIT might also be contained. (Combinations can singal reasons of why RST was sent). */
                 LOG_WARNING_RETURN_CONTROL_MISMATCH(RECV_SEGMENT_RST_RECEIVED, segment->header.control, _required_control);
@@ -260,8 +264,8 @@ static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockad
                                  segment_type, errno, strerror(errno));
         if (RARE_CASE(sendto_ret_val != segment_length))
         {
-                LOG_WARNING("Sending %s segment failed; sendto() sent %d bytes, microtcp_segment was %d bytes",
-                            segment_type, sendto_ret_val, segment_length);
+                LOG_ERROR("Sending %s segment failed; sendto() sent %d bytes, microtcp_segment was %d bytes",
+                          segment_type, sendto_ret_val, segment_length);
                 consecutive_sendto_errors++;
                 if (consecutive_sendto_errors > MAX_CONSECUTIVE_SEND_MISMATCH_ERRORS)
                         LOG_ERROR_RETURN(SEND_SEGMENT_FATAL_ERROR, "Max consecutive send mismatch errors reached.");
@@ -269,5 +273,9 @@ static inline ssize_t send_segment(microtcp_sock_t *_socket, const struct sockad
         }
         consecutive_sendto_errors = 0;
         update_socket_sent_counters(_socket, sendto_ret_val);
+#ifdef LOG_TRAFFIC_MODE
+        fprintf(_socket->outbound_traffic_log, "SN=%u, AN=%u, DL=%u\n",
+                _segment->header.seq_number, _segment->header.ack_number, _segment->header.data_len);
+#endif /* LOG_TRAFFIC_MODE */
         LOG_INFO_RETURN(sendto_ret_val, "%s segment sent.", segment_type);
 }

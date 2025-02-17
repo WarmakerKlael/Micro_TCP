@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <unistd.h>
 #include "microtcp.h"
 #include "demo_common.h"
@@ -40,6 +41,7 @@ int main(void)
         display_current_path();
         prompt_to_configure_microtcp();
         set_max_response_idle_time(CLIENT_MAX_IDLE_TIME_MULTIPLIER);
+        create_directory(DIRECTORY_NAME_FOR_DOWNLOADS);
         miniredis_client_manager();
         return EXIT_SUCCESS;
 }
@@ -168,6 +170,13 @@ static void request_get(microtcp_sock_t *const _socket, const char *const _file_
         miniredis_header_t *header_ptr = NULL; /* Requires deallocation */
         const size_t message_buffer_size = get_microtcp_bytestream_rrb_size();
 
+        if (chdir(DIRECTORY_NAME_FOR_DOWNLOADS) != 0)
+        {
+                LOG_APP_ERROR("Failed to enter %s directory; error(%d): %s.",
+                              DIRECTORY_NAME_FOR_DOWNLOADS, errno, strerror(errno));
+                return;
+        }
+
         if ((header_ptr = create_miniredis_header(CMND_CODE_GET, _file_name, NULL)) == NULL)
                 goto cleanup_label;
         if (send_request_header(_socket, header_ptr) == FAILURE)
@@ -189,11 +198,14 @@ static void request_get(microtcp_sock_t *const _socket, const char *const _file_
                 goto cleanup_label;
         if (finalize_file(&file_ptr, STAGING_FILE_NAME, _file_name) == FAILURE)
                 goto cleanup_label;
+
         LOG_APP_INFO("Client received and stored `%s`.", _file_name);
 
 cleanup_label:
         /* 3rd argument: Dummy file_name address which points to NULL, as in client side `_file_name` is statically allocated. */
         cleanup_file_receiving_resources(&file_ptr, &message_buffer, &(char *){NULL}, &header_ptr);
+        if (chdir("..") != 0)
+                LOG_APP_ERROR("Failed entering parent directory. Remaining in Downloads; errno(%d): %s", errno, strerror(errno));
 }
 
 static void request_del(microtcp_sock_t *const _socket, const char *const _file_name)

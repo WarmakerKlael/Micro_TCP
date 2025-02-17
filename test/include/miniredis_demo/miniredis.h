@@ -19,7 +19,8 @@
 #define SERVER_MAX_IDLE_TIME_MULTIPLIER 1
 
 #define STAGING_FILE_NAME ".__filepart__.dat" /* Hiddden, internal filename until stored in `_registry`. */
-#define DIRECTORY_REGISTRY_NAME "REGISTRY_SERVER_DIR"
+#define DIRECTORY_NAME_FOR_REGISTRY "REGISTRY_SERVER_DIR"
+#define DIRECTORY_NAME_FOR_DOWNLOADS "DOWNLOADS"
 
 // clang-format off
 static const char sscanf_command_format[] = "%" STRINGIFY_EXPANDED(MAX_COMMAND_SIZE) "s "
@@ -34,7 +35,7 @@ static const char available_commands_text[] =
     "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
     "┃->HELP                              ┃\n"
     "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
-    "┃->GET <filename>  <saving-path>     ┃\n"
+    "┃->GET <filename>                    ┃\n"
     "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
     "┃->SET <filename>  <path-to-file>    ┃\n"
     "┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫\n"
@@ -66,8 +67,8 @@ O        o    o    O   o  O    o     OOooOO'   O        o      O    o          `
 o        O    O    o    O O    O     o    o    o        O      o    O           o           O         O          O     o       o    O O     O     \n\
 o        O    O    o     Oo    O     O     O   O        o    .O'    O    O.    .O           `o     .o o     .    O     O       o     Oo     O     \n\
 O        o ooOOoOo O     `o ooOOoOo  O      o ooOooOoO  OooOO'   ooOOoOo  `oooO'             `OoooO'  OOoOooO ooOOoOo ooOooOoO O     `o     o'    \n\
-" SGR_RESET
-#define STARTUP_SERVER_LOGO COLOR_FG_CRIMSON "\
+"
+#define STARTUP_SERVER_LOGO "\
 Oo      oO ooOoOOo o.     O ooOoOOo `OooOOo.  o.OOoOoo o.OOOo.   ooOoOOo .oOOOo.            .oOOOo.  o.OOoOoo `OooOOo.  o      'O o.OOoOoo `OooOOo.  \n\
 O O    o o    O    Oo     o    O     o     `o  O        O    `o     O    o     o            o     o   O        o     `o O       o  O        o     `o \n\
 o  o  O  O    o    O O    O    o     O      O  o        o      O    o    O.                 O.        o        O      O o       O  o        O      O \n\
@@ -76,6 +77,6 @@ O        o    o    O   o  O    o     OOooOO'   O        o      O    o          `
 o        O    O    o    O O    O     o    o    o        O      o    O           o                  o  o        o    o   `o    o    o        o    o   \n\
 o        O    O    o     Oo    O     O     O   O        o    .O'    O    O.    .O           O.    .O  O        O     O   `o  O     O        O     O  \n\
 O        o ooOOoOo O     `o ooOOoOo  O      o ooOooOoO  OooOO'   ooOOoOo  `oooO'             `oooO'  ooOooOoO  O      o   `o'     ooOooOoO  O      o \n\
-        " SGR_RESET
+        "
 
 #endif /* MINI_REDIS_H */
