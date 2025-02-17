@@ -73,7 +73,7 @@ _Static_assert(FIELD_OF_TYPE_EXISTS(microtcp_header_t, checksum), "Type `microtc
 #define MICROTCP_MSS 1400ULL
 #define MICROTCP_MTU (MICROTCP_MSS + sizeof(microtcp_header_t))
 #ifdef OPTIMIZED_MODE
-#define MICROTCP_RECVBUF_LEN (1 << 16) /* TODO correct to: 32 MBytes (offers higher throughput) */
+#define MICROTCP_RECVBUF_LEN 1048576 /* 1 MByte. */
 #else
 #define MICROTCP_RECVBUF_LEN 8192 /* 8 KBytes. */
 #endif                            /* OPTIMIZED_MODE */

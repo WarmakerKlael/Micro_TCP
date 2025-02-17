@@ -19,7 +19,6 @@
 
 extern struct timeval max_response_idle_time;
 
-
 struct data_size
 {
         const double size;
@@ -75,6 +74,7 @@ enum io_type
 static inline void prompt_to_configure_microtcp(void);
 static status_t miniredis_terminate_connection(microtcp_sock_t *_utcp_socket);
 static void set_max_response_idle_time(size_t _max_idle_time_multiplier);
+static void create_directory(const char *_directory_name);
 
 static __always_inline FILE *open_file_for_binary_io(const char *_file_name, enum io_type _io_type);
 static __always_inline uint8_t *allocate_message_buffer(size_t _message_buffer_size);
@@ -303,6 +303,17 @@ static void set_max_response_idle_time(const size_t _max_idle_time_multiplier)
         max_response_idle_time.tv_usec = (microtcp_stall_time_limit.tv_usec * _max_idle_time_multiplier) % USEC_PER_SEC;
         if (max_response_idle_time.tv_sec < MIN_RESPONSE_IDLE_TIME.tv_sec)
                 max_response_idle_time = MIN_RESPONSE_IDLE_TIME;
+}
+
+static void create_directory(const char *const _directory_name)
+{
+        SMART_ASSERT(_directory_name != NULL);
+        if (mkdir(_directory_name, 0755) == 0)
+                LOG_APP_INFO("Directory `%s` created.", _directory_name);
+        else if (errno == EEXIST)
+                LOG_APP_WARNING("Failed creating directory `%s`, exists already.", _directory_name);
+        else
+                LOG_APP_ERROR("Failed creating directory `%s`, errno(%d): %s.", _directory_name, errno, strerror(errno));
 }
 
 #endif /* MINIREDIS_COMMON_SOURCE_CODE_H */
